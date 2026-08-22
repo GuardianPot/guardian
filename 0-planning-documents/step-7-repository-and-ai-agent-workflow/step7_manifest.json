@@ -1,0 +1,32 @@
+{
+  "step": 7,
+  "governance_status": "APPROVED / FINAL",
+  "approved_explicit_decision_count": 240,
+  "open_governance_owner_decisions": 0,
+  "bootstrap_execution_status": "NOT YET EXECUTED",
+  "execution_inputs_required": [
+    "GitHub organization name",
+    "GitHub repository name",
+    "GitHub plan/features confirmation",
+    "Primary Codex GitHub access/connection",
+    "Optional Claude Code reviewer access/connection"
+  ],
+  "primary_coding_agent": "Codex cloud",
+  "secondary_reviewer": "Claude Code (optional but approved/preferred for sensitive work)",
+  "next_action": "GitHub repository bootstrap, protections, CI/Project setup, Phase 0 issue activation",
+  "files": [
+    "00_Step_7_Repository_and_AI_Agent_Workflow_Master.md",
+    "01_GitHub_Repository_Topology_and_Settings.md",
+    "02_Branch_PR_Review_and_CODEOWNERS_Policy.md",
+    "03_AI_Coding_Agent_Strategy_and_Permissions.md",
+    "04_Agent_Context_and_Work_Package_Protocol.md",
+    "05_ADR_and_Architecture_Change_Control.md",
+    "06_CI_CD_Testing_and_Quality_Gates.md",
+    "07_Secrets_Signing_and_Release_Security.md",
+    "08_GitHub_Issues_Projects_and_Execution_Model.md",
+    "09_Phase_0_Execution_Plan.md",
+    "10_Repository_Bootstrap_and_Step_7_Exit_Checklist.md",
+    "11_External_Research_and_Constraints.md",
+    "12_Consolidated_Owner_Decision_Register.md"
+  ]
+}
