@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 
 let result = "";
 try {
-  result = execFileSync("git", ["grep", "-n", "-I", "-E", "(ghp_|github_pat_|AKIA[0-9A-Z]{16}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY)", "--", "."], {
+  result = execFileSync("git", ["grep", "-n", "-I", "-E", "(ghp_|github_pat_|AKIA[0-9A-Z]{16}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY)", "--", ".", ":(exclude)tools/check-secrets.mjs"], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "ignore"]
   });
