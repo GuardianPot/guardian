@@ -8,10 +8,12 @@ RUN apt-get update \
         ca-certificates \
         curl \
         iproute2 \
+        iputils-arping \
         iputils-ping \
         nftables \
     && rm -rf /var/lib/apt/lists/*
 
 COPY deploy/lab/assets/index.html /srv/index.html
+COPY deploy/lab/edge-policy.nft /etc/guardian/edge-policy.nft
 
 CMD ["sleep", "infinity"]

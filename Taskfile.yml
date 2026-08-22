@@ -68,6 +68,11 @@ tasks:
     cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File tools/lab-test.ps1
 
+  lab:secondary-ip:
+    desc: Run the routed secondary-IP placement and cleanup spike
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File tools/lab-secondary-ip.ps1
+
   validate:
     desc: Run all local quality checks
     deps: [format:check, go:check, web:check, policy, contracts, container:check]

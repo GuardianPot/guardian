@@ -35,6 +35,8 @@ services:
       - |
         test "$(cat /proc/sys/net/ipv4/ip_forward)" = "1"
         ip route del default || true
+        nft delete table inet guardian_lab 2>/dev/null || true
+        nft -f /etc/guardian/edge-policy.nft
         nft list ruleset
         sleep infinity
     networks:
