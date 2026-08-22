@@ -1,0 +1,5 @@
+extends:
+  - recommended
+apis:
+  guardian:
+    root: openapi/guardian.yaml

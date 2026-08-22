@@ -1,0 +1,7 @@
+.git
+.github
+node_modules
+apps/web-console/node_modules
+apps/web-console/dist
+0-planning-documents
+evidence

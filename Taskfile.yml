@@ -33,6 +33,8 @@ tasks:
     dir: apps/web-console
     cmds:
       - npm run typecheck
+      - npm run lint
+      - npm run test
       - npm run build
 
   policy:
@@ -41,10 +43,24 @@ tasks:
       - npm run policy:check
       - npm run contracts:check
       - npm run security:check
+      - npm run generated:check
+      - npm run dependencies:check
+      - npm run workflow:check
+
+  contracts:
+    desc: Validate Protobuf and OpenAPI contract tooling
+    cmds:
+      - buf lint
+      - npm run openapi:check
+
+  container:check:
+    desc: Build the control-plane container smoke image
+    cmds:
+      - docker build --file apps/control-plane/Dockerfile --tag guardian/control-plane:ci .
 
   validate:
     desc: Run all local quality checks
-    deps: [format:check, go:check, web:check, policy]
+    deps: [format:check, go:check, web:check, policy, contracts, container:check]
 
   build:
     desc: Build all skeleton applications
