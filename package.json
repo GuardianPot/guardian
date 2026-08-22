@@ -3,11 +3,17 @@
   "private": true,
   "version": "0.0.0",
   "description": "Guardian private product monorepo bootstrap",
+  "workspaces": [
+    "apps/web-console"
+  ],
   "scripts": {
     "format:check": "node tools/check-markdown-format.mjs",
     "policy:check": "node tools/check-repository-policy.mjs",
     "contracts:check": "node tools/check-contract-layout.mjs",
-    "security:check": "node tools/check-secrets.mjs"
+    "security:check": "node tools/check-secrets.mjs",
+    "validate": "task validate",
+    "build": "task build",
+    "test": "task test"
   },
   "engines": {
     "node": ">=24"
