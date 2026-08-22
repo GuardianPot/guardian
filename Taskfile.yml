@@ -58,6 +58,16 @@ tasks:
     cmds:
       - docker build --file apps/control-plane/Dockerfile --tag guardian/control-plane:ci .
 
+  lab:reset:
+    desc: Reset and start the disposable isolated network lab
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File tools/lab-reset.ps1
+
+  lab:test:
+    desc: Verify routing and management isolation in the disposable lab
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File tools/lab-test.ps1
+
   validate:
     desc: Run all local quality checks
     deps: [format:check, go:check, web:check, policy, contracts, container:check]

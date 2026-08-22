@@ -1,0 +1,102 @@
+name: guardian-lab
+
+services:
+  control-plane:
+    build:
+      context: ../..
+      dockerfile: deploy/lab/Dockerfile
+    image: guardian/lab:debian13
+    cap_add:
+      - NET_ADMIN
+    command:
+      - sh
+      - -ec
+      - |
+        ip route del default || true
+        sleep infinity
+    networks:
+      management:
+        ipv4_address: 172.30.0.20
+
+  edge-agent:
+    build:
+      context: ../..
+      dockerfile: deploy/lab/Dockerfile
+    image: guardian/lab:debian13
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    sysctls:
+      net.ipv4.ip_forward: "1"
+    command:
+      - sh
+      - -ec
+      - |
+        test "$(cat /proc/sys/net/ipv4/ip_forward)" = "1"
+        ip route del default || true
+        nft list ruleset
+        sleep infinity
+    networks:
+      management:
+        ipv4_address: 172.30.0.10
+      zone-a:
+        ipv4_address: 172.30.10.1
+      zone-b:
+        ipv4_address: 172.30.20.1
+
+  attacker:
+    image: guardian/lab:debian13
+    cap_add:
+      - NET_ADMIN
+    command:
+      - sh
+      - -ec
+      - |
+        ip route replace 172.30.20.0/24 via 172.30.10.1
+        ip route del default || true
+        sleep infinity
+    networks:
+      zone-a:
+        ipv4_address: 172.30.10.10
+
+  test-host:
+    image: guardian/lab:debian13
+    cap_add:
+      - NET_ADMIN
+    command:
+      - sh
+      - -ec
+      - |
+        ip route replace 172.30.10.0/24 via 172.30.20.1
+        ip route del default || true
+        exec busybox httpd -f -p 8080 -h /srv
+    networks:
+      zone-b:
+        ipv4_address: 172.30.20.10
+
+networks:
+  management:
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.254
+  zone-a:
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      config:
+        - subnet: 172.30.10.0/24
+          gateway: 172.30.10.254
+  zone-b:
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      config:
+        - subnet: 172.30.20.0/24
+          gateway: 172.30.20.254
