@@ -1,0 +1,22 @@
+# Guardian security and governance owner.
+# Keep this file itself owner-protected.
+* @sinanganiz
+
+/.github/ @sinanganiz
+/AGENTS.md @sinanganiz
+/CLAUDE.md @sinanganiz
+/GEMINI.md @sinanganiz
+/docs/product/ @sinanganiz
+/docs/architecture/ @sinanganiz
+/docs/roadmap/ @sinanganiz
+/docs/adr/ @sinanganiz
+/docs/phase-gates/ @sinanganiz
+/security/ @sinanganiz
+/proto/ @sinanganiz
+/openapi/ @sinanganiz
+/schemas/ @sinanganiz
+/go.mod @sinanganiz
+/go.sum @sinanganiz
+/package.json @sinanganiz
+/package-lock.json @sinanganiz
+/.github/workflows/ @sinanganiz

@@ -1,0 +1,19 @@
+name: Security review
+description: Track a private security review without publishing sensitive details.
+title: "[Security review] "
+labels:
+  - security-review
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Safe summary
+      description: Do not include credentials, exploit payloads, or unauthorized target information.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact and containment
+    validations:
+      required: true

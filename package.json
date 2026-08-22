@@ -1,0 +1,15 @@
+{
+  "name": "@guardianpot/guardian",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Guardian private product monorepo bootstrap",
+  "scripts": {
+    "format:check": "node tools/check-markdown-format.mjs",
+    "policy:check": "node tools/check-repository-policy.mjs",
+    "contracts:check": "node tools/check-contract-layout.mjs",
+    "security:check": "node tools/check-secrets.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

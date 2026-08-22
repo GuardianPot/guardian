@@ -1,0 +1,31 @@
+name: Work package
+description: Execute an approved, scoped implementation package.
+title: "[P0-W] "
+labels:
+  - work-package
+body:
+  - type: input
+    id: package
+    attributes:
+      label: Work package
+      description: Example P0-W1
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and allowed paths
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria and required evidence
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies, risks, and decision references
+    validations:
+      required: true
