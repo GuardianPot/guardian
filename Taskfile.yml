@@ -73,6 +73,11 @@ tasks:
     cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File tools/lab-secondary-ip.ps1
 
+  decoy:lifecycle:
+    desc: Validate the containerd/runc decoy lifecycle and isolation fixture
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File tools/decoy-lifecycle.ps1
+
   validate:
     desc: Run all local quality checks
     deps: [format:check, go:check, web:check, policy, contracts, container:check]
