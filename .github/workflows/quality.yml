@@ -51,7 +51,7 @@ jobs:
       - name: Container smoke build
         run: task container:check
       - name: Cowrie adapter fixture
-        run: task cowrie:adapter
+        run: bash tools/cowrie-fixture.sh
       - name: Buf breaking signal
         continue-on-error: true
         run: node tools/check-buf-breaking.mjs
