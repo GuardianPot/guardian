@@ -83,6 +83,11 @@ tasks:
     cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File tools/edge-wal-fixture.ps1
 
+  device:pki:
+    desc: Run the disposable device enrollment, mTLS, rotation, and revocation fixture
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File tools/device-pki-fixture.ps1
+
   validate:
     desc: Run all local quality checks
     deps: [format:check, go:check, web:check, policy, contracts, container:check]
