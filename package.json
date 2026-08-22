@@ -10,6 +10,7 @@
     "format:check": "node tools/check-markdown-format.mjs",
     "policy:check": "node tools/check-repository-policy.mjs",
     "contracts:check": "node tools/check-contract-layout.mjs",
+    "canonical-contracts:check": "node tools/check-canonical-contracts.mjs",
     "security:check": "node tools/check-secrets.mjs",
     "openapi:check": "redocly lint openapi/guardian.yaml",
     "generated:check": "node tools/check-generated.mjs",

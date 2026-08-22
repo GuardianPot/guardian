@@ -52,6 +52,7 @@ tasks:
     cmds:
       - buf lint
       - npm run openapi:check
+      - npm run canonical-contracts:check
 
   container:check:
     desc: Build the control-plane container smoke image

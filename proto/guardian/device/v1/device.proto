@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package guardian.device.v1;
+
+option go_package = "github.com/GuardianPot/guardian/gen/go/guardian/device/v1;devicev1";
+
+// DeviceIdentity is the minimum stable identity envelope shared by device
+// contracts. Product capabilities are intentionally outside this Phase 0
+// skeleton.
+message DeviceIdentity {
+  string device_id = 1;
+  string contract_version = 2;
+  string certificate_serial = 3;
+}

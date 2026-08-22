@@ -47,6 +47,7 @@ the Step 2–6 source documents.
 | [0014](0014-opentelemetry-observability.md) | OpenTelemetry instrumentation |
 | [0015](0015-reproducible-artifacts.md) | Reproducible artifacts and provenance |
 | [0016](0016-routed-secondary-ip-placement.md) | Routed secondary-IP placement |
+| [0017](0017-versioned-device-telemetry-contracts.md) | Versioned device and telemetry contracts |
 
 ## Change proposals
 

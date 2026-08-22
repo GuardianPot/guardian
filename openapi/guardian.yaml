@@ -3,9 +3,31 @@ servers:
   - url: https://api.guardianpot.internal
 info:
   title: Guardian API
-  version: 0.0.0
-  description: Contract tooling placeholder. P0-W10 owns the first stable API surface.
+  version: 0.1.0
+  description: Guardian v1 canonical telemetry envelope API.
   license:
     name: Proprietary internal software
     identifier: LicenseRef-Guardian-Internal
-paths: {}
+security:
+  - bearerAuth: []
+paths:
+  /v1/telemetry:
+    post:
+      operationId: ingestTelemetry
+      summary: Accept a canonical telemetry envelope
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/telemetry/v1/telemetry-envelope.schema.json'
+      responses:
+        '202':
+          description: Telemetry accepted for durable processing.
+        '400':
+          description: The envelope does not satisfy the v1 contract.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
