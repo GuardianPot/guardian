@@ -78,6 +78,11 @@ tasks:
     cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File tools/decoy-lifecycle.ps1
 
+  edge:wal:
+    desc: Run the SQLite WAL crash/restart and durable replay fixture
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File tools/edge-wal-fixture.ps1
+
   validate:
     desc: Run all local quality checks
     deps: [format:check, go:check, web:check, policy, contracts, container:check]
