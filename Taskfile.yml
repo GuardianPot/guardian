@@ -89,6 +89,11 @@ tasks:
     cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File tools/device-pki-fixture.ps1
 
+  cowrie:adapter:
+    desc: Run the disposable Cowrie SSH adapter, event, and egress fixture
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File tools/cowrie-fixture.ps1
+
   validate:
     desc: Run all local quality checks
     deps: [format:check, go:check, web:check, policy, contracts, container:check]

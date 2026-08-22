@@ -11,9 +11,8 @@
 - P0-W1 through P0-W10 issues exist and are linked to the `Guardian Delivery`
   organization Project with Phase, Component, Risk, Work package, Blocked by,
   and Acceptance status fields.
-- P0-W1, P0-W2, P0-W3, P0-W4, P0-W5, P0-W6, P0-W8, P0-W9, and P0-W10 have
-  accepted evidence, merged PRs, and closed issues. P0-W7 remains open and
-  unexecuted in the current authorized batch.
+- P0-W1 through P0-W10 have accepted Phase 0 fixture evidence, merged PRs,
+  and closed issues.
 - The latest quality workflow completed successfully.
 
 ## Accepted current-plan limitation
@@ -30,7 +29,6 @@ production or pilot release.
 
 ## Next execution state
 
-The current authorized execution batch is complete. P0-W7 is the only
-unexecuted Phase 0 package and remains `Todo / Not started`; the Phase 0 gate
-is `IN REVIEW — NOT APPROVED` until its evidence is supplied or the Product
-Owner explicitly changes the exit scope.
+The current authorized execution batch is complete. All P0-W1 through P0-W10
+packages have evidence; the Phase 0 gate remains `IN REVIEW — NOT APPROVED`
+until the Product Owner records the human gate decision.
