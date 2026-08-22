@@ -21,4 +21,33 @@ CI can report technical conditions. It cannot mark Phase 0 `APPROVED` or
 
 ## Current status
 
-`NOT STARTED`
+`IN REVIEW — NOT APPROVED`
+
+## Evidence audit — 2026-08-22
+
+The authorized execution batch has completed and the technical evidence is
+recorded for the following packages:
+
+| Work package | Issue | PR | Evidence state |
+|---|---:|---:|---|
+| P0-W1 | [#1](https://github.com/GuardianPot/guardian/issues/1) | [#11](https://github.com/GuardianPot/guardian/pull/11) | Accepted |
+| P0-W2 | [#2](https://github.com/GuardianPot/guardian/issues/2) | [#12](https://github.com/GuardianPot/guardian/pull/12) | Accepted |
+| P0-W3 | [#3](https://github.com/GuardianPot/guardian/issues/3) | [#13](https://github.com/GuardianPot/guardian/pull/13) | Accepted |
+| P0-W4 | [#4](https://github.com/GuardianPot/guardian/issues/4) | [#14](https://github.com/GuardianPot/guardian/pull/14) | Accepted |
+| P0-W5 | [#5](https://github.com/GuardianPot/guardian/issues/5) | [#15](https://github.com/GuardianPot/guardian/pull/15) | Accepted |
+| P0-W6 | [#6](https://github.com/GuardianPot/guardian/issues/6) | [#16](https://github.com/GuardianPot/guardian/pull/16) | Accepted |
+| P0-W7 | [#7](https://github.com/GuardianPot/guardian/issues/7) | — | Not executed in the current authorized batch |
+| P0-W8 | [#8](https://github.com/GuardianPot/guardian/issues/8) | [#17](https://github.com/GuardianPot/guardian/pull/17) | Accepted |
+| P0-W9 | [#9](https://github.com/GuardianPot/guardian/issues/9) | [#18](https://github.com/GuardianPot/guardian/pull/18) | Accepted |
+| P0-W10 | [#10](https://github.com/GuardianPot/guardian/issues/10) | [#19](https://github.com/GuardianPot/guardian/pull/19) | Accepted |
+
+Reproducible evidence includes `task validate`, the isolated lab and routed
+secondary-IP fixtures, `task decoy:lifecycle`, `task edge:wal`, `task
+device:pki`, and `task contracts`. Security reviews, test-only CA boundaries,
+runtime socket isolation, and no-secret checks are committed under
+`security/` and the relevant `deploy/` directories.
+
+P0-W7 remains open because it was not included in the current authorized
+execution list. This audit deliberately does not mark the Phase 0 gate
+`APPROVED` or `CLOSED`; Product Owner approval requires P0-W7 evidence or an
+explicit owner-approved change to the Phase 0 exit scope.
