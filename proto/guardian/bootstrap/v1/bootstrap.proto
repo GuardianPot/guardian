@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package guardian.bootstrap.v1;
+
+option go_package = "github.com/GuardianPot/guardian/gen/go/guardian/bootstrap/v1;bootstrapv1";
+
+// Tooling marker only. P0-W10 owns the first canonical device and telemetry
+// contract packages.
+message BootstrapMarker {
+  string schema_version = 1;
+}

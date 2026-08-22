@@ -1,0 +1,11 @@
+openapi: 3.1.0
+servers:
+  - url: https://api.guardianpot.internal
+info:
+  title: Guardian API
+  version: 0.0.0
+  description: Contract tooling placeholder. P0-W10 owns the first stable API surface.
+  license:
+    name: Proprietary internal software
+    identifier: LicenseRef-Guardian-Internal
+paths: {}

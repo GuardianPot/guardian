@@ -6,17 +6,22 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit -p tsconfig.app.json && vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "lint": "eslint . --max-warnings=0",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "react": "latest",
     "react-dom": "latest"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",
+    "eslint": "^10.9.0",
     "typescript": "latest",
+    "typescript-eslint": "^8.67.0",
     "vite": "latest"
   }
 }

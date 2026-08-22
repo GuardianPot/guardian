@@ -11,11 +11,18 @@
     "policy:check": "node tools/check-repository-policy.mjs",
     "contracts:check": "node tools/check-contract-layout.mjs",
     "security:check": "node tools/check-secrets.mjs",
+    "openapi:check": "redocly lint openapi/guardian.yaml",
+    "generated:check": "node tools/check-generated.mjs",
+    "dependencies:check": "node tools/check-dependency-policy.mjs",
+    "workflow:check": "node tools/check-workflow-pins.mjs",
     "validate": "task validate",
     "build": "task build",
     "test": "task test"
   },
   "engines": {
     "node": ">=24"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^2.47.0"
   }
 }
