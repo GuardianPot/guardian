@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.guardianpot.internal/telemetry/v1/telemetry-envelope.schema.json",
+  "title": "Guardian Telemetry Envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "device_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "schema_version": {
+      "const": "guardian.telemetry.v1"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payload": {
+      "type": "string",
+      "contentEncoding": "base64"
+    }
+  },
+  "required": ["event_id", "device_id", "schema_version", "observed_at", "payload"]
+}

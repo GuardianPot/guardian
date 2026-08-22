@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.guardianpot.internal/device/v1/device-identity.schema.json",
+  "title": "Guardian Device Identity v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "device_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "contract_version": {
+      "const": "guardian.device.v1"
+    },
+    "certificate_serial": {
+      "type": "string",
+      "pattern": "^[0-9a-f]+$"
+    }
+  },
+  "required": ["device_id", "contract_version"]
+}

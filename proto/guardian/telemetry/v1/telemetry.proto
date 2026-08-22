@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package guardian.telemetry.v1;
+
+option go_package = "github.com/GuardianPot/guardian/gen/go/guardian/telemetry/v1;telemetryv1";
+
+// TelemetryEnvelope carries a stable event identity while leaving product
+// payload modeling to later approved work packages.
+message TelemetryEnvelope {
+  string event_id = 1;
+  string device_id = 2;
+  string schema_version = 3;
+  string observed_at = 4;
+  bytes payload = 5;
+}
