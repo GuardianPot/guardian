@@ -32,3 +32,8 @@ production or pilot release.
 The current authorized execution batch is complete. All P0-W1 through P0-W10
 packages have evidence; the Phase 0 gate remains `IN REVIEW — NOT APPROVED`
 until the Product Owner records the human gate decision.
+
+P1-G0 prepares the Phase 1 execution baseline while that review is pending. It
+does not approve the Phase 0 gate and does not authorize Phase 1 product code.
+P1-W1 through P1-W11 remain proposed until their content is owner-approved and
+the Phase 0 gate dependency is closed.
