@@ -1,0 +1,55 @@
+version: '3'
+
+vars:
+  GO_MODULES: ./apps/control-plane ./apps/edge-agent
+
+tasks:
+  default:
+    desc: Run the complete local validation gate
+    deps: [validate]
+
+  format:
+    desc: Format Go and run repository formatting checks
+    cmds:
+      - gofmt -w apps/control-plane apps/edge-agent
+      - npm run format:check
+
+  format:check:
+    desc: Check Go and repository formatting without changing files
+    cmds:
+      - node tools/check-gofmt.mjs
+      - npm run format:check
+
+  go:check:
+    desc: Run Go formatting, vet, and tests for every Go module
+    cmds:
+      - go vet ./apps/control-plane/...
+      - go vet ./apps/edge-agent/...
+      - go test ./apps/control-plane/...
+      - go test ./apps/edge-agent/...
+
+  web:check:
+    desc: Typecheck and build the web-console workspace
+    dir: apps/web-console
+    cmds:
+      - npm run typecheck
+      - npm run build
+
+  policy:
+    desc: Run repository policy checks
+    cmds:
+      - npm run policy:check
+      - npm run contracts:check
+      - npm run security:check
+
+  validate:
+    desc: Run all local quality checks
+    deps: [format:check, go:check, web:check, policy]
+
+  build:
+    desc: Build all skeleton applications
+    deps: [go:check, web:check]
+
+  test:
+    desc: Run all skeleton tests
+    deps: [go:check]

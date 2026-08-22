@@ -1,0 +1,19 @@
+# Node and frontend output
+node_modules/
+dist/
+*.tsbuildinfo
+apps/web-console/vite.config.js
+apps/web-console/vite.config.d.ts
+
+# Go output
+bin/
+*.test
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Lab state and local evidence
+.lab/
+evidence/local/
