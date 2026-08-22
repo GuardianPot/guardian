@@ -10,6 +10,6 @@
     "security:check": "node tools/check-secrets.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   }
 }

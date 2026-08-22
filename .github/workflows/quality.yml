@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: 20
+          node-version: 24
       - name: Repository policy
         run: npm run policy:check
       - name: Markdown format
