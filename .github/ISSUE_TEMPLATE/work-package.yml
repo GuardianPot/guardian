@@ -1,6 +1,6 @@
 name: Work package
 description: Execute an approved, scoped implementation package.
-title: "[P0-W] "
+title: "[P?-?] "
 labels:
   - work-package
 body:
@@ -8,7 +8,7 @@ body:
     id: package
     attributes:
       label: Work package
-      description: Example P0-W1
+      description: Example P1-W1 or P1-G0
     validations:
       required: true
   - type: textarea

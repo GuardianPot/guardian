@@ -5,14 +5,18 @@ Guardian is a private, security-focused deception platform under the
 
 ## Repository status
 
-The repository currently contains the approved product, architecture, MVP,
-roadmap, and engineering-governance baseline. Implementation starts with
-Phase 0 after repository bootstrap acceptance is complete.
+The repository contains the approved product, architecture, MVP, roadmap, and
+engineering-governance baseline. Phase 0 technical evidence is recorded; its
+human gate remains pending. Phase 1 execution specifications are owner-approved
+but product implementation remains blocked by that Phase 0 human gate.
 
 - Product and engineering source of truth: [`0-planning-documents/`](0-planning-documents/)
 - Roadmap: [`0-planning-documents/step-6-roadmap/`](0-planning-documents/step-6-roadmap/)
 - Repository and agent workflow: [`0-planning-documents/step-7-repository-and-ai-agent-workflow/`](0-planning-documents/step-7-repository-and-ai-agent-workflow/)
 - ADR index: [`docs/adr/`](docs/adr/)
+- Agent context map: [`docs/engineering/context-map.md`](docs/engineering/context-map.md)
+- Work packages: [`docs/work-packages/`](docs/work-packages/)
+- Phase gates: [`docs/phase-gates/`](docs/phase-gates/)
 
 ## Current execution rule
 
