@@ -8,6 +8,7 @@ const required = [
   ".github/PULL_REQUEST_TEMPLATE.md",
   ".github/workflows/quality.yml",
   "docs/adr/README.md",
+  "docs/change-proposals/0002-p1-w8-acceptance-reference.md",
   "docs/engineering/context-map.md",
   "docs/phase-gates/phase-0.md",
   "docs/phase-gates/phase-1.md",
@@ -68,9 +69,12 @@ for (const packagePath of required.filter((path) =>
 )) {
   const content = readFileSync(packagePath, "utf8");
   const packageId = packagePath.match(/(P1-(?:G0|W\d+))\.md$/)?.[1];
+  const expectedStatus = packageId === "P1-G0"
+    ? "accepted"
+    : "approved-for-implementation";
   if (!packageId || !content.startsWith("---\n") ||
       !content.includes(`\nid: ${packageId}\n`) ||
-      !content.includes("\nstatus: ")) {
+      !content.includes(`\nstatus: ${expectedStatus}\n`)) {
     console.error(`${packagePath} has invalid work-package frontmatter.`);
     process.exit(1);
   }

@@ -7,8 +7,8 @@ Guardian is a private, security-focused deception platform under the
 
 The repository contains the approved product, architecture, MVP, roadmap, and
 engineering-governance baseline. Phase 0 technical evidence is recorded; its
-human gate remains pending. Phase 1 execution specifications are prepared and
-approved separately before product implementation begins.
+human gate remains pending. Phase 1 execution specifications are owner-approved
+but product implementation remains blocked by that Phase 0 human gate.
 
 - Product and engineering source of truth: [`0-planning-documents/`](0-planning-documents/)
 - Roadmap: [`0-planning-documents/step-6-roadmap/`](0-planning-documents/step-6-roadmap/)

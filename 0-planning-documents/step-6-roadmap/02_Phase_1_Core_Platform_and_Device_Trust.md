@@ -173,7 +173,9 @@ Security:
 - allowlisted paths/interfaces
 - audit
 
-Acceptance: AC-SEC-004.
+Acceptance: approved decision SEC-04 and Phase 1 privileged-helper security
+tests. AC-SEC-004 remains in Phase 2 primary validation and Phase 5 final
+regression for unsigned/tampered OCI artifact rejection (change proposal 0002).
 
 ## P1-W9 — Platform health model
 

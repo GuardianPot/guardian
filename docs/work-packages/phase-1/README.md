@@ -1,9 +1,9 @@
 # Phase 1 work packages
 
 Phase 1 builds the connected platform skeleton defined by the approved roadmap.
-P1-W1 through P1-W11 remain `proposed` until Product Owner content approval.
-Even after package approval, product implementation is blocked until the Phase
-0 gate is approved.
+The Product Owner approved P1-W1 through P1-W11 for implementation on
+2026-08-22. Product implementation remains blocked until the Phase 0 gate is
+approved and each package's hard dependencies are accepted.
 
 ## Approved execution strategy
 
@@ -52,6 +52,9 @@ integration and its final acceptance evidence pass.
 - Auth defaults: CLI-created 15-minute bootstrap token, PostgreSQL opaque
   sessions, 15-minute idle and 8-hour absolute expiry, TOTP, single-use
   recovery codes, and synchronizer CSRF protection.
+- Persistent account/source authentication throttling starts after five failed
+  attempts in five minutes and uses configurable exponential delay capped at
+  15 minutes.
 - Phase 1 rejects overlapping CIDRs inside one environment.
 - Enrollment tokens expire after 15 minutes. Device certificates are valid for
   30 days and rotate with jitter in the final 10 days.
@@ -60,6 +63,11 @@ integration and its final acceptance evidence pass.
   and a 1 MiB control-message limit.
 - Privileged RPC uses Protobuf/gRPC over Unix domain sockets with peer
   credential checks.
+- Health uses structured `True`/`False`/`Unknown` conditions with stable type,
+  reason, bounded message, observed revision, and transition time.
+- Edge SQLite corruption enters an explicit failed state. Recovery is an
+  operator-invoked quarantine and development reset/reseed, never a silent
+  automatic reset.
 - Web UI uses Radix Primitives with CSS Modules/variables, Vitest, React Testing
   Library, and Playwright.
 - Exact dependency versions are pinned to the newest secure supported release

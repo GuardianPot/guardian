@@ -13,6 +13,11 @@
   and Acceptance status fields.
 - P0-W1 through P0-W10 have accepted Phase 0 fixture evidence, merged PRs,
   and closed issues.
+- The `Guardian Delivery` Project has the owner-approved `Work Type` field;
+  existing work-package items are backfilled and CP-0002 is typed as a change
+  proposal.
+- P1-W1 through P1-W11 issues exist with complete execution fields, no agent
+  assignment, and `BLOCKED-BY-DEPENDENCY` status.
 - The latest quality workflow completed successfully.
 
 ## Accepted current-plan limitation
@@ -33,7 +38,8 @@ The current authorized execution batch is complete. All P0-W1 through P0-W10
 packages have evidence; the Phase 0 gate remains `IN REVIEW — NOT APPROVED`
 until the Product Owner records the human gate decision.
 
-P1-G0 prepares the Phase 1 execution baseline while that review is pending. It
-does not approve the Phase 0 gate and does not authorize Phase 1 product code.
-P1-W1 through P1-W11 remain proposed until their content is owner-approved and
-the Phase 0 gate dependency is closed.
+P1-G0 established the owner-approved Phase 1 execution baseline while that
+review remains pending. It does not approve the Phase 0 gate or authorize Phase
+1 product code. P1-W1 through P1-W11 are approved for implementation but remain
+`BLOCKED-BY-DEPENDENCY` until the Phase 0 gate and their package dependencies
+are closed.

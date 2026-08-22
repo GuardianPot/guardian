@@ -51,9 +51,10 @@ security, license, and compatibility checks.
 
 ## Current phase gate
 
-Phase 1 package specifications are proposals until the Product Owner records
-content approval. Phase 1 product implementation must not start while
-`docs/phase-gates/phase-0.md` remains unapproved.
+P1-W1 through P1-W11 are owner-approved for implementation. Phase 1 product
+implementation must not start while `docs/phase-gates/phase-0.md` remains
+unapproved; their GitHub issues stay `BLOCKED-BY-DEPENDENCY` until that gate
+and their package-level dependencies close.
 
 ## Minimum report
 

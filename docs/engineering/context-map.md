@@ -27,7 +27,7 @@ documents remain authoritative if a summary conflicts with them.
 | P1-W5 | Phase 1 P1-W5; CM-01..10; SA-03/04/14 | ADR 0005, 0017 |
 | P1-W6 | Phase 1 P1-W6; EN-05/07/08; CM-07/08 | ADR 0005, 0008, 0017 |
 | P1-W7 | Phase 1 P1-W7; EN-01..12 | ADR 0004, 0008, 0014 |
-| P1-W8 | Phase 1 P1-W8; EN-02..04; SA-10; AC-SEC-004 | ADR 0004, 0009, 0010 |
+| P1-W8 | Phase 1 P1-W8; EN-02..04; SA-10; SEC-04; change proposal 0002 | ADR 0004, 0009, 0010 |
 | P1-W9 | Phase 1 P1-W9; OB-01..06; failure-mode decisions | ADR 0014 |
 | P1-W10 | Phase 1 P1-W10; SA-13; AUTH-06 | ADR 0002, 0007 |
 | P1-W11 | Phase 1 P1-W11; DT-07; CP-04/08; TS-02..05; SA-11 | ADR 0002, 0006 |
