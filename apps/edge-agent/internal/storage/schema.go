@@ -1,0 +1,183 @@
+package storage
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"slices"
+)
+
+const schemaSQL = `
+CREATE TABLE identity_metadata (
+    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+    certificate_sha256 TEXT NOT NULL CHECK (length(certificate_sha256) = 64),
+    certificate_not_before INTEGER NOT NULL,
+    certificate_not_after INTEGER NOT NULL,
+    enrollment_status TEXT NOT NULL CHECK (enrollment_status IN ('enrolled', 'revoked', 'unavailable')),
+    updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE state_revisions (
+    object_kind TEXT PRIMARY KEY,
+    desired_revision INTEGER NOT NULL CHECK (desired_revision >= 0),
+    observed_revision INTEGER NOT NULL CHECK (observed_revision >= 0),
+    last_good_revision INTEGER NOT NULL CHECK (last_good_revision >= 0),
+    condition_code TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE retry_metadata (
+    operation_id TEXT PRIMARY KEY,
+    attempts INTEGER NOT NULL CHECK (attempts >= 0),
+    next_attempt_at INTEGER NOT NULL,
+    last_error_code TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE health_conditions (
+    name TEXT PRIMARY KEY,
+    status TEXT NOT NULL CHECK (status IN ('healthy', 'degraded', 'failed', 'stopped', 'unknown')),
+    reason_code TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE spool_objects (
+    digest TEXT PRIMARY KEY CHECK (length(digest) = 64),
+    relative_path TEXT NOT NULL UNIQUE,
+    size_bytes INTEGER NOT NULL CHECK (size_bytes >= 0),
+    state TEXT NOT NULL CHECK (state IN ('available', 'quarantined')),
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE durable_events (
+    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id TEXT NOT NULL UNIQUE,
+    payload_digest TEXT NOT NULL REFERENCES spool_objects(digest),
+    payload_size INTEGER NOT NULL CHECK (payload_size >= 0),
+    state TEXT NOT NULL CHECK (state IN ('pending', 'inflight', 'delivered')),
+    attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+    available_at INTEGER NOT NULL,
+    lease_until INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    delivered_at INTEGER
+);
+
+CREATE INDEX durable_events_available_idx
+    ON durable_events (state, available_at, sequence);
+CREATE INDEX retry_metadata_due_idx
+    ON retry_metadata (next_attempt_at, operation_id);
+`
+
+func initializeSchema(ctx context.Context, db *sql.DB) error {
+	version, err := readSchemaVersion(ctx, db)
+	if err != nil {
+		return err
+	}
+	if version == currentSchemaVersion {
+		return verifyRequiredTables(ctx, db)
+	}
+	if version != 0 {
+		return fmt.Errorf("%w: found version %d, expected %d", ErrSchemaIncompatible, version, currentSchemaVersion)
+	}
+	count, err := userTableCount(ctx, db)
+	if err != nil {
+		return err
+	}
+	if count != 0 {
+		return fmt.Errorf("%w: unversioned development database contains tables", ErrSchemaIncompatible)
+	}
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return classifyError("begin edge schema transaction", err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, schemaSQL); err != nil {
+		return classifyError("create edge schema", err)
+	}
+	if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", currentSchemaVersion)); err != nil {
+		return classifyError("record edge schema version", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return classifyError("commit edge schema", err)
+	}
+	return verifyRequiredTables(ctx, db)
+}
+
+func verifySchema(ctx context.Context, db *sql.DB) error {
+	version, err := readSchemaVersion(ctx, db)
+	if err != nil {
+		return err
+	}
+	if version != currentSchemaVersion {
+		return fmt.Errorf("%w: found version %d, expected %d", ErrSchemaIncompatible, version, currentSchemaVersion)
+	}
+	return verifyRequiredTables(ctx, db)
+}
+
+func readSchemaVersion(ctx context.Context, db *sql.DB) (int, error) {
+	var version int
+	if err := db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
+		return 0, classifyError("read edge schema version", err)
+	}
+	return version, nil
+}
+
+func userTableCount(ctx context.Context, db *sql.DB) (int, error) {
+	var count int
+	if err := db.QueryRowContext(ctx, `
+SELECT COUNT(*)
+FROM sqlite_master
+WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`).Scan(&count); err != nil {
+		return 0, classifyError("count edge database tables", err)
+	}
+	return count, nil
+}
+
+func verifyRequiredTables(ctx context.Context, db *sql.DB) error {
+	required := map[string][]string{
+		"identity_metadata": {"singleton", "certificate_sha256", "certificate_not_before", "certificate_not_after", "enrollment_status", "updated_at"},
+		"state_revisions":   {"object_kind", "desired_revision", "observed_revision", "last_good_revision", "condition_code", "updated_at"},
+		"retry_metadata":    {"operation_id", "attempts", "next_attempt_at", "last_error_code", "updated_at"},
+		"health_conditions": {"name", "status", "reason_code", "updated_at"},
+		"spool_objects":     {"digest", "relative_path", "size_bytes", "state", "created_at"},
+		"durable_events":    {"sequence", "event_id", "payload_digest", "payload_size", "state", "attempts", "available_at", "lease_until", "created_at", "updated_at", "delivered_at"},
+	}
+	for table, expectedColumns := range required {
+		rows, err := db.QueryContext(ctx, "PRAGMA table_info("+table+")")
+		if err != nil {
+			return classifyError("verify edge schema table", err)
+		}
+		columns := []string{}
+		for rows.Next() {
+			var columnID, notNull, primaryKey int
+			var name, dataType string
+			var defaultValue any
+			if err := rows.Scan(&columnID, &name, &dataType, &notNull, &defaultValue, &primaryKey); err != nil {
+				rows.Close()
+				return classifyError("scan edge schema table", err)
+			}
+			columns = append(columns, name)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return classifyError("iterate edge schema table", err)
+		}
+		rows.Close()
+		if !slices.Equal(columns, expectedColumns) {
+			return fmt.Errorf("%w: table %s columns do not match version %d", ErrSchemaIncompatible, table, currentSchemaVersion)
+		}
+	}
+	for _, index := range []string{"durable_events_available_idx", "retry_metadata_due_idx"} {
+		var count int
+		if err := db.QueryRowContext(ctx,
+			"SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = ?", index).Scan(&count); err != nil {
+			return classifyError("verify edge schema index", err)
+		}
+		if count != 1 {
+			return fmt.Errorf("%w: required index %s is missing", ErrSchemaIncompatible, index)
+		}
+	}
+	return nil
+}
