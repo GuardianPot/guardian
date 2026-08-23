@@ -21,7 +21,14 @@ CI can report technical conditions. It cannot mark Phase 0 `APPROVED` or
 
 ## Current status
 
-`IN REVIEW — NOT APPROVED`
+`APPROVED — CLOSED`
+
+## Product Owner decision — 2026-08-23
+
+The Product Owner reviewed and accepted the complete P0-W1 through P0-W10
+evidence set, approved the Phase 0 gate, and authorized Phase 1 product
+implementation. Phase 1 work must still follow the approved package dependency
+graph and may not bypass package-level acceptance criteria.
 
 ## Evidence audit — 2026-08-22
 
@@ -48,6 +55,5 @@ contracts`. Security reviews, test-only CA boundaries, runtime socket
 isolation, egress denial, provenance/license records, and no-secret checks are
 committed under `security/` and the relevant `deploy/` directories.
 
-All P0-W1 through P0-W10 evidence is now recorded. This audit deliberately
-does not mark the Phase 0 gate `APPROVED` or `CLOSED`; that final decision
-remains with the Product Owner.
+All P0-W1 through P0-W10 evidence is recorded and accepted. The Product Owner
+closed the Phase 0 gate on 2026-08-23.

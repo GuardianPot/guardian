@@ -13,6 +13,11 @@
   and Acceptance status fields.
 - P0-W1 through P0-W10 have accepted Phase 0 fixture evidence, merged PRs,
   and closed issues.
+- The Product Owner approved and closed the Phase 0 gate on 2026-08-23 and
+  authorized Phase 1 product implementation.
+- The owner development environment passed the E1-A/E1-B readiness checks on
+  Ubuntu 26.04 LTS under WSL2, including native Go, Node.js, Task, and Buf;
+  Docker Desktop integration; dependency restore; and full `task validate`.
 - The `Guardian Delivery` Project has the owner-approved `Work Type` field;
   existing work-package items are backfilled and CP-0002 is typed as a change
   proposal.
@@ -34,12 +39,10 @@ production or pilot release.
 
 ## Next execution state
 
-The current authorized execution batch is complete. All P0-W1 through P0-W10
-packages have evidence; the Phase 0 gate remains `IN REVIEW — NOT APPROVED`
-until the Product Owner records the human gate decision.
+The current authorized Phase 0 execution batch is complete and its gate is
+`APPROVED — CLOSED`. P1-G0 established the owner-approved Phase 1 execution
+baseline.
 
-P1-G0 established the owner-approved Phase 1 execution baseline while that
-review remains pending. It does not approve the Phase 0 gate or authorize Phase
-1 product code. P1-W1 through P1-W11 are approved for implementation but remain
-`BLOCKED-BY-DEPENDENCY` until the Phase 0 gate and their package dependencies
-are closed.
+P1-W1 and P1-W7 satisfy their phase-level dependency and are ready to begin as
+the first implementation wave. P1-W2 through P1-W6 and P1-W8 through P1-W11
+remain `BLOCKED-BY-DEPENDENCY` until their package-level predecessors close.
