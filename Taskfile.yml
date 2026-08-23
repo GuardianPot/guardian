@@ -23,10 +23,14 @@ tasks:
 
   go:check:
     desc: Run Go formatting, vet, and tests for every Go module
-    deps: [control-plane:generated, control-plane:tools, edge:integration]
+    deps: [control-plane:generated, control-plane:tools]
     env:
       GOWORK: 'off'
     cmds:
+      # Buf clean-generation rewrites the generated tree, so Edge builds start only after it completes.
+      - task: privileged:generated
+      - task: edge:integration
+      - task: privileged:security
       - go -C apps/control-plane vet ./...
       - go -C apps/edge-agent vet ./...
       - go -C apps/control-plane test ./...
@@ -78,9 +82,49 @@ tasks:
       - go -C apps/edge-agent mod download
       - go -C apps/edge-agent mod verify
 
+  privileged:generate:
+    desc: Regenerate the typed privileged-helper Protobuf and gRPC contract
+    cmds:
+      - buf generate
+
+  privileged:generated:
+    desc: Verify committed privileged-helper generated code is current
+    cmds:
+      - task: privileged:generate
+      - git diff --exit-code -- apps/edge-agent/internal/privileged/gen
+
+  privileged:security:
+    desc: Run privileged-helper boundary, abuse, socket, peer, and service-profile tests
+    deps: [edge:tools, privileged:generated]
+    cmds:
+      - bash tests/security/privileged-helper/run.sh
+      - |
+        docker run --rm \
+          --network=none \
+          --read-only \
+          --tmpfs /tmp:rw,exec,nosuid,size=1g \
+          --cap-drop=ALL \
+          --cap-add=CHOWN \
+          --cap-add=SETUID \
+          --cap-add=SETGID \
+          --security-opt=no-new-privileges \
+          --pids-limit=256 \
+          --env CGO_ENABLED=1 \
+          --env GOWORK=off \
+          --env GUARDIAN_ROOT_SECURITY_LAB=1 \
+          --env GOMODCACHE=/go/pkg/mod \
+          --env GOCACHE=/tmp/go-build \
+          --env GOTMPDIR=/tmp/go-tmp \
+          --env HOME=/tmp/home \
+          --mount "type=bind,src={{.ROOT_DIR}}/apps/edge-agent,dst=/src,readonly" \
+          --mount "type=bind,src=$(go env GOMODCACHE),dst=/go/pkg/mod,readonly" \
+          --workdir /src \
+          {{.EDGE_RACE_IMAGE}} \
+          sh -ec 'mkdir -p /tmp/go-build /tmp/go-tmp /tmp/home && exec go test -mod=readonly -count=1 -run ^TestRootPeerAndSocketSecurity$ ./internal/privileged'
+
   edge:race:
     desc: Run Edge Agent race tests in the pinned isolated Go builder
-    deps: [edge:tools]
+    deps: [edge:tools, privileged:generated]
     cmds:
       - |
         docker run --rm \

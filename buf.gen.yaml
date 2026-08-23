@@ -1,3 +1,19 @@
 version: v2
 
-plugins: []
+clean: true
+
+plugins:
+  - local: ["env", "GOWORK=off", "go", "-C", "apps/edge-agent", "tool", "protoc-gen-go"]
+    out: apps/edge-agent/internal/privileged/gen
+    opt:
+      - paths=source_relative
+  - local: ["env", "GOWORK=off", "go", "-C", "apps/edge-agent", "tool", "protoc-gen-go-grpc"]
+    out: apps/edge-agent/internal/privileged/gen
+    opt:
+      - paths=source_relative
+      - require_unimplemented_servers=true
+
+inputs:
+  - directory: proto
+    paths:
+      - proto/guardian/privileged

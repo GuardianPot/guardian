@@ -1,6 +1,5 @@
-// Package components defines the stable Edge module interfaces and the honest
-// production-skeleton implementations used before later work packages fill in
-// network, reconciliation, and privileged behavior.
+// Package components defines the stable Edge module interfaces and composes
+// the implemented foundation with explicit later-package boundaries.
 package components
 
 import (
@@ -10,6 +9,8 @@ import (
 
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/identity"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/lifecycle"
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/privclient"
+	privilegedv1 "github.com/GuardianPot/guardian/apps/edge-agent/internal/privileged/gen/guardian/privileged/v1"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/storage"
 )
 
@@ -45,11 +46,15 @@ type TelemetrySpool interface {
 	Stats(context.Context) (storage.Stats, error)
 }
 
-// PrivilegedHelperClient is the narrow future typed-UDS client boundary. This
-// package never opens a runtime socket or executes a shell command.
+// PrivilegedHelperClient is the narrow typed-UDS client boundary. This package
+// never opens a runtime socket or executes a shell command.
 type PrivilegedHelperClient interface {
 	lifecycle.Component
 	Available() bool
+	EnsureAddress(context.Context, *privilegedv1.EnsureAddressRequest) (*privilegedv1.EnsureAddressResponse, error)
+	ApplyNftablesPolicy(context.Context, *privilegedv1.ApplyNftablesPolicyRequest) (*privilegedv1.ApplyNftablesPolicyResponse, error)
+	ReconcileContainer(context.Context, *privilegedv1.ReconcileContainerRequest) (*privilegedv1.ReconcileContainerResponse, error)
+	EnsureNetworkNamespace(context.Context, *privilegedv1.EnsureNetworkNamespaceRequest) (*privilegedv1.EnsureNetworkNamespaceResponse, error)
 }
 
 // Graph groups explicit interfaces and produces the approved startup order.
@@ -75,8 +80,9 @@ func (g Graph) Ordered() []lifecycle.Component {
 	}
 }
 
-// NewFoundation creates passive, truthful P1-W7 boundaries. Future packages
-// replace them through these interfaces without widening daemon privileges.
+// NewFoundation creates truthful boundaries. P1-W8 supplies the active typed
+// helper client; future packages replace the remaining passive components
+// without widening daemon privileges.
 func NewFoundation(store *storage.Store, metadata identity.Metadata, enrollmentStatus string) Graph {
 	enrollmentHealth := "healthy"
 	enrollmentReason := "identity-valid"
@@ -99,9 +105,7 @@ func NewFoundation(store *storage.Store, metadata identity.Metadata, enrollmentS
 		Reconciler: &reconcilerComponent{
 			baseComponent: baseComponent{name: "reconciler", status: "degraded", reason: "not-implemented", store: store},
 		},
-		PrivilegedHelperClient: &helperComponent{
-			baseComponent: baseComponent{name: "privileged-helper", status: "degraded", reason: "not-implemented", store: store},
-		},
+		PrivilegedHelperClient: privclient.New(store),
 		HealthReporter: &healthComponent{
 			baseComponent: baseComponent{name: "health-reporter", status: "healthy", reason: "ready", store: store},
 			store:         store,
@@ -165,10 +169,6 @@ func (c *spoolComponent) Stats(ctx context.Context) (storage.Stats, error) {
 	return c.store.Stats(ctx)
 }
 
-type helperComponent struct{ baseComponent }
-
-func (*helperComponent) Available() bool { return false }
-
 type healthComponent struct {
 	baseComponent
 	store *storage.Store
@@ -184,5 +184,5 @@ var (
 	_ Reconciler             = (*reconcilerComponent)(nil)
 	_ HealthReporter         = (*healthComponent)(nil)
 	_ TelemetrySpool         = (*spoolComponent)(nil)
-	_ PrivilegedHelperClient = (*helperComponent)(nil)
+	_ PrivilegedHelperClient = (*privclient.Client)(nil)
 )
