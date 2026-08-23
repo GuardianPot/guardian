@@ -1,0 +1,4 @@
+d /etc/guardian-edge 0750 root guardian-edge -
+d /var/lib/guardian-edge 0700 guardian-edge guardian-edge -
+d /var/lib/guardian-edge/identity 0700 guardian-edge guardian-edge -
+d /var/lib/guardian-edge/spool 0700 guardian-edge guardian-edge -

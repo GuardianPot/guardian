@@ -1,0 +1,43 @@
+{
+  "version": "p1-w7-integration",
+  "generated_at": "2026-08-23T12:00:00Z",
+  "config": {
+    "control_plane_endpoint": "guardian.example:443",
+    "identity_configured": true,
+    "storage_configured": true
+  },
+  "state": {
+    "schema_version": 1,
+    "identity": {
+      "certificate_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "not_before": "2026-08-23T11:00:00Z",
+      "not_after": "2026-08-24T11:00:00Z",
+      "enrollment_status": "enrolled"
+    },
+    "revisions": [],
+    "retries": [],
+    "health": [
+      {
+        "name": "device-channel",
+        "status": "degraded",
+        "reason_code": "not-implemented",
+        "updated_at": "2026-08-23T12:00:00Z"
+      },
+      {
+        "name": "process",
+        "status": "healthy",
+        "reason_code": "running",
+        "updated_at": "2026-08-23T12:00:00Z"
+      }
+    ],
+    "queue": {
+      "pending": 0,
+      "inflight": 0,
+      "delivered": 0
+    },
+    "spool": {
+      "objects": 0,
+      "bytes": 0
+    }
+  }
+}
