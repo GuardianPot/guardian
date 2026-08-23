@@ -46,6 +46,8 @@ jobs:
         run: task contracts
       - name: Go checks
         run: task go:check
+      - name: Control Plane PostgreSQL integration
+        run: task control-plane:integration
       - name: Web checks
         run: task web:check
       - name: Container smoke build

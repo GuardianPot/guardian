@@ -22,11 +22,51 @@ tasks:
 
   go:check:
     desc: Run Go formatting, vet, and tests for every Go module
+    deps: [control-plane:generated, control-plane:tools]
+    env:
+      GOWORK: 'off'
     cmds:
-      - go vet ./apps/control-plane/...
-      - go vet ./apps/edge-agent/...
-      - go test ./apps/control-plane/...
-      - go test ./apps/edge-agent/...
+      - go -C apps/control-plane vet ./...
+      - go -C apps/edge-agent vet ./...
+      - go -C apps/control-plane test ./...
+      - go -C apps/edge-agent test ./...
+
+  control-plane:generate:
+    desc: Regenerate typed PostgreSQL access from SQL
+    env:
+      GOWORK: 'off'
+    cmds:
+      - go -C apps/control-plane/tools/sqlc tool sqlc generate -f ../../sqlc.yaml
+
+  control-plane:generated:
+    desc: Verify committed sqlc output is current
+    cmds:
+      - task: control-plane:generate
+      - git diff --exit-code -- apps/control-plane/internal/database/dbgen
+
+  control-plane:tools:
+    desc: Verify pinned repository-local Control Plane tools and modules
+    env:
+      GOWORK: 'off'
+    cmds:
+      - go -C apps/control-plane/tools/sqlc tool sqlc version
+      - go -C apps/control-plane/tools/goose tool goose -version
+      - go -C apps/control-plane mod verify
+      - go -C apps/control-plane/tools/sqlc mod verify
+      - go -C apps/control-plane/tools/goose mod verify
+
+  control-plane:migrate:
+    desc: Apply embedded forward-only Control Plane migrations explicitly
+    env:
+      GOWORK: 'off'
+    cmds:
+      - go -C apps/control-plane run ./cmd/control-plane migrate
+
+  control-plane:integration:
+    desc: Run disposable PostgreSQL 18 migration, persistence, and lifecycle evidence
+    deps: [control-plane:generated]
+    cmds:
+      - bash tests/integration/control-plane/run.sh
 
   web:check:
     desc: Typecheck and build the web-console workspace
@@ -55,9 +95,10 @@ tasks:
       - npm run canonical-contracts:check
 
   container:check:
-    desc: Build the control-plane container smoke image
+    desc: Build and run the hardened control-plane container smoke image
     cmds:
       - docker build --file apps/control-plane/Dockerfile --tag guardian/control-plane:ci .
+      - docker run --rm --network=none --read-only --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=64 guardian/control-plane:ci version
 
   lab:reset:
     desc: Reset and start the disposable isolated network lab
@@ -96,7 +137,7 @@ tasks:
 
   validate:
     desc: Run all local quality checks
-    deps: [format:check, go:check, web:check, policy, contracts, container:check]
+    deps: [format:check, go:check, web:check, policy, contracts, container:check, control-plane:integration]
 
   build:
     desc: Build all skeleton applications
