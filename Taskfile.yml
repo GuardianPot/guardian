@@ -23,10 +23,14 @@ tasks:
 
   go:check:
     desc: Run Go formatting, vet, and tests for every Go module
-    deps: [control-plane:generated, control-plane:tools, edge:integration, privileged:security]
+    deps: [control-plane:generated, control-plane:tools]
     env:
       GOWORK: 'off'
     cmds:
+      # Buf clean-generation rewrites the generated tree, so Edge builds start only after it completes.
+      - task: privileged:generated
+      - task: edge:integration
+      - task: privileged:security
       - go -C apps/control-plane vet ./...
       - go -C apps/edge-agent vet ./...
       - go -C apps/control-plane test ./...
@@ -120,7 +124,7 @@ tasks:
 
   edge:race:
     desc: Run Edge Agent race tests in the pinned isolated Go builder
-    deps: [edge:tools]
+    deps: [edge:tools, privileged:generated]
     cmds:
       - |
         docker run --rm \
