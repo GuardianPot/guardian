@@ -1,4 +1,4 @@
-package httpapi
+package api
 
 import (
 	"context"
@@ -18,7 +18,7 @@ func (fn readinessFunc) Ready(ctx context.Context) error { return fn(ctx) }
 
 func TestHealthEndpointsAreTruthfulAndSanitized(t *testing.T) {
 	secret := "postgres://guardian:do-not-leak@db/guardian"
-	server := New("127.0.0.1:0", readinessFunc(func(context.Context) error {
+	server := NewServer("127.0.0.1:0", readinessFunc(func(context.Context) error {
 		return errors.New(secret)
 	}), slog.New(slog.NewTextHandler(io.Discard, nil)))
 
@@ -43,7 +43,7 @@ func TestHealthEndpointsAreTruthfulAndSanitized(t *testing.T) {
 }
 
 func TestReadyEndpointReturnsReady(t *testing.T) {
-	server := New("127.0.0.1:0", readinessFunc(func(context.Context) error { return nil }), slog.Default())
+	server := NewServer("127.0.0.1:0", readinessFunc(func(context.Context) error { return nil }), slog.Default())
 	request := httptest.NewRequest(http.MethodGet, "/readyz", nil)
 	response := httptest.NewRecorder()
 	server.Handler().ServeHTTP(response, request)
@@ -59,7 +59,7 @@ func TestStartPreservesInitialBindFailure(t *testing.T) {
 	}
 	defer occupied.Close()
 
-	server := New(occupied.Addr().String(), readinessFunc(func(context.Context) error { return nil }), slog.Default())
+	server := NewServer(occupied.Addr().String(), readinessFunc(func(context.Context) error { return nil }), slog.Default())
 	first := server.Start()
 	second := server.Start()
 	if first == nil || second == nil {

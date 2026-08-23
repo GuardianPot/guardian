@@ -11,7 +11,7 @@ import (
 
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/app"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/config"
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/database"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage"
 )
 
 var version = "dev"
@@ -35,7 +35,7 @@ func run(ctx context.Context, args []string, lookup config.LookupEnv, stdout, st
 		_, err := fmt.Fprintln(stdout, version)
 		return err
 	case config.CommandMigrate:
-		report, err := database.Migrate(ctx, cfg.DatabaseURL)
+		report, err := storage.Migrate(ctx, cfg.DatabaseURL)
 		if err != nil {
 			return err
 		}

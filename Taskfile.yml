@@ -44,7 +44,7 @@ tasks:
     desc: Verify committed sqlc output is current
     cmds:
       - task: control-plane:generate
-      - git diff --exit-code -- apps/control-plane/internal/database/dbgen
+      - git diff --exit-code -- apps/control-plane/internal/storage/dbgen
 
   control-plane:tools:
     desc: Verify pinned repository-local Control Plane tools and modules

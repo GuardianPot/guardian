@@ -1,6 +1,6 @@
 //go:build integration
 
-package database
+package storage
 
 import (
 	"context"
@@ -16,8 +16,8 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/database/dbgen"
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/database/migrations"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage/dbgen"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage/migrations"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )

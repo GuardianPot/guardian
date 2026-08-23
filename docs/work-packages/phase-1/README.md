@@ -14,7 +14,8 @@ The Product Owner approved a foundation-first, limited-parallelism strategy on
 P1-G0 Phase 1 execution bootstrap
   |
   +--> P1-W1 Control Plane shell
-  |      +--> P1-W10 Audit baseline
+  |      +--> P1-G1 Control Plane package-boundary alignment
+  |             +--> P1-W10 Audit baseline
   |      |      +--> P1-W2 Local authentication
   |      |      +--> P1-W3 Environment domain
   |      |      +--> P1-W4 Edge enrollment
@@ -38,7 +39,7 @@ integration and its final acceptance evidence pass.
 ## Execution waves
 
 1. P1-W1 and P1-W7.
-2. P1-W10 and P1-W8.
+2. P1-G1 boundary alignment, then P1-W10; P1-W8 may run in parallel.
 3. P1-W2, P1-W3, and P1-W4.
 4. P1-W5, P1-W9 integration, and the P1-W11 shell.
 5. P1-W6.
@@ -72,6 +73,8 @@ integration and its final acceptance evidence pass.
   Library, and Playwright.
 - Exact dependency versions are pinned to the newest secure supported release
   at implementation time, preferring LTS where an ecosystem provides it.
+- P1-G1 is a behavior-preserving structural prerequisite introduced by Product
+  Owner F1-A approval on 2026-08-23; it adds no product capability.
 
 ## Lifecycle
 

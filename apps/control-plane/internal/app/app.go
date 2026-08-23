@@ -8,24 +8,23 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/api"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/audit"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/auth"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/config"
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/database"
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/httpapi"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/deception"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/devices"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/environment"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/health"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/jobs"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/lifecycle"
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/modules/api"
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/modules/audit"
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/modules/auth"
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/modules/deception"
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/modules/devices"
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/modules/environment"
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/modules/health"
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/modules/jobs"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage"
 )
 
 // Run opens the already-migrated database, starts modules in dependency order,
 // serves health endpoints, and drains everything on cancellation.
 func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
-	store, err := database.Open(ctx, cfg.DatabaseURL, cfg.DatabaseMaxConns)
+	store, err := storage.Open(ctx, cfg.DatabaseURL, cfg.DatabaseMaxConns)
 	if err != nil {
 		return fmt.Errorf("open Control Plane store: %w", err)
 	}
@@ -42,7 +41,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		health.New(),
 		audit.New(),
 		jobs.New(),
-		api.New(),
+		api.NewModule(),
 	)
 	if err != nil {
 		return fmt.Errorf("build module graph: %w", err)
@@ -51,7 +50,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		return err
 	}
 
-	server := httpapi.New(cfg.HTTPAddress, store, logger)
+	server := api.NewServer(cfg.HTTPAddress, store, logger)
 	if err := server.Start(); err != nil {
 		return errors.Join(fmt.Errorf("start HTTP server: %w", err), components.Stop(context.Background()))
 	}

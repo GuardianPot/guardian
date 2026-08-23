@@ -1,6 +1,6 @@
-// Package database owns the Control Plane PostgreSQL connection and explicit
+// Package storage owns the Control Plane PostgreSQL connection and explicit
 // transaction boundary.
-package database
+package storage
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/database/dbgen"
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/database/migrations"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage/dbgen"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage/migrations"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
