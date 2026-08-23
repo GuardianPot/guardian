@@ -52,7 +52,7 @@ docker compose --file "$compose_file" --project-name "$project_name" up --detach
 export GUARDIAN_TEST_DATABASE_URL="postgres://${GUARDIAN_POSTGRES_USER}:${GUARDIAN_POSTGRES_PASSWORD}@127.0.0.1:${GUARDIAN_POSTGRES_PORT}/${GUARDIAN_POSTGRES_DB}?sslmode=disable"
 export GUARDIAN_DATABASE_URL="$GUARDIAN_TEST_DATABASE_URL"
 
-GOWORK=off go -C "$repo_root/apps/control-plane" test -tags=integration -count=1 ./internal/database
+GOWORK=off go -C "$repo_root/apps/control-plane" test -tags=integration -count=1 ./internal/storage
 GOWORK=off go -C "$repo_root/apps/control-plane" run ./cmd/control-plane migrate
 GOWORK=off go -C "$repo_root/apps/control-plane" build -trimpath -o "$temporary_dir/guardian-control-plane" ./cmd/control-plane
 

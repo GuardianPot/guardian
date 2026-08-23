@@ -1,11 +1,11 @@
-package database
+package storage
 
 import (
 	"bytes"
 	"io/fs"
 	"testing"
 
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/database/migrations"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage/migrations"
 )
 
 func TestEmbeddedMigrationsAreForwardOnly(t *testing.T) {

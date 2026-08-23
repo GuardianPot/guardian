@@ -20,6 +20,7 @@ documents remain authoritative if a summary conflicts with them.
 | Package | Required context | Primary accepted ADRs |
 |---|---|---|
 | P1-G0 | Step 7 sections CTX/WP/PM; Phase 1 roadmap | ADR 0001 |
+| P1-G1 | P1-G1; CP-02; WP-09/10 | ADR 0002, 0007 |
 | P1-W1 | Phase 1 P1-W1; CP-01..07; DA-01/02/07 | ADR 0002, 0003, 0007, 0014 |
 | P1-W2 | Phase 1 P1-W2; IA-01..06; SA-11/13/14; AUTH-01..06 | ADR 0003, 0006, 0007 |
 | P1-W3 | Phase 1 P1-W3; IA-01; CP-02/04; AC-ON-003 | ADR 0002, 0006, 0007 |

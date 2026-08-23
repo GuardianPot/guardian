@@ -1,4 +1,4 @@
-package database
+package storage
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 
-	"github.com/GuardianPot/guardian/apps/control-plane/internal/database/migrations"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage/migrations"
 	"github.com/pressly/goose/v3"
 
 	_ "github.com/jackc/pgx/v5/stdlib"

@@ -1,5 +1,5 @@
-// Package httpapi owns the minimal Control Plane HTTP server.
-package httpapi
+// Package api owns the public REST API boundary and minimal HTTP server.
+package api
 
 import (
 	"context"
@@ -31,8 +31,8 @@ type Server struct {
 	startErr  error
 }
 
-// New creates an instrumented server without binding a socket.
-func New(address string, readiness Readiness, logger *slog.Logger) *Server {
+// NewServer creates an instrumented server without binding a socket.
+func NewServer(address string, readiness Readiness, logger *slog.Logger) *Server {
 	server := &Server{
 		address:   address,
 		readiness: readiness,
