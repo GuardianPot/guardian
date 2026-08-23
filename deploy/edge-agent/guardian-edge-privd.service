@@ -1,27 +1,25 @@
 [Unit]
-Description=Guardian Edge Agent
-Documentation=file:/usr/share/doc/guardian-edge/runbook.md
-Wants=network-online.target guardian-edge-privd.service
-After=network-online.target guardian-edge-privd.service
+Description=Guardian Edge Privileged Helper
+Documentation=file:/usr/share/doc/guardian-edge/privileged-helper.md
+After=local-fs.target
+Before=guardian-edge.service
 StartLimitIntervalSec=5min
 StartLimitBurst=5
 
 [Service]
 Type=simple
-User=guardian-edge
+User=root
 Group=guardian-edge
-ExecStart=/usr/bin/guardian-edge serve --config /etc/guardian-edge/config.json
+ExecStart=/usr/libexec/guardian-edge/guardian-edge-privd
 Restart=on-failure
 RestartSec=5s
-TimeoutStartSec=30s
-TimeoutStopSec=30s
+TimeoutStartSec=15s
+TimeoutStopSec=10s
 KillSignal=SIGTERM
 KillMode=mixed
 UMask=0077
 
-StateDirectory=guardian-edge
-StateDirectoryMode=0700
-RuntimeDirectory=guardian-edge
+RuntimeDirectory=guardian-edge-privd
 RuntimeDirectoryMode=0750
 
 NoNewPrivileges=yes
@@ -31,14 +29,13 @@ ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
+PrivateNetwork=yes
 ProtectClock=yes
 ProtectHostname=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectKernelLogs=yes
 ProtectControlGroups=yes
-ProtectProc=invisible
-ProcSubset=pid
 RestrictNamespaces=yes
 RestrictRealtime=yes
 RestrictSUIDSGID=yes
@@ -46,16 +43,19 @@ LockPersonality=yes
 MemoryDenyWriteExecute=yes
 RemoveIPC=yes
 DevicePolicy=closed
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictAddressFamilies=AF_UNIX
 SystemCallArchitectures=native
 SystemCallFilter=@system-service
 SystemCallErrorNumber=EPERM
-TasksMax=128
+IPAddressDeny=any
+TasksMax=64
+LimitNOFILE=1024
+LimitCORE=0
 OOMPolicy=stop
 
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=guardian-edge
+SyslogIdentifier=guardian-edge-privd
 
 [Install]
 WantedBy=multi-user.target

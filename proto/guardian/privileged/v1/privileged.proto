@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package guardian.privileged.v1;
+
+option go_package = "github.com/GuardianPot/guardian/apps/edge-agent/internal/privileged/gen/guardian/privileged/v1;privilegedv1";
+
+service PrivilegedHelperService {
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  rpc EnsureAddress(EnsureAddressRequest) returns (EnsureAddressResponse);
+  rpc ApplyNftablesPolicy(ApplyNftablesPolicyRequest) returns (ApplyNftablesPolicyResponse);
+  rpc ReconcileContainer(ReconcileContainerRequest) returns (ReconcileContainerResponse);
+  rpc EnsureNetworkNamespace(EnsureNetworkNamespaceRequest) returns (EnsureNetworkNamespaceResponse);
+}
+
+enum PrivilegedOperation {
+  PRIVILEGED_OPERATION_UNSPECIFIED = 0;
+  PRIVILEGED_OPERATION_ADDRESS = 1;
+  PRIVILEGED_OPERATION_NFTABLES_POLICY = 2;
+  PRIVILEGED_OPERATION_CONTAINER_LIFECYCLE = 3;
+  PRIVILEGED_OPERATION_NETWORK_NAMESPACE = 4;
+}
+
+enum CapabilityState {
+  CAPABILITY_STATE_UNSPECIFIED = 0;
+  CAPABILITY_STATE_UNSUPPORTED = 1;
+  CAPABILITY_STATE_AVAILABLE = 2;
+}
+
+enum PresenceState {
+  PRESENCE_STATE_UNSPECIFIED = 0;
+  PRESENCE_STATE_PRESENT = 1;
+  PRESENCE_STATE_ABSENT = 2;
+}
+
+enum ContainerState {
+  CONTAINER_STATE_UNSPECIFIED = 0;
+  CONTAINER_STATE_RUNNING = 1;
+  CONTAINER_STATE_STOPPED = 2;
+  CONTAINER_STATE_ABSENT = 3;
+}
+
+enum NftablesProfile {
+  NFTABLES_PROFILE_UNSPECIFIED = 0;
+  NFTABLES_PROFILE_DEFAULT_DENY_EGRESS = 1;
+}
+
+enum OperationOutcome {
+  OPERATION_OUTCOME_UNSPECIFIED = 0;
+  OPERATION_OUTCOME_APPLIED = 1;
+  OPERATION_OUTCOME_UNCHANGED = 2;
+  OPERATION_OUTCOME_UNSUPPORTED = 3;
+}
+
+message GetStatusRequest {}
+
+message Capability {
+  PrivilegedOperation operation = 1;
+  CapabilityState state = 2;
+  string reason_code = 3;
+}
+
+message GetStatusResponse {
+  string api_version = 1;
+  repeated Capability capabilities = 2;
+}
+
+message EnsureAddressRequest {
+  string request_id = 1;
+  string interface_name = 2;
+  string address_prefix = 3;
+  PresenceState desired_state = 4;
+}
+
+message EnsureAddressResponse {
+  OperationResult result = 1;
+}
+
+message ApplyNftablesPolicyRequest {
+  string request_id = 1;
+  string namespace_name = 2;
+  NftablesProfile profile = 3;
+}
+
+message ApplyNftablesPolicyResponse {
+  OperationResult result = 1;
+}
+
+message ReconcileContainerRequest {
+  string request_id = 1;
+  string workload_id = 2;
+  ContainerState desired_state = 3;
+}
+
+message ReconcileContainerResponse {
+  OperationResult result = 1;
+}
+
+message EnsureNetworkNamespaceRequest {
+  string request_id = 1;
+  string namespace_name = 2;
+  PresenceState desired_state = 3;
+}
+
+message EnsureNetworkNamespaceResponse {
+  OperationResult result = 1;
+}
+
+message OperationResult {
+  string request_id = 1;
+  OperationOutcome outcome = 2;
+  string reason_code = 3;
+}
