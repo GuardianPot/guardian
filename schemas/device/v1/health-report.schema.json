@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.guardianpot.internal/device/v1/health-report.schema.json",
+  "title": "Guardian Device Health Report v1",
+  "description": "A complete, canonical Phase 1 health snapshot. Device identity is supplied by the mTLS channel.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "report_id", "sequence", "observed_at", "conditions"],
+  "properties": {
+    "schema_version": {
+      "const": "guardian.health.report.v1"
+    },
+    "report_id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 18446744073709551615
+    },
+    "observed_at": {
+      "$ref": "#/$defs/utcMicrosecondTimestamp"
+    },
+    "conditions": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "prefixItems": [
+        { "$ref": "#/$defs/edgeConnected" },
+        { "$ref": "#/$defs/deviceCertificateReady" },
+        { "$ref": "#/$defs/configConverged" },
+        { "$ref": "#/$defs/localDatabaseHealthy" },
+        { "$ref": "#/$defs/spoolHealthy" },
+        { "$ref": "#/$defs/clockQuality" },
+        { "$ref": "#/$defs/containerRuntimeReachable" },
+        { "$ref": "#/$defs/privilegedHelperReachable" }
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "utcMicrosecondTimestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC with no more than six fractional digits.",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]{1,6})?Z$"
+    },
+    "conditionBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "status", "reason", "message", "last_transition_time"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "status": {
+          "type": "string",
+          "enum": ["True", "False", "Unknown"]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Plain UTF-8 text. Implementations enforce the 512-byte limit, reject secret-like content, and render it only as escaped text.",
+          "pattern": "^[^\\u0000-\\u0008\\u000A-\\u001F\\u007F]*$"
+        },
+        "observed_revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        },
+        "last_transition_time": {
+          "$ref": "#/$defs/utcMicrosecondTimestamp"
+        }
+      }
+    },
+    "edgeConnected": {
+      "allOf": [
+        { "$ref": "#/$defs/conditionBase" },
+        {
+          "properties": { "type": { "const": "edge_connected" } },
+          "oneOf": [
+            { "properties": { "status": { "const": "True" }, "reason": { "const": "connected" } } },
+            { "properties": { "status": { "const": "False" }, "reason": { "const": "channel_disconnected" } } },
+            { "properties": { "status": { "const": "Unknown" }, "reason": { "enum": ["heartbeat_stale", "not_observed"] } } }
+          ]
+        }
+      ]
+    },
+    "deviceCertificateReady": {
+      "allOf": [
+        { "$ref": "#/$defs/conditionBase" },
+        {
+          "properties": { "type": { "const": "device_certificate_ready" } },
+          "oneOf": [
+            { "properties": { "status": { "const": "True" }, "reason": { "const": "valid" } } },
+            { "properties": { "status": { "const": "False" }, "reason": { "enum": ["rotation_window", "expired", "revoked", "rotation_failed"] } } },
+            { "properties": { "status": { "const": "Unknown" }, "reason": { "enum": ["clock_unreliable", "not_observed"] } } }
+          ]
+        }
+      ]
+    },
+    "configConverged": {
+      "allOf": [
+        { "$ref": "#/$defs/conditionBase" },
+        {
+          "properties": { "type": { "const": "config_converged" } },
+          "oneOf": [
+            { "properties": { "status": { "const": "True" }, "reason": { "const": "converged" } } },
+            { "properties": { "status": { "const": "False" }, "reason": { "const": "revision_drift" } } },
+            { "properties": { "status": { "const": "Unknown" }, "reason": { "const": "not_observed" } } }
+          ]
+        }
+      ]
+    },
+    "localDatabaseHealthy": {
+      "allOf": [
+        { "$ref": "#/$defs/conditionBase" },
+        {
+          "properties": { "type": { "const": "local_database_healthy" } },
+          "oneOf": [
+            { "properties": { "status": { "const": "True" }, "reason": { "const": "ready" } } },
+            { "properties": { "status": { "const": "False" }, "reason": { "enum": ["read_failed", "write_failed", "integrity_failed"] } } },
+            { "properties": { "status": { "const": "Unknown" }, "reason": { "const": "not_observed" } } }
+          ]
+        }
+      ]
+    },
+    "spoolHealthy": {
+      "allOf": [
+        { "$ref": "#/$defs/conditionBase" },
+        {
+          "properties": { "type": { "const": "spool_healthy" } },
+          "oneOf": [
+            { "properties": { "status": { "const": "True" }, "reason": { "const": "ready" } } },
+            { "properties": { "status": { "const": "False" }, "reason": { "enum": ["capacity_warning", "capacity_critical"] } } },
+            { "properties": { "status": { "const": "Unknown" }, "reason": { "enum": ["measurement_unavailable", "not_observed"] } } }
+          ]
+        }
+      ]
+    },
+    "clockQuality": {
+      "allOf": [
+        { "$ref": "#/$defs/conditionBase" },
+        {
+          "properties": { "type": { "const": "clock_quality" } },
+          "oneOf": [
+            { "properties": { "status": { "const": "True" }, "reason": { "const": "synchronized" } } },
+            { "properties": { "status": { "const": "False" }, "reason": { "enum": ["offset_exceeded", "unsynchronized"] } } },
+            { "properties": { "status": { "const": "Unknown" }, "reason": { "enum": ["measurement_unavailable", "not_observed"] } } }
+          ]
+        }
+      ]
+    },
+    "containerRuntimeReachable": {
+      "allOf": [
+        { "$ref": "#/$defs/conditionBase" },
+        {
+          "properties": { "type": { "const": "container_runtime_reachable" } },
+          "oneOf": [
+            { "properties": { "status": { "const": "True" }, "reason": { "const": "reachable" } } },
+            { "properties": { "status": { "const": "False" }, "reason": { "enum": ["probe_failed", "probe_timeout"] } } },
+            { "properties": { "status": { "const": "Unknown" }, "reason": { "const": "not_observed" } } }
+          ]
+        }
+      ]
+    },
+    "privilegedHelperReachable": {
+      "allOf": [
+        { "$ref": "#/$defs/conditionBase" },
+        {
+          "properties": { "type": { "const": "privileged_helper_reachable" } },
+          "oneOf": [
+            { "properties": { "status": { "const": "True" }, "reason": { "const": "reachable" } } },
+            { "properties": { "status": { "const": "False" }, "reason": { "enum": ["socket_missing", "socket_verification_failed", "connection_create_failed", "rpc_timeout", "peer_authentication_failed", "rpc_unavailable", "api_version_mismatch"] } } },
+            { "properties": { "status": { "const": "Unknown" }, "reason": { "const": "not_observed" } } }
+          ]
+        }
+      ]
+    }
+  }
+}

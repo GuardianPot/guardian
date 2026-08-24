@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package guardian.device.v1;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "github.com/GuardianPot/guardian/gen/go/guardian/device/v1;devicev1";
 
 // DeviceIdentity is the minimum stable identity envelope shared by device
@@ -11,4 +13,47 @@ message DeviceIdentity {
   string device_id = 1;
   string contract_version = 2;
   string certificate_serial = 3;
+}
+
+// HealthConditionType is the closed set of Phase 1 health dimensions. Every
+// dimension blocks a green aggregate when it is False or Unknown.
+enum HealthConditionType {
+  HEALTH_CONDITION_TYPE_UNSPECIFIED = 0;
+  HEALTH_CONDITION_TYPE_EDGE_CONNECTED = 1;
+  HEALTH_CONDITION_TYPE_DEVICE_CERTIFICATE_READY = 2;
+  HEALTH_CONDITION_TYPE_CONFIG_CONVERGED = 3;
+  HEALTH_CONDITION_TYPE_LOCAL_DATABASE_HEALTHY = 4;
+  HEALTH_CONDITION_TYPE_SPOOL_HEALTHY = 5;
+  HEALTH_CONDITION_TYPE_CLOCK_QUALITY = 6;
+  HEALTH_CONDITION_TYPE_CONTAINER_RUNTIME_REACHABLE = 7;
+  HEALTH_CONDITION_TYPE_PRIVILEGED_HELPER_REACHABLE = 8;
+}
+
+// HealthConditionStatus distinguishes confirmed health, confirmed failure,
+// and unavailable or stale truth.
+enum HealthConditionStatus {
+  HEALTH_CONDITION_STATUS_UNSPECIFIED = 0;
+  HEALTH_CONDITION_STATUS_TRUE = 1;
+  HEALTH_CONDITION_STATUS_FALSE = 2;
+  HEALTH_CONDITION_STATUS_UNKNOWN = 3;
+}
+
+// HealthCondition is one bounded observation in a full health report.
+message HealthCondition {
+  HealthConditionType type = 1;
+  HealthConditionStatus status = 2;
+  string reason = 3;
+  string message = 4;
+  optional uint64 observed_revision = 5;
+  google.protobuf.Timestamp last_transition_time = 6;
+}
+
+// HealthReport is the complete ordered snapshot emitted by one mTLS device
+// identity. Phase 1 has no delta form and no identity field in this envelope.
+message HealthReport {
+  string schema_version = 1;
+  string report_id = 2;
+  uint64 sequence = 3;
+  google.protobuf.Timestamp observed_at = 4;
+  repeated HealthCondition conditions = 5;
 }

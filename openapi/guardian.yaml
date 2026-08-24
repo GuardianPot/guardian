@@ -140,6 +140,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StatusResponse'
+  /v1/environments/{environmentId}/health:
+    get:
+      operationId: getEnvironmentHealth
+      summary: Read the current aggregate health for one environment
+      description: >-
+        Authorization and environment scope are evaluated before any health
+        projection read. The operation defaults to 401 until P1-W2 supplies
+        the approved browser-session authorizer.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+      responses:
+        '200':
+          $ref: '#/components/responses/HealthResponse'
+        '401':
+          description: A valid Guardian browser session is required.
+        '403':
+          description: The session is not authorized for the environment.
+        '404':
+          description: No authorized environment health projection exists.
+  /v1/devices/{deviceId}/health:
+    get:
+      operationId: getDeviceHealth
+      summary: Read the current health for one device
+      description: >-
+        Authorization and environment scope are evaluated before any health
+        projection read. The operation defaults to 401 until P1-W2 supplies
+        the approved browser-session authorizer.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          $ref: '#/components/responses/HealthResponse'
+        '401':
+          description: A valid Guardian browser session is required.
+        '403':
+          description: The session is not authorized for the device environment.
+        '404':
+          description: No authorized device health projection exists.
   /v1/telemetry:
     post:
       operationId: ingestTelemetry
@@ -168,7 +210,41 @@ components:
         Opaque same-origin Guardian browser session established by local
         authentication. P1-W2 issues it with Secure, HttpOnly, SameSite=Strict,
         Path=/, and no Domain attribute. The audit boundary accepts at most 512
-        bytes before handing the opaque value to its authorizer.
+        bytes before handing the opaque value to its authorizer. Health reads
+        remain default-denied until P1-W2 supplies that approved authorizer.
+  parameters:
+    EnvironmentId:
+      name: environmentId
+      in: path
+      required: true
+      description: Canonical environment identity.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    DeviceId:
+      name: deviceId
+      in: path
+      required: true
+      description: Canonical device identity.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+  responses:
+    HealthResponse:
+      description: Current server-projected health truth.
+      headers:
+        Cache-Control:
+          description: Health truth must not be stored by clients or intermediaries.
+          required: true
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/HealthView'
   schemas:
     AuditEventPage:
       type: object
@@ -337,3 +413,88 @@ components:
       properties:
         status:
           type: string
+    HealthView:
+      type: object
+      additionalProperties: false
+      required:
+        - aggregate
+        - conditions
+        - received_at
+      properties:
+        aggregate:
+          $ref: '#/components/schemas/HealthAggregate'
+        conditions:
+          type: array
+          minItems: 8
+          maxItems: 8
+          description: All eight blocking conditions in canonical order.
+          items:
+            $ref: '#/components/schemas/HealthCondition'
+        received_at:
+          type: string
+          format: date-time
+          description: Trusted Control Plane receipt time used for staleness.
+    HealthAggregate:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          $ref: '#/components/schemas/HealthStatus'
+        blocking_type:
+          $ref: '#/components/schemas/HealthConditionType'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z][a-z0-9_]{0,63}$'
+    HealthCondition:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - status
+        - reason
+        - message
+        - last_transition_time
+      properties:
+        type:
+          $ref: '#/components/schemas/HealthConditionType'
+        status:
+          $ref: '#/components/schemas/HealthStatus'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z][a-z0-9_]{0,63}$'
+        message:
+          type: string
+          maxLength: 512
+          description: >-
+            Secret-free plain UTF-8 text. The UI renders this value only as
+            escaped text; runtime validators enforce the 512-byte limit.
+        observed_revision:
+          type: integer
+          minimum: 0
+          maximum: 18446744073709551615
+        last_transition_time:
+          type: string
+          format: date-time
+    HealthConditionType:
+      type: string
+      enum:
+        - edge_connected
+        - device_certificate_ready
+        - config_converged
+        - local_database_healthy
+        - spool_healthy
+        - clock_quality
+        - container_runtime_reachable
+        - privileged_helper_reachable
+    HealthStatus:
+      type: string
+      enum:
+        - 'True'
+        - 'False'
+        - 'Unknown'
