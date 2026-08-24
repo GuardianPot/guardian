@@ -9,15 +9,19 @@ import (
 )
 
 type GuardianAuditRecord struct {
-	Sequence   int64              `json:"sequence"`
-	OccurredAt pgtype.Timestamptz `json:"occurred_at"`
-	ActorType  string             `json:"actor_type"`
-	ActorID    string             `json:"actor_id"`
-	Action     string             `json:"action"`
-	ObjectType string             `json:"object_type"`
-	ObjectID   string             `json:"object_id"`
-	Metadata   []byte             `json:"metadata"`
-	TraceID    pgtype.Text        `json:"trace_id"`
+	Sequence       int64              `json:"sequence"`
+	EventID        pgtype.UUID        `json:"event_id"`
+	OccurredAt     pgtype.Timestamptz `json:"occurred_at"`
+	RecordedAt     pgtype.Timestamptz `json:"recorded_at"`
+	ActorType      string             `json:"actor_type"`
+	ActorID        string             `json:"actor_id"`
+	Action         string             `json:"action"`
+	ObjectType     string             `json:"object_type"`
+	ObjectID       string             `json:"object_id"`
+	CorrelationID  string             `json:"correlation_id"`
+	RequestID      pgtype.Text        `json:"request_id"`
+	BeforeSnapshot []byte             `json:"before_snapshot"`
+	AfterSnapshot  []byte             `json:"after_snapshot"`
 }
 
 type GuardianJobsJob struct {

@@ -11,6 +11,7 @@ import (
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage/dbgen"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage/migrations"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -35,6 +36,16 @@ func Open(ctx context.Context, databaseURL string, maxConns int32) (*Store, erro
 	poolConfig.MaxConnIdleTime = 5 * time.Minute
 	poolConfig.ConnConfig.ConnectTimeout = 5 * time.Second
 	poolConfig.ConnConfig.RuntimeParams["application_name"] = "guardian-control-plane"
+	poolConfig.AfterConnect = func(_ context.Context, connection *pgx.Conn) error {
+		// Decode timestamptz in UTC so an RFC3339-valid instant near a year
+		// boundary cannot cross into an unencodable year in the host timezone.
+		connection.TypeMap().RegisterType(&pgtype.Type{
+			Name:  "timestamptz",
+			OID:   pgtype.TimestamptzOID,
+			Codec: &pgtype.TimestamptzCodec{ScanLocation: time.UTC},
+		})
+		return nil
+	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {

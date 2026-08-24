@@ -16,6 +16,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/audit"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage/dbgen"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage/migrations"
 	"github.com/jackc/pgx/v5"
@@ -30,7 +31,7 @@ func TestFreshMigrationIsIdempotentAndRestartPreservesState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first Migrate() error = %v", err)
 	}
-	if first.Applied != 1 || first.Version != migrations.LatestVersion {
+	if first.Applied != 2 || first.Version != migrations.LatestVersion {
 		t.Fatalf("first Migrate() = %+v", first)
 	}
 	second, err := Migrate(ctx, databaseURL)
@@ -82,14 +83,18 @@ func TestFreshMigrationIsIdempotentAndRestartPreservesState(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("CreateJob() error = %v", err)
 	}
-	auditRecord, err := store.queries.AppendAuditRecord(ctx, dbgen.AppendAuditRecordParams{
-		ActorType:  "system",
-		ActorID:    "control-plane",
-		Action:     "service.started",
-		ObjectType: "service",
-		ObjectID:   "control-plane",
-		Metadata:   []byte(`{"source":"integration-test"}`),
-		TraceID:    pgtype.Text{String: "trace-integration", Valid: true},
+	beforeSnapshot, err := audit.NewSnapshot(map[string]any{"source": "integration-test"})
+	if err != nil {
+		t.Fatalf("NewSnapshot() error = %v", err)
+	}
+	auditRecord, err := store.Append(ctx, audit.Event{
+		OccurredAt:    now,
+		Actor:         audit.Actor{Type: audit.ActorTypeSystem, ID: "control-plane"},
+		Action:        audit.ActionSecurityActionDenied,
+		Object:        audit.ObjectRef{Type: audit.ObjectTypeSecurityAction, ID: "startup-policy"},
+		CorrelationID: "integration-restart",
+		RequestID:     "request-integration",
+		Before:        &beforeSnapshot,
 	})
 	if err != nil || auditRecord.Sequence != 1 {
 		t.Fatalf("AppendAuditRecord() = (%+v, %v)", auditRecord, err)
@@ -108,6 +113,20 @@ func TestFreshMigrationIsIdempotentAndRestartPreservesState(t *testing.T) {
 	job, err := restarted.queries.GetJob(ctx, "durable-job-1")
 	if err != nil || job.Status != "queued" || job.Attempts != 0 || !equalJSON(job.Payload, []byte(`{"revision":7}`)) {
 		t.Fatalf("restarted job = (%+v, %v)", job, err)
+	}
+	anchor, err := restarted.queries.GetAuditAnchor(ctx)
+	if err != nil {
+		t.Fatalf("restarted GetAuditAnchor() error = %v", err)
+	}
+	auditRows, err := restarted.queries.ListAuditRecords(ctx, dbgen.ListAuditRecordsParams{
+		AnchorSequence: anchor,
+		PageSize:       10,
+	})
+	if err != nil {
+		t.Fatalf("restarted ListAuditRecords() error = %v", err)
+	}
+	if len(auditRows) != 1 || auditRows[0].EventID != auditRecord.EventID || auditRows[0].Sequence != 1 {
+		t.Fatalf("restarted audit rows = %+v, want durable event %s", auditRows, auditRecord.EventID)
 	}
 }
 

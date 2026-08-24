@@ -19,10 +19,3 @@ SELECT job_id, job_type, payload, status, attempts, available_at,
        lease_owner, lease_until, created_at, updated_at
 FROM guardian_jobs.jobs
 WHERE job_id = $1;
-
--- name: AppendAuditRecord :one
-INSERT INTO guardian_audit.records (
-    actor_type, actor_id, action, object_type, object_id, metadata, trace_id
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING sequence, occurred_at;

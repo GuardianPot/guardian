@@ -11,44 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const appendAuditRecord = `-- name: AppendAuditRecord :one
-INSERT INTO guardian_audit.records (
-    actor_type, actor_id, action, object_type, object_id, metadata, trace_id
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING sequence, occurred_at
-`
-
-type AppendAuditRecordParams struct {
-	ActorType  string      `json:"actor_type"`
-	ActorID    string      `json:"actor_id"`
-	Action     string      `json:"action"`
-	ObjectType string      `json:"object_type"`
-	ObjectID   string      `json:"object_id"`
-	Metadata   []byte      `json:"metadata"`
-	TraceID    pgtype.Text `json:"trace_id"`
-}
-
-type AppendAuditRecordRow struct {
-	Sequence   int64              `json:"sequence"`
-	OccurredAt pgtype.Timestamptz `json:"occurred_at"`
-}
-
-func (q *Queries) AppendAuditRecord(ctx context.Context, arg AppendAuditRecordParams) (AppendAuditRecordRow, error) {
-	row := q.db.QueryRow(ctx, appendAuditRecord,
-		arg.ActorType,
-		arg.ActorID,
-		arg.Action,
-		arg.ObjectType,
-		arg.ObjectID,
-		arg.Metadata,
-		arg.TraceID,
-	)
-	var i AppendAuditRecordRow
-	err := row.Scan(&i.Sequence, &i.OccurredAt)
-	return i, err
-}
-
 const createJob = `-- name: CreateJob :exec
 INSERT INTO guardian_jobs.jobs (job_id, job_type, payload, status, available_at)
 VALUES ($1, $2, $3, 'queued', $4)

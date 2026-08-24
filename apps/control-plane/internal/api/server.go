@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/audit"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
@@ -21,23 +22,37 @@ type Readiness interface {
 
 // Server is a start-once HTTP lifecycle component.
 type Server struct {
-	address   string
-	readiness Readiness
-	logger    *slog.Logger
-	http      *http.Server
-	listener  net.Listener
-	errors    chan error
-	startOnce sync.Once
-	startErr  error
+	address         string
+	readiness       Readiness
+	auditReader     audit.Reader
+	auditAuthorizer AuditAuthorizer
+	logger          *slog.Logger
+	http            *http.Server
+	listener        net.Listener
+	errors          chan error
+	startOnce       sync.Once
+	startErr        error
 }
 
 // NewServer creates an instrumented server without binding a socket.
-func NewServer(address string, readiness Readiness, logger *slog.Logger) *Server {
+func NewServer(address string, readiness Readiness, logger *slog.Logger, options ...Option) *Server {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	server := &Server{
-		address:   address,
-		readiness: readiness,
-		logger:    logger,
-		errors:    make(chan error, 1),
+		address:         address,
+		readiness:       readiness,
+		auditAuthorizer: denyAuditAuthorizer{},
+		logger:          logger,
+		errors:          make(chan error, 1),
+	}
+	if reader, ok := readiness.(audit.Reader); ok {
+		server.auditReader = reader
+	}
+	for _, option := range options {
+		if option != nil {
+			option(server)
+		}
 	}
 	server.http = &http.Server{
 		Addr:              address,
@@ -66,6 +81,7 @@ func (s *Server) routes() http.Handler {
 		}
 		writeStatus(writer, http.StatusOK, "ready")
 	})
+	mux.HandleFunc("GET /v1/audit/events", s.handleListAuditEvents)
 	return mux
 }
 
