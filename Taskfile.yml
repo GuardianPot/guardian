@@ -175,9 +175,19 @@ tasks:
   contracts:
     desc: Validate Protobuf and OpenAPI contract tooling
     cmds:
+      - task: health:contracts
       - buf lint
       - npm run openapi:check
       - npm run canonical-contracts:check
+
+  health:contracts:
+    desc: Verify P1-W9 canonical health contract parity and domain behavior
+    env:
+      GOWORK: 'off'
+    cmds:
+      - node tests/integration/health/check-contracts.mjs
+      - go -C apps/control-plane test ./internal/health
+      - go -C apps/edge-agent test ./internal/health
 
   container:check:
     desc: Build and run the hardened control-plane container smoke image
