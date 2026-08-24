@@ -4,13 +4,142 @@ servers:
 info:
   title: Guardian API
   version: 0.1.0
-  description: Guardian v1 canonical telemetry envelope API.
+  description: Guardian v1 management and canonical telemetry API.
   license:
     name: Proprietary internal software
     identifier: LicenseRef-Guardian-Internal
 security:
   - bearerAuth: []
 paths:
+  /v1/audit/events:
+    get:
+      operationId: listAuditEvents
+      summary: List append-only audit events
+      description: >-
+        Returns a newest-first, anchor-stable page of audit events. The
+        object_type and object_id filters must be supplied together. When an
+        action filter is also present, its approved object type must match the
+        object_type filter. Audit events have no product mutation operation.
+      security:
+        - guardianSession: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of events to return.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          description: Opaque versioned Base64URL keyset cursor from the previous page.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: '^[A-Za-z0-9_-]+$'
+        - name: action
+          in: query
+          description: Match one exact Phase 1 audit action.
+          schema:
+            type: string
+            enum:
+              - auth.bootstrap_token.created
+              - auth.bootstrap.succeeded
+              - auth.bootstrap.failed
+              - auth.login.succeeded
+              - auth.login.failed
+              - auth.logout
+              - auth.password.changed
+              - auth.mfa.enrolled
+              - auth.recovery_code.used
+              - auth.session.revoked
+              - auth.security_setting.changed
+              - device.enrollment_token.created
+              - device.enrollment_token.revoked
+              - device.enrollment.succeeded
+              - device.enrollment.failed
+              - device.certificate.issued
+              - device.certificate.rotated
+              - device.disabled
+              - device.revoked
+              - environment.created
+              - environment.updated
+              - zone.created
+              - zone.updated
+              - zone.removed
+              - desired_state.revision.published
+              - security.action.denied
+        - name: correlation_id
+          in: query
+          description: >-
+            Match one exact correlation identity. The server applies the
+            limit in UTF-8 bytes and rejects surrounding whitespace and
+            control characters.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+        - name: object_type
+          in: query
+          description: Match one exact object type; object_id is required with it.
+          schema:
+            type: string
+            enum:
+              - bootstrap_token
+              - user
+              - session
+              - security_setting
+              - enrollment_token
+              - device
+              - device_certificate
+              - environment
+              - zone
+              - desired_state_revision
+              - security_action
+        - name: object_id
+          in: query
+          description: >-
+            Match one exact object identity; object_type is required with it.
+            The server applies the limit in UTF-8 bytes and rejects
+            surrounding whitespace and control characters.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+      responses:
+        '200':
+          description: A deterministic page of audit events.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventPage'
+        '400':
+          description: A limit, cursor, or filter is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '401':
+          description: A valid Guardian browser session is required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '500':
+          description: The audit page could not be read safely.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '503':
+          description: The audit reader is not available.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
   /v1/telemetry:
     post:
       operationId: ingestTelemetry
@@ -31,3 +160,180 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+    guardianSession:
+      type: apiKey
+      in: cookie
+      name: __Host-guardian_session
+      description: >-
+        Opaque same-origin Guardian browser session established by local
+        authentication. P1-W2 issues it with Secure, HttpOnly, SameSite=Strict,
+        Path=/, and no Domain attribute. The audit boundary accepts at most 512
+        bytes before handing the opaque value to its authorizer.
+  schemas:
+    AuditEventPage:
+      type: object
+      additionalProperties: false
+      required:
+        - events
+      properties:
+        events:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+        next_cursor:
+          type: string
+          description: Opaque cursor for the next page; absent on the final page.
+          minLength: 1
+          maxLength: 128
+          pattern: '^[A-Za-z0-9_-]+$'
+    AuditEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - event_id
+        - occurred_at
+        - recorded_at
+        - actor
+        - action
+        - object
+        - correlation_id
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          description: PostgreSQL 18-generated, canonical lowercase UUIDv7.
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        occurred_at:
+          type: string
+          format: date-time
+        recorded_at:
+          type: string
+          format: date-time
+        actor:
+          $ref: '#/components/schemas/AuditActor'
+        action:
+          type: string
+          enum:
+            - auth.bootstrap_token.created
+            - auth.bootstrap.succeeded
+            - auth.bootstrap.failed
+            - auth.login.succeeded
+            - auth.login.failed
+            - auth.logout
+            - auth.password.changed
+            - auth.mfa.enrolled
+            - auth.recovery_code.used
+            - auth.session.revoked
+            - auth.security_setting.changed
+            - device.enrollment_token.created
+            - device.enrollment_token.revoked
+            - device.enrollment.succeeded
+            - device.enrollment.failed
+            - device.certificate.issued
+            - device.certificate.rotated
+            - device.disabled
+            - device.revoked
+            - environment.created
+            - environment.updated
+            - zone.created
+            - zone.updated
+            - zone.removed
+            - desired_state.revision.published
+            - security.action.denied
+        object:
+          $ref: '#/components/schemas/AuditObject'
+        correlation_id:
+          type: string
+          description: >-
+            Required correlation identity; maximum is 128 UTF-8 bytes, with
+            no surrounding whitespace or control characters.
+          minLength: 1
+          maxLength: 128
+        request_id:
+          type: string
+          description: >-
+            Optional request identity; maximum is 128 UTF-8 bytes, with no
+            surrounding whitespace or control characters.
+          minLength: 1
+          maxLength: 128
+        before:
+          $ref: '#/components/schemas/AuditSnapshot'
+        after:
+          $ref: '#/components/schemas/AuditSnapshot'
+    AuditActor:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - id
+      properties:
+        type:
+          type: string
+          enum:
+            - system
+            - user
+            - device
+        id:
+          type: string
+          description: >-
+            Actor identity; maximum is 256 UTF-8 bytes, with no surrounding
+            whitespace or control characters.
+          minLength: 1
+          maxLength: 256
+    AuditObject:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - id
+      properties:
+        type:
+          type: string
+          enum:
+            - bootstrap_token
+            - user
+            - session
+            - security_setting
+            - enrollment_token
+            - device
+            - device_certificate
+            - environment
+            - zone
+            - desired_state_revision
+            - security_action
+        id:
+          type: string
+          description: >-
+            Object identity; maximum is 256 UTF-8 bytes, with no surrounding
+            whitespace or control characters.
+          minLength: 1
+          maxLength: 256
+    AuditSnapshot:
+      type: object
+      description: >-
+        Canonical redacted snapshot envelope. Each encoded envelope is at most
+        16 KiB, with maximum depth 6, 256 total data nodes, 64 members per
+        object or array, 64 UTF-8 bytes per key, and 512 UTF-8 bytes per string.
+        Unsupported or over-limit projections reject the containing mutation;
+        values are never silently truncated.
+      additionalProperties: false
+      required:
+        - schema
+        - data
+      properties:
+        schema:
+          type: string
+          const: guardian.audit.snapshot.v1
+        data:
+          type: object
+          description: Bounded, recursively redacted safe projection.
+          additionalProperties: true
+    StatusResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string

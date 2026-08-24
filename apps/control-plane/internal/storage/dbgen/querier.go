@@ -9,10 +9,15 @@ import (
 )
 
 type Querier interface {
+	// The two-key advisory-lock namespace is (0x47554152 = "GUAR", 1 = audit
+	// append/anchor protocol v1). The first-page reader takes the exclusive side.
+	AcquireAuditAnchorLock(ctx context.Context) error
 	AppendAuditRecord(ctx context.Context, arg AppendAuditRecordParams) (AppendAuditRecordRow, error)
 	CreateJob(ctx context.Context, arg CreateJobParams) error
+	GetAuditAnchor(ctx context.Context) (int64, error)
 	GetJob(ctx context.Context, jobID string) (GuardianJobsJob, error)
 	GetServiceState(ctx context.Context, stateKey string) (GuardianSystemServiceState, error)
+	ListAuditRecords(ctx context.Context, arg ListAuditRecordsParams) ([]ListAuditRecordsRow, error)
 	PutServiceState(ctx context.Context, arg PutServiceStateParams) error
 }
 
