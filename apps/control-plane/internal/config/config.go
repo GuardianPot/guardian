@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -13,9 +14,10 @@ import (
 type Command string
 
 const (
-	CommandServe   Command = "serve"
-	CommandMigrate Command = "migrate"
-	CommandVersion Command = "version"
+	CommandServe        Command = "serve"
+	CommandMigrate      Command = "migrate"
+	CommandInitDeviceCA Command = "init-device-ca"
+	CommandVersion      Command = "version"
 )
 
 const (
@@ -29,11 +31,14 @@ const (
 // Config contains runtime settings. DatabaseURL is sensitive and must never be
 // rendered through logs or diagnostics.
 type Config struct {
-	HTTPAddress      string
-	DatabaseURL      string
-	ShutdownTimeout  time.Duration
-	DatabaseMaxConns int32
-	LogLevel         string
+	HTTPAddress        string
+	DatabaseURL        string
+	ShutdownTimeout    time.Duration
+	DatabaseMaxConns   int32
+	LogLevel           string
+	MasterKeyFile      string
+	TLSCertificateFile string
+	TLSPrivateKeyFile  string
 }
 
 // LookupEnv matches os.LookupEnv and keeps parsing deterministic in tests.
@@ -44,7 +49,7 @@ type LookupEnv func(string) (string, bool)
 // do not appear in the process argument list.
 func Load(args []string, lookup LookupEnv) (Command, Config, error) {
 	if len(args) == 0 {
-		return "", Config{}, errors.New("command is required: serve, migrate, or version")
+		return "", Config{}, errors.New("command is required: serve, migrate, init-device-ca, or version")
 	}
 
 	command := Command(args[0])
@@ -54,17 +59,20 @@ func Load(args []string, lookup LookupEnv) (Command, Config, error) {
 			return "", Config{}, errors.New("version does not accept arguments")
 		}
 		return command, Config{}, nil
-	case CommandServe, CommandMigrate:
+	case CommandServe, CommandMigrate, CommandInitDeviceCA:
 	default:
 		return "", Config{}, fmt.Errorf("unknown command %q", args[0])
 	}
 
 	cfg := Config{
-		HTTPAddress:      envOr(lookup, "GUARDIAN_HTTP_ADDRESS", defaultHTTPAddress),
-		DatabaseURL:      envOr(lookup, "GUARDIAN_DATABASE_URL", ""),
-		ShutdownTimeout:  defaultShutdown,
-		DatabaseMaxConns: defaultDatabaseConns,
-		LogLevel:         envOr(lookup, "GUARDIAN_LOG_LEVEL", defaultLogLevel),
+		HTTPAddress:        envOr(lookup, "GUARDIAN_HTTP_ADDRESS", defaultHTTPAddress),
+		DatabaseURL:        envOr(lookup, "GUARDIAN_DATABASE_URL", ""),
+		ShutdownTimeout:    defaultShutdown,
+		DatabaseMaxConns:   defaultDatabaseConns,
+		LogLevel:           envOr(lookup, "GUARDIAN_LOG_LEVEL", defaultLogLevel),
+		MasterKeyFile:      envOr(lookup, "GUARDIAN_MASTER_KEY_FILE", ""),
+		TLSCertificateFile: envOr(lookup, "GUARDIAN_TLS_CERT_FILE", ""),
+		TLSPrivateKeyFile:  envOr(lookup, "GUARDIAN_TLS_KEY_FILE", ""),
 	}
 	if value, ok := lookup("GUARDIAN_SHUTDOWN_TIMEOUT"); ok && value != "" {
 		duration, err := time.ParseDuration(value)
@@ -100,7 +108,7 @@ func Load(args []string, lookup LookupEnv) (Command, Config, error) {
 
 // Validate enforces startup invariants without rendering sensitive values.
 func (c Config) Validate(command Command) error {
-	if command != CommandServe && command != CommandMigrate {
+	if command != CommandServe && command != CommandMigrate && command != CommandInitDeviceCA {
 		return nil
 	}
 	if c.DatabaseURL == "" {
@@ -115,7 +123,51 @@ func (c Config) Validate(command Command) error {
 	if command == CommandServe && c.HTTPAddress == "" {
 		return errors.New("HTTP address must not be empty")
 	}
-	switch c.LogLevel {
+	if command == CommandInitDeviceCA {
+		if c.MasterKeyFile == "" {
+			return errors.New("GUARDIAN_MASTER_KEY_FILE is required")
+		}
+		if !filepath.IsAbs(c.MasterKeyFile) || filepath.Clean(c.MasterKeyFile) != c.MasterKeyFile {
+			return errors.New("GUARDIAN_MASTER_KEY_FILE must be an absolute clean path")
+		}
+	}
+	if command == CommandServe {
+		enrollmentValues := []string{c.MasterKeyFile, c.TLSCertificateFile, c.TLSPrivateKeyFile}
+		enrollmentConfigured := false
+		for _, value := range enrollmentValues {
+			enrollmentConfigured = enrollmentConfigured || value != ""
+		}
+		if enrollmentConfigured && !c.EnrollmentEnabled() {
+			return errors.New("GUARDIAN_MASTER_KEY_FILE, GUARDIAN_TLS_CERT_FILE, and GUARDIAN_TLS_KEY_FILE must be configured together")
+		}
+		if !enrollmentConfigured {
+			return validateLogLevel(c.LogLevel)
+		}
+		for name, path := range map[string]string{
+			"GUARDIAN_MASTER_KEY_FILE": c.MasterKeyFile,
+			"GUARDIAN_TLS_CERT_FILE":   c.TLSCertificateFile,
+			"GUARDIAN_TLS_KEY_FILE":    c.TLSPrivateKeyFile,
+		} {
+			if path == "" || !filepath.IsAbs(path) || filepath.Clean(path) != path {
+				return fmt.Errorf("%s must be an absolute clean path", name)
+			}
+		}
+		if c.TLSCertificateFile == c.TLSPrivateKeyFile {
+			return errors.New("TLS certificate and private key paths must differ")
+		}
+	}
+	return validateLogLevel(c.LogLevel)
+}
+
+// EnrollmentEnabled reports whether the fail-closed device enrollment bundle
+// was configured completely. An unconfigured bundle leaves only the baseline
+// Control Plane endpoints available; partial bundles are rejected.
+func (c Config) EnrollmentEnabled() bool {
+	return c.MasterKeyFile != "" && c.TLSCertificateFile != "" && c.TLSPrivateKeyFile != ""
+}
+
+func validateLogLevel(value string) error {
+	switch value {
 	case "debug", "info", "warn", "error":
 	default:
 		return errors.New("GUARDIAN_LOG_LEVEL must be debug, info, warn, or error")

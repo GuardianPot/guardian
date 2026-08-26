@@ -20,6 +20,7 @@ type Command string
 
 const (
 	CommandServe       Command = "serve"
+	CommandEnroll      Command = "enroll"
 	CommandStatus      Command = "status"
 	CommandDiagnostics Command = "diagnostics"
 	CommandRecoverDB   Command = "recover-db"
@@ -60,7 +61,7 @@ func (c Config) ShutdownTimeout() time.Duration {
 // Parse parses one explicit Edge command without reading configuration files.
 func Parse(args []string) (Invocation, error) {
 	if len(args) == 0 {
-		return Invocation{}, errors.New("command is required: serve, status, diagnostics, recover-db, or version")
+		return Invocation{}, errors.New("command is required: serve, enroll, status, diagnostics, recover-db, or version")
 	}
 
 	command := Command(args[0])
@@ -72,7 +73,7 @@ func Parse(args []string) (Invocation, error) {
 	}
 
 	switch command {
-	case CommandServe, CommandStatus, CommandDiagnostics, CommandRecoverDB:
+	case CommandServe, CommandEnroll, CommandStatus, CommandDiagnostics, CommandRecoverDB:
 	default:
 		return Invocation{}, fmt.Errorf("unknown command %q", args[0])
 	}

@@ -2,10 +2,23 @@ syntax = "proto3";
 
 package guardian.bootstrap.v1;
 
+import "google/protobuf/timestamp.proto";
+import "guardian/device/v1/device.proto";
+
 option go_package = "github.com/GuardianPot/guardian/gen/go/guardian/bootstrap/v1;bootstrapv1";
 
-// Tooling marker only. P0-W10 owns the first canonical device and telemetry
-// contract packages.
-message BootstrapMarker {
-  string schema_version = 1;
+// EnrollmentRequest carries only a public CSR. The one-time bearer token is a
+// transport credential and the Edge private key never enters this envelope.
+message EnrollmentRequest {
+  bytes csr_pem = 1;
+}
+
+// EnrollmentResponse contains the stable identity and public certificate
+// material returned after atomic token consumption.
+message EnrollmentResponse {
+  guardian.device.v1.DeviceIdentity identity = 1;
+  bytes certificate_pem = 2;
+  bytes ca_certificate_pem = 3;
+  google.protobuf.Timestamp not_before = 4;
+  google.protobuf.Timestamp not_after = 5;
 }

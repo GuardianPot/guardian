@@ -31,7 +31,7 @@ func TestFreshMigrationIsIdempotentAndRestartPreservesState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first Migrate() error = %v", err)
 	}
-	if first.Applied != 2 || first.Version != migrations.LatestVersion {
+	if first.Applied != int(migrations.LatestVersion) || first.Version != migrations.LatestVersion {
 		t.Fatalf("first Migrate() = %+v", first)
 	}
 	second, err := Migrate(ctx, databaseURL)

@@ -37,6 +37,9 @@ type Metadata struct {
 // Load validates protected files, a matching keypair, and certificate validity.
 // It never attempts enrollment or an insecure transport fallback.
 func Load(certPath, keyPath string, now time.Time) (Metadata, error) {
+	if err := recoverInstall(certPath, keyPath); err != nil {
+		return Metadata{}, err
+	}
 	certificatePEM, err := readIdentityFile(certPath, false)
 	if err != nil {
 		return Metadata{}, err

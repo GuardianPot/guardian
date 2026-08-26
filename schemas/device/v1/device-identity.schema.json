@@ -7,17 +7,20 @@
   "properties": {
     "device_id": {
       "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
     },
     "contract_version": {
       "const": "guardian.device.v1"
     },
     "certificate_serial": {
       "type": "string",
-      "pattern": "^[0-9a-f]+$"
+      "pattern": "^[0-9a-f]{1,32}$"
+    },
+    "environment_id": {
+      "type": "string",
+      "format": "uuid"
     }
   },
-  "required": ["device_id", "contract_version"]
+  "required": ["device_id", "contract_version", "certificate_serial", "environment_id"]
 }
