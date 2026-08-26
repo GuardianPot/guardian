@@ -11,6 +11,171 @@ info:
 security:
   - bearerAuth: []
 paths:
+  /v1/environments/{environmentId}/enrollment-tokens:
+    post:
+      operationId: createEnrollmentToken
+      summary: Create a one-time device enrollment token
+      description: >-
+        Requires the approved same-origin operator session, CSRF token, origin,
+        and environment scope. The 32-byte Base64URL token is returned once,
+        expires after 15 minutes, and is never persisted in plaintext.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEnrollmentTokenRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/EnrollmentTokenSecretResponse'
+        '400':
+          description: The bounded request is invalid.
+        '401':
+          description: The operator authorization boundary denied the request.
+        '503':
+          description: Device enrollment is not configured.
+    get:
+      operationId: listEnrollmentTokens
+      summary: List non-secret enrollment-token metadata
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+      responses:
+        '200':
+          description: At most 200 newest-first non-secret token summaries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentTokenPage'
+        '401':
+          description: The operator authorization boundary denied the request.
+  /v1/environments/{environmentId}/enrollment-tokens/{tokenId}:
+    delete:
+      operationId: revokeEnrollmentToken
+      summary: Revoke one unconsumed enrollment token
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/TokenId'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      responses:
+        '204':
+          description: The token was atomically revoked.
+        '401':
+          description: The operator authorization boundary denied the request.
+        '409':
+          description: The token was not eligible for revocation.
+  /v1/environments/{environmentId}/devices/{deviceId}/re-enrollment-token:
+    post:
+      operationId: createDeviceReenrollmentToken
+      summary: Explicitly re-enable a stable device record for re-enrollment
+      description: >-
+        Permanently revokes all prior active certificates and unconsumed tokens,
+        retains the stable device ID, moves the record to pending, and returns
+        one new one-time token.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/DeviceId'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      responses:
+        '201':
+          $ref: '#/components/responses/EnrollmentTokenSecretResponse'
+        '401':
+          description: The operator authorization boundary denied the request.
+        '400':
+          description: The environment or device identity is invalid.
+  /v1/enrollments:
+    post:
+      operationId: enrollDevice
+      summary: Exchange a one-time token and CSR for a device certificate
+      description: >-
+        TLS-only bootstrap endpoint. It consumes one bearer token atomically,
+        applies persistent source/token throttling, and returns only generic
+        denials. The Edge private key never crosses this boundary.
+      security:
+        - enrollmentToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceCSRRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/DeviceCertificateResponse'
+        '401':
+          description: Enrollment was generically denied.
+        '426':
+          description: TLS is required.
+        '429':
+          description: Persistent enrollment throttling denied the attempt.
+  /v1/device-certificates:rotate:
+    post:
+      operationId: rotateDeviceCertificate
+      summary: Rotate an eligible device certificate inside its final ten days
+      description: >-
+        Requires a currently eligible product mTLS identity. Activation of the
+        replacement certificate and permanent revocation of the old serial are
+        one durable transaction.
+      security:
+        - deviceMutualTLS: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceCSRRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/DeviceCertificateResponse'
+        '401':
+          description: The presented device certificate was denied.
+        '409':
+          description: The certificate or device is not eligible for rotation.
+  /v1/environments/{environmentId}/devices/{deviceId}/disable:
+    post:
+      operationId: disableDevice
+      summary: Disable a device and block new authenticated sessions
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/DeviceId'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      responses:
+        '204':
+          description: The device was disabled.
+        '401':
+          description: The operator authorization boundary denied the request.
+  /v1/environments/{environmentId}/devices/{deviceId}/revoke:
+    post:
+      operationId: revokeDevice
+      summary: Revoke a device and all of its active certificates
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/DeviceId'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      responses:
+        '204':
+          description: The device and active certificate serials were revoked.
+        '401':
+          description: The operator authorization boundary denied the request.
   /v1/audit/events:
     get:
       operationId: listAuditEvents
@@ -212,6 +377,14 @@ components:
         Path=/, and no Domain attribute. The audit boundary accepts at most 512
         bytes before handing the opaque value to its authorizer. Health reads
         remain default-denied until P1-W2 supplies that approved authorizer.
+    enrollmentToken:
+      type: http
+      scheme: bearer
+      bearerFormat: 32-byte Base64URL one-time token
+      description: TLS-only enrollment bootstrap credential; never accepted in a URL.
+    deviceMutualTLS:
+      type: mutualTLS
+      description: Active Guardian product device certificate and durable serial eligibility.
   parameters:
     EnvironmentId:
       name: environmentId
@@ -229,9 +402,58 @@ components:
       description: Canonical device identity.
       schema:
         type: string
+        format: uuid
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    TokenId:
+      name: tokenId
+      in: path
+      required: true
+      description: Canonical enrollment-token record identity.
+      schema:
+        type: string
+        format: uuid
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    CSRFToken:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema:
+        type: string
         minLength: 1
-        maxLength: 128
+        maxLength: 512
+    Origin:
+      name: Origin
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 2048
   responses:
+    EnrollmentTokenSecretResponse:
+      description: A secret enrollment token returned exactly once.
+      headers:
+        Cache-Control:
+          required: true
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/EnrollmentTokenSecret'
+    DeviceCertificateResponse:
+      description: A product device certificate and public CA certificate.
+      headers:
+        Cache-Control:
+          required: true
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DeviceCertificate'
     HealthResponse:
       description: Current server-projected health truth.
       headers:
@@ -246,6 +468,145 @@ components:
           schema:
             $ref: '#/components/schemas/HealthView'
   schemas:
+    CreateEnrollmentTokenRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - device_name
+      properties:
+        device_name:
+          type: string
+          minLength: 1
+          maxLength: 128
+    EnrollmentTokenSecret:
+      type: object
+      additionalProperties: false
+      required:
+        - token_id
+        - device_id
+        - environment_id
+        - device_name
+        - token
+        - expires_at
+      properties:
+        token_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        device_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        environment_id:
+          type: string
+          format: uuid
+        device_name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        token:
+          type: string
+          minLength: 43
+          maxLength: 43
+          pattern: '^[A-Za-z0-9_-]{43}$'
+        expires_at:
+          type: string
+          format: date-time
+    EnrollmentTokenPage:
+      type: object
+      additionalProperties: false
+      required:
+        - tokens
+      properties:
+        tokens:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/EnrollmentTokenSummary'
+    EnrollmentTokenSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - token_id
+        - device_id
+        - environment_id
+        - device_name
+        - expires_at
+      properties:
+        token_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        device_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        environment_id:
+          type: string
+          format: uuid
+        device_name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        expires_at:
+          type: string
+          format: date-time
+        consumed_at:
+          type: string
+          format: date-time
+        revoked_at:
+          type: string
+          format: date-time
+    DeviceCSRRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - csr_pem
+      properties:
+        csr_pem:
+          type: string
+          minLength: 1
+          maxLength: 65536
+    DeviceCertificate:
+      type: object
+      additionalProperties: false
+      required:
+        - contract_version
+        - device_id
+        - environment_id
+        - certificate_serial
+        - certificate_pem
+        - ca_certificate_pem
+        - not_before
+        - not_after
+      properties:
+        contract_version:
+          type: string
+          const: guardian.device.v1
+        device_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        environment_id:
+          type: string
+          format: uuid
+        certificate_serial:
+          type: string
+          pattern: '^[0-9a-f]{1,32}$'
+        certificate_pem:
+          type: string
+          minLength: 1
+          maxLength: 32768
+        ca_certificate_pem:
+          type: string
+          minLength: 1
+          maxLength: 16384
+        not_before:
+          type: string
+          format: date-time
+        not_after:
+          type: string
+          format: date-time
     AuditEventPage:
       type: object
       additionalProperties: false

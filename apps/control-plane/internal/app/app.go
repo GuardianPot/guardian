@@ -7,17 +7,20 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/api"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/audit"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/auth"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/config"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/deception"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/devicepki"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/devices"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/environment"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/health"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/jobs"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/lifecycle"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/secretstore"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage"
 )
 
@@ -32,7 +35,29 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err := store.Ready(ctx); err != nil {
 		return fmt.Errorf("Control Plane database is not ready; run migrate explicitly: %w", err)
 	}
-
+	serverOptions := []api.Option{}
+	if cfg.EnrollmentEnabled() {
+		secrets, err := secretstore.LoadLocal(cfg.MasterKeyFile)
+		if err != nil {
+			return fmt.Errorf("load Control Plane SecretStore: %w", err)
+		}
+		caMaterial, err := store.DeviceCAMaterial(ctx)
+		if err != nil {
+			return fmt.Errorf("load device CA material: %w", err)
+		}
+		authority, err := devicepki.LoadProductAuthority(caMaterial, secrets, time.Now().UTC())
+		if err != nil {
+			return fmt.Errorf("open device CA: %w", err)
+		}
+		deviceService, err := devices.NewService(store, authority)
+		if err != nil {
+			return fmt.Errorf("build device enrollment service: %w", err)
+		}
+		serverOptions = append(serverOptions,
+			api.WithDeviceService(deviceService),
+			api.WithTLSFiles(cfg.TLSCertificateFile, cfg.TLSPrivateKeyFile, authority.CertificatePEM()),
+		)
+	}
 	components, err := lifecycle.New(
 		auth.New(),
 		environment.New(),
@@ -50,7 +75,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		return err
 	}
 
-	server := api.NewServer(cfg.HTTPAddress, store, logger)
+	server := api.NewServer(cfg.HTTPAddress, store, logger, serverOptions...)
 	if err := server.Start(); err != nil {
 		return errors.Join(fmt.Errorf("start HTTP server: %w", err), components.Stop(context.Background()))
 	}

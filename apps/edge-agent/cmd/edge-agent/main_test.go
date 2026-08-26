@@ -16,7 +16,7 @@ import (
 
 func TestRunVersion(t *testing.T) {
 	var stdout bytes.Buffer
-	if err := run(context.Background(), []string{"version"}, &stdout, new(bytes.Buffer)); err != nil {
+	if err := run(context.Background(), []string{"version"}, new(bytes.Buffer), &stdout, new(bytes.Buffer)); err != nil {
 		t.Fatal(err)
 	}
 	if strings.TrimSpace(stdout.String()) != version {
@@ -25,7 +25,7 @@ func TestRunVersion(t *testing.T) {
 }
 
 func TestRunRequiresConfig(t *testing.T) {
-	if err := run(context.Background(), []string{"serve"}, new(bytes.Buffer), new(bytes.Buffer)); err == nil {
+	if err := run(context.Background(), []string{"serve"}, new(bytes.Buffer), new(bytes.Buffer), new(bytes.Buffer)); err == nil {
 		t.Fatal("serve without config unexpectedly succeeded")
 	}
 }
@@ -33,7 +33,7 @@ func TestRunRequiresConfig(t *testing.T) {
 func TestStatusIsReadOnlyAndDoesNotCreateMissingDatabase(t *testing.T) {
 	root := t.TempDir()
 	cfg, configPath := writeMainConfig(t, root)
-	err := run(context.Background(), []string{"status", "--config", configPath}, new(bytes.Buffer), new(bytes.Buffer))
+	err := run(context.Background(), []string{"status", "--config", configPath}, new(bytes.Buffer), new(bytes.Buffer), new(bytes.Buffer))
 	if err == nil {
 		t.Fatal("status unexpectedly succeeded without state")
 	}
@@ -51,14 +51,14 @@ func TestRecoverDBRequiresExplicitConfirmation(t *testing.T) {
 	if err := os.WriteFile(cfg.DatabasePath, []byte("corrupt"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	err := run(context.Background(), []string{"recover-db", "--config", configPath}, new(bytes.Buffer), new(bytes.Buffer))
+	err := run(context.Background(), []string{"recover-db", "--config", configPath}, new(bytes.Buffer), new(bytes.Buffer), new(bytes.Buffer))
 	if !errors.Is(err, storage.ErrRecoveryConfirmationRequired) {
 		t.Fatalf("unconfirmed recover-db error = %v", err)
 	}
 	var stdout bytes.Buffer
 	err = run(context.Background(), []string{
 		"recover-db", "--config", configPath, "--confirm-reset-development-data",
-	}, &stdout, new(bytes.Buffer))
+	}, new(bytes.Buffer), &stdout, new(bytes.Buffer))
 	if err != nil {
 		t.Fatal(err)
 	}

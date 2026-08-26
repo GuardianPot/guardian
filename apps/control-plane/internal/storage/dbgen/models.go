@@ -24,6 +24,53 @@ type GuardianAuditRecord struct {
 	AfterSnapshot  []byte             `json:"after_snapshot"`
 }
 
+type GuardianDevicesCertificate struct {
+	Serial            string             `json:"serial"`
+	DeviceID          pgtype.UUID        `json:"device_id"`
+	FingerprintSha256 string             `json:"fingerprint_sha256"`
+	CertificatePem    []byte             `json:"certificate_pem"`
+	NotBefore         pgtype.Timestamptz `json:"not_before"`
+	NotAfter          pgtype.Timestamptz `json:"not_after"`
+	State             string             `json:"state"`
+	RevokedAt         pgtype.Timestamptz `json:"revoked_at"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
+type GuardianDevicesCertificateAuthority struct {
+	Singleton          bool               `json:"singleton"`
+	CertificatePem     []byte             `json:"certificate_pem"`
+	PrivateKeyEnvelope []byte             `json:"private_key_envelope"`
+	NotAfter           pgtype.Timestamptz `json:"not_after"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+}
+
+type GuardianDevicesDevice struct {
+	DeviceID      pgtype.UUID        `json:"device_id"`
+	EnvironmentID pgtype.UUID        `json:"environment_id"`
+	DisplayName   string             `json:"display_name"`
+	State         string             `json:"state"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+type GuardianDevicesEnrollmentThrottle struct {
+	ScopeHash       []byte             `json:"scope_hash"`
+	WindowStartedAt pgtype.Timestamptz `json:"window_started_at"`
+	Failures        int32              `json:"failures"`
+	BlockedUntil    pgtype.Timestamptz `json:"blocked_until"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type GuardianDevicesEnrollmentToken struct {
+	TokenID    pgtype.UUID        `json:"token_id"`
+	DeviceID   pgtype.UUID        `json:"device_id"`
+	TokenHash  []byte             `json:"token_hash"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
+	RevokedAt  pgtype.Timestamptz `json:"revoked_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
 type GuardianJobsJob struct {
 	JobID       string             `json:"job_id"`
 	JobType     string             `json:"job_type"`

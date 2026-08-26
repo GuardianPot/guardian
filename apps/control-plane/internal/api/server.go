@@ -3,6 +3,8 @@ package api
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -22,16 +24,21 @@ type Readiness interface {
 
 // Server is a start-once HTTP lifecycle component.
 type Server struct {
-	address         string
-	readiness       Readiness
-	auditReader     audit.Reader
-	auditAuthorizer AuditAuthorizer
-	logger          *slog.Logger
-	http            *http.Server
-	listener        net.Listener
-	errors          chan error
-	startOnce       sync.Once
-	startErr        error
+	address            string
+	readiness          Readiness
+	auditReader        audit.Reader
+	auditAuthorizer    AuditAuthorizer
+	deviceService      DeviceService
+	deviceAuthorizer   DeviceAdminAuthorizer
+	logger             *slog.Logger
+	http               *http.Server
+	listener           net.Listener
+	errors             chan error
+	startOnce          sync.Once
+	startErr           error
+	tlsCertificateFile string
+	tlsPrivateKeyFile  string
+	deviceClientCAPEM  []byte
 }
 
 // NewServer creates an instrumented server without binding a socket.
@@ -40,11 +47,12 @@ func NewServer(address string, readiness Readiness, logger *slog.Logger, options
 		logger = slog.Default()
 	}
 	server := &Server{
-		address:         address,
-		readiness:       readiness,
-		auditAuthorizer: denyAuditAuthorizer{},
-		logger:          logger,
-		errors:          make(chan error, 1),
+		address:          address,
+		readiness:        readiness,
+		auditAuthorizer:  denyAuditAuthorizer{},
+		deviceAuthorizer: denyDeviceAdminAuthorizer{},
+		logger:           logger,
+		errors:           make(chan error, 1),
 	}
 	if reader, ok := readiness.(audit.Reader); ok {
 		server.auditReader = reader
@@ -82,6 +90,14 @@ func (s *Server) routes() http.Handler {
 		writeStatus(writer, http.StatusOK, "ready")
 	})
 	mux.HandleFunc("GET /v1/audit/events", s.handleListAuditEvents)
+	mux.HandleFunc("POST /v1/environments/{environmentId}/enrollment-tokens", s.handleCreateEnrollmentToken)
+	mux.HandleFunc("GET /v1/environments/{environmentId}/enrollment-tokens", s.handleListEnrollmentTokens)
+	mux.HandleFunc("DELETE /v1/environments/{environmentId}/enrollment-tokens/{tokenId}", s.handleRevokeEnrollmentToken)
+	mux.HandleFunc("POST /v1/environments/{environmentId}/devices/{deviceId}/re-enrollment-token", s.handleCreateReenrollmentToken)
+	mux.HandleFunc("POST /v1/enrollments", s.handleEnrollDevice)
+	mux.HandleFunc("POST /v1/device-certificates:rotate", s.handleRotateDeviceCertificate)
+	mux.HandleFunc("POST /v1/environments/{environmentId}/devices/{deviceId}/disable", s.handleDisableDevice)
+	mux.HandleFunc("POST /v1/environments/{environmentId}/devices/{deviceId}/revoke", s.handleRevokeDevice)
 	return mux
 }
 
@@ -91,7 +107,11 @@ func (s *Server) Handler() http.Handler { return s.http.Handler }
 // Start binds the configured listener and starts serving asynchronously.
 func (s *Server) Start() error {
 	s.startOnce.Do(func() {
-		s.listener, s.startErr = net.Listen("tcp", s.address)
+		if s.tlsCertificateFile == "" {
+			s.listener, s.startErr = net.Listen("tcp", s.address)
+		} else {
+			s.listener, s.startErr = s.listenTLS()
+		}
 		if s.startErr != nil {
 			return
 		}
@@ -120,6 +140,23 @@ func (s *Server) Errors() <-chan error { return s.errors }
 
 // Shutdown drains active HTTP requests.
 func (s *Server) Shutdown(ctx context.Context) error { return s.http.Shutdown(ctx) }
+
+func (s *Server) listenTLS() (net.Listener, error) {
+	identity, err := tls.LoadX509KeyPair(s.tlsCertificateFile, s.tlsPrivateKeyFile)
+	if err != nil {
+		return nil, errors.New("load Control Plane TLS identity")
+	}
+	clientRoots := x509.NewCertPool()
+	if len(s.deviceClientCAPEM) == 0 || !clientRoots.AppendCertsFromPEM(s.deviceClientCAPEM) {
+		return nil, errors.New("load device client CA")
+	}
+	return tls.Listen("tcp", s.address, &tls.Config{
+		MinVersion:   tls.VersionTLS13,
+		Certificates: []tls.Certificate{identity},
+		ClientAuth:   tls.VerifyClientCertIfGiven,
+		ClientCAs:    clientRoots,
+	})
+}
 
 func writeStatus(writer http.ResponseWriter, code int, status string) {
 	writer.Header().Set("Content-Type", "application/json")

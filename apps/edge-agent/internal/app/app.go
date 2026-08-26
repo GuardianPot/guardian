@@ -11,6 +11,7 @@ import (
 
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/components"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/config"
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/enrollment"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/identity"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/lifecycle"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/storage"
@@ -61,7 +62,15 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) (runErr er
 	}
 
 	graph := components.NewFoundation(store, metadata, enrollmentStatus)
-	manager, err := lifecycle.New(graph.Ordered()...)
+	ordered := graph.Ordered()
+	ordered = append(ordered, enrollment.NewRotationManager(
+		cfg.ControlPlaneEndpoint,
+		cfg.IdentityCertPath,
+		cfg.IdentityKeyPath,
+		nil,
+		logger,
+	))
+	manager, err := lifecycle.New(ordered...)
 	if err != nil {
 		return fmt.Errorf("build Edge component graph: %w", err)
 	}

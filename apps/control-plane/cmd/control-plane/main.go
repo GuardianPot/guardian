@@ -8,9 +8,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/app"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/config"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/devicepki"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/secretstore"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage"
 )
 
@@ -40,6 +43,28 @@ func run(ctx context.Context, args []string, lookup config.LookupEnv, stdout, st
 			return err
 		}
 		_, err = fmt.Fprintf(stdout, "migration complete: applied=%d version=%d\n", report.Applied, report.Version)
+		return err
+	case config.CommandInitDeviceCA:
+		secrets, err := secretstore.LoadLocal(cfg.MasterKeyFile)
+		if err != nil {
+			return err
+		}
+		store, err := storage.Open(ctx, cfg.DatabaseURL, cfg.DatabaseMaxConns)
+		if err != nil {
+			return err
+		}
+		defer store.Close()
+		if err := store.Ready(ctx); err != nil {
+			return err
+		}
+		material, err := devicepki.GenerateMaterial(secrets, time.Now().UTC())
+		if err != nil {
+			return err
+		}
+		if err := store.InitializeDeviceCA(ctx, material); err != nil {
+			return err
+		}
+		_, err = fmt.Fprintln(stdout, "device CA initialized")
 		return err
 	case config.CommandServe:
 		return app.Run(ctx, cfg, newLogger(stderr, cfg.LogLevel))

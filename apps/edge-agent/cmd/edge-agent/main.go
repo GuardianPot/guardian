@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/app"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/config"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/diagnostics"
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/enrollment"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/storage"
 )
 
@@ -24,13 +26,13 @@ var version = "dev"
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := run(ctx, os.Args[1:], os.Stdout, os.Stderr); err != nil {
+	if err := run(ctx, os.Args[1:], os.Stdin, os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintf(os.Stderr, "guardian-edge: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
+func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if len(args) == 3 && args[0] == "--w8-fixture" {
 		return runWALFixture(args[1], args[2])
 	}
@@ -50,6 +52,20 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	switch invocation.Command {
 	case config.CommandServe:
 		return app.Run(ctx, cfg, newLogger(stderr, cfg.LogLevel))
+	case config.CommandEnroll:
+		token, err := readEnrollmentToken(stdin)
+		if err != nil {
+			return err
+		}
+		defer clear(token)
+		result, err := (&enrollment.Client{}).Enroll(
+			ctx, cfg.ControlPlaneEndpoint, token, cfg.IdentityCertPath, cfg.IdentityKeyPath,
+		)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(stdout, "Edge enrolled: device_id=%s certificate_serial=%s\n", result.DeviceID, result.Serial)
+		return err
 	case config.CommandStatus, config.CommandDiagnostics:
 		report, err := diagnostics.Collect(ctx, cfg, version, time.Now())
 		if err != nil {
@@ -70,6 +86,24 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	default:
 		return fmt.Errorf("unsupported command %q", invocation.Command)
 	}
+}
+
+func readEnrollmentToken(reader io.Reader) ([]byte, error) {
+	if reader == nil {
+		return nil, enrollment.ErrInvalidToken
+	}
+	token, err := io.ReadAll(io.LimitReader(reader, 66))
+	if err != nil || len(token) > 65 {
+		clear(token)
+		return nil, enrollment.ErrInvalidToken
+	}
+	token = bytes.TrimSuffix(token, []byte("\n"))
+	token = bytes.TrimSuffix(token, []byte("\r"))
+	if len(token) == 0 || bytes.IndexAny(token, " \t\r\n") >= 0 {
+		clear(token)
+		return nil, enrollment.ErrInvalidToken
+	}
+	return token, nil
 }
 
 func newLogger(writer io.Writer, configured string) *slog.Logger {

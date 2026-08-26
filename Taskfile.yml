@@ -74,6 +74,12 @@ tasks:
     cmds:
       - bash tests/integration/control-plane/run.sh
 
+  enrollment:integration:
+    desc: Run durable P1-W4 enrollment, replay, rotation, revocation, and Edge identity evidence
+    deps: [control-plane:generated, edge:tools]
+    cmds:
+      - bash tests/integration/enrollment/run.sh
+
   edge:tools:
     desc: Verify the Edge Agent module dependency graph
     env:
@@ -232,7 +238,7 @@ tasks:
 
   validate:
     desc: Run all local quality checks
-    deps: [format:check, go:check, web:check, policy, contracts, container:check, control-plane:integration]
+    deps: [format:check, go:check, web:check, policy, contracts, container:check, control-plane:integration, enrollment:integration]
 
   build:
     desc: Build all skeleton applications
