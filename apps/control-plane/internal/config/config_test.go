@@ -24,6 +24,7 @@ func TestLoadServeDefaultsAndOverrides(t *testing.T) {
 		"GUARDIAN_DATABASE_MAX_CONNS": "12",
 		"GUARDIAN_LOG_LEVEL":          "debug",
 		"GUARDIAN_MASTER_KEY_FILE":    masterKey,
+		"GUARDIAN_PUBLIC_ORIGIN":      "https://guardian.example.test",
 		"GUARDIAN_TLS_CERT_FILE":      tlsCertificate,
 		"GUARDIAN_TLS_KEY_FILE":       tlsKey,
 	}))
@@ -68,18 +69,52 @@ func TestLoadRequiresExplicitKnownCommand(t *testing.T) {
 	}
 }
 
-func TestServeAllowsEnrollmentDisabledAndRejectsPartialBundle(t *testing.T) {
+func TestServeRequiresAuthAndAllowsEnrollmentTLSDisabled(t *testing.T) {
+	masterKey := filepath.Join(t.TempDir(), "master.key")
 	command, cfg, err := Load([]string{"serve"}, lookup(map[string]string{
-		"GUARDIAN_DATABASE_URL": "postgres://guardian:secret@db/guardian",
+		"GUARDIAN_DATABASE_URL":    "postgres://guardian:secret@db/guardian",
+		"GUARDIAN_MASTER_KEY_FILE": masterKey,
+		"GUARDIAN_PUBLIC_ORIGIN":   "https://guardian.example.test",
 	}))
 	if err != nil || command != CommandServe || cfg.EnrollmentEnabled() {
-		t.Fatalf("disabled enrollment load = %q %+v %v", command, cfg, err)
+		t.Fatalf("auth-only serve load = %q %+v %v", command, cfg, err)
 	}
 	_, _, err = Load([]string{"serve"}, lookup(map[string]string{
 		"GUARDIAN_DATABASE_URL":    "postgres://guardian:secret@db/guardian",
-		"GUARDIAN_MASTER_KEY_FILE": filepath.Join(t.TempDir(), "master.key"),
+		"GUARDIAN_MASTER_KEY_FILE": masterKey,
+		"GUARDIAN_PUBLIC_ORIGIN":   "http://guardian.example.test",
+	}))
+	if err == nil || !strings.Contains(err.Error(), "GUARDIAN_PUBLIC_ORIGIN") {
+		t.Fatalf("invalid public origin error = %v", err)
+	}
+	_, _, err = Load([]string{"serve"}, lookup(map[string]string{
+		"GUARDIAN_DATABASE_URL":    "postgres://guardian:secret@db/guardian",
+		"GUARDIAN_MASTER_KEY_FILE": masterKey,
+		"GUARDIAN_PUBLIC_ORIGIN":   "https://guardian.example.test",
+		"GUARDIAN_TLS_CERT_FILE":   filepath.Join(t.TempDir(), "server.crt"),
 	}))
 	if err == nil || !strings.Contains(err.Error(), "must be configured together") {
-		t.Fatalf("partial enrollment bundle error = %v", err)
+		t.Fatalf("partial TLS bundle error = %v", err)
+	}
+}
+
+func TestCreateBootstrapTokenRequiresAbsoluteMasterKey(t *testing.T) {
+	command, cfg, err := Load([]string{"create-bootstrap-token"}, lookup(map[string]string{
+		"GUARDIAN_DATABASE_URL":    "postgres://guardian:secret@db/guardian",
+		"GUARDIAN_MASTER_KEY_FILE": filepath.Join(t.TempDir(), "master.key"),
+	}))
+	if err != nil || command != CommandCreateBootstrapToken || cfg.MasterKeyFile == "" {
+		t.Fatalf("Load(create-bootstrap-token) = %q %+v %v", command, cfg, err)
+	}
+}
+
+func TestServeFailsClosedWithoutAuthRuntimeSettings(t *testing.T) {
+	base := map[string]string{"GUARDIAN_DATABASE_URL": "postgres://guardian:secret@db/guardian"}
+	if _, _, err := Load([]string{"serve"}, lookup(base)); err == nil || !strings.Contains(err.Error(), "GUARDIAN_MASTER_KEY_FILE") {
+		t.Fatalf("missing master-key error = %v", err)
+	}
+	base["GUARDIAN_MASTER_KEY_FILE"] = filepath.Join(t.TempDir(), "master.key")
+	if _, _, err := Load([]string{"serve"}, lookup(base)); err == nil || !strings.Contains(err.Error(), "GUARDIAN_PUBLIC_ORIGIN") {
+		t.Fatalf("missing public-origin error = %v", err)
 	}
 }

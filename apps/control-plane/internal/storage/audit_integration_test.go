@@ -823,7 +823,7 @@ func openAuditTestStore(t *testing.T, maximumConnections int32) *Store {
 		t.Fatalf("Migrate() error = %v", err)
 	}
 	if report.Applied != 3 || report.Version != 3 {
-		t.Fatalf("Migrate() = %+v, want three migrations at version 3", report)
+		t.Fatalf("Migrate() = %+v, want four migrations at version 4", report)
 	}
 	store, err := Open(ctx, databaseURL, maximumConnections)
 	if err != nil {

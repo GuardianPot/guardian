@@ -35,12 +35,32 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err := store.Ready(ctx); err != nil {
 		return fmt.Errorf("Control Plane database is not ready; run migrate explicitly: %w", err)
 	}
-	serverOptions := []api.Option{}
+	secrets, err := secretstore.LoadLocal(cfg.MasterKeyFile)
+	if err != nil {
+		return fmt.Errorf("load Control Plane SecretStore: %w", err)
+	}
+	authService, err := auth.NewService(store, secrets, auth.DefaultArgon2Params, cfg.PublicOrigin)
+	if err != nil {
+		return fmt.Errorf("build local authentication service: %w", err)
+	}
+	serverOptions := []api.Option{
+		api.WithAuthService(authService),
+		api.WithAuditAuthorizer(api.AuditAuthorizerFunc(func(ctx context.Context, sessionToken string) error {
+			_, err := authService.AuthorizeRead(ctx, sessionToken)
+			return err
+		})),
+		api.WithDeviceAdminAuthorizer(api.DeviceAdminAuthorizerFunc(func(
+			ctx context.Context, sessionToken, _ string, csrf, origin string, mutation bool,
+		) (string, error) {
+			if mutation {
+				session, err := authService.AuthorizeMutation(ctx, sessionToken, csrf, origin)
+				return session.UserID, err
+			}
+			session, err := authService.AuthorizeRead(ctx, sessionToken)
+			return session.UserID, err
+		})),
+	}
 	if cfg.EnrollmentEnabled() {
-		secrets, err := secretstore.LoadLocal(cfg.MasterKeyFile)
-		if err != nil {
-			return fmt.Errorf("load Control Plane SecretStore: %w", err)
-		}
 		caMaterial, err := store.DeviceCAMaterial(ctx)
 		if err != nil {
 			return fmt.Errorf("load device CA material: %w", err)

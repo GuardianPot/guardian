@@ -5,8 +5,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,10 +16,11 @@ import (
 type Command string
 
 const (
-	CommandServe        Command = "serve"
-	CommandMigrate      Command = "migrate"
-	CommandInitDeviceCA Command = "init-device-ca"
-	CommandVersion      Command = "version"
+	CommandServe                Command = "serve"
+	CommandMigrate              Command = "migrate"
+	CommandInitDeviceCA         Command = "init-device-ca"
+	CommandCreateBootstrapToken Command = "create-bootstrap-token"
+	CommandVersion              Command = "version"
 )
 
 const (
@@ -37,6 +40,7 @@ type Config struct {
 	DatabaseMaxConns   int32
 	LogLevel           string
 	MasterKeyFile      string
+	PublicOrigin       string
 	TLSCertificateFile string
 	TLSPrivateKeyFile  string
 }
@@ -49,7 +53,7 @@ type LookupEnv func(string) (string, bool)
 // do not appear in the process argument list.
 func Load(args []string, lookup LookupEnv) (Command, Config, error) {
 	if len(args) == 0 {
-		return "", Config{}, errors.New("command is required: serve, migrate, init-device-ca, or version")
+		return "", Config{}, errors.New("command is required: serve, migrate, init-device-ca, create-bootstrap-token, or version")
 	}
 
 	command := Command(args[0])
@@ -59,7 +63,7 @@ func Load(args []string, lookup LookupEnv) (Command, Config, error) {
 			return "", Config{}, errors.New("version does not accept arguments")
 		}
 		return command, Config{}, nil
-	case CommandServe, CommandMigrate, CommandInitDeviceCA:
+	case CommandServe, CommandMigrate, CommandInitDeviceCA, CommandCreateBootstrapToken:
 	default:
 		return "", Config{}, fmt.Errorf("unknown command %q", args[0])
 	}
@@ -71,6 +75,7 @@ func Load(args []string, lookup LookupEnv) (Command, Config, error) {
 		DatabaseMaxConns:   defaultDatabaseConns,
 		LogLevel:           envOr(lookup, "GUARDIAN_LOG_LEVEL", defaultLogLevel),
 		MasterKeyFile:      envOr(lookup, "GUARDIAN_MASTER_KEY_FILE", ""),
+		PublicOrigin:       envOr(lookup, "GUARDIAN_PUBLIC_ORIGIN", ""),
 		TLSCertificateFile: envOr(lookup, "GUARDIAN_TLS_CERT_FILE", ""),
 		TLSPrivateKeyFile:  envOr(lookup, "GUARDIAN_TLS_KEY_FILE", ""),
 	}
@@ -108,7 +113,7 @@ func Load(args []string, lookup LookupEnv) (Command, Config, error) {
 
 // Validate enforces startup invariants without rendering sensitive values.
 func (c Config) Validate(command Command) error {
-	if command != CommandServe && command != CommandMigrate && command != CommandInitDeviceCA {
+	if command != CommandServe && command != CommandMigrate && command != CommandInitDeviceCA && command != CommandCreateBootstrapToken {
 		return nil
 	}
 	if c.DatabaseURL == "" {
@@ -123,7 +128,7 @@ func (c Config) Validate(command Command) error {
 	if command == CommandServe && c.HTTPAddress == "" {
 		return errors.New("HTTP address must not be empty")
 	}
-	if command == CommandInitDeviceCA {
+	if command == CommandInitDeviceCA || command == CommandCreateBootstrapToken || command == CommandServe {
 		if c.MasterKeyFile == "" {
 			return errors.New("GUARDIAN_MASTER_KEY_FILE is required")
 		}
@@ -132,21 +137,19 @@ func (c Config) Validate(command Command) error {
 		}
 	}
 	if command == CommandServe {
-		enrollmentValues := []string{c.MasterKeyFile, c.TLSCertificateFile, c.TLSPrivateKeyFile}
-		enrollmentConfigured := false
-		for _, value := range enrollmentValues {
-			enrollmentConfigured = enrollmentConfigured || value != ""
+		if !validPublicOrigin(c.PublicOrigin) {
+			return errors.New("GUARDIAN_PUBLIC_ORIGIN must be an HTTPS origin without a path, query, fragment, or trailing slash")
 		}
-		if enrollmentConfigured && !c.EnrollmentEnabled() {
-			return errors.New("GUARDIAN_MASTER_KEY_FILE, GUARDIAN_TLS_CERT_FILE, and GUARDIAN_TLS_KEY_FILE must be configured together")
+		tlsConfigured := c.TLSCertificateFile != "" || c.TLSPrivateKeyFile != ""
+		if tlsConfigured && !c.EnrollmentEnabled() {
+			return errors.New("GUARDIAN_TLS_CERT_FILE and GUARDIAN_TLS_KEY_FILE must be configured together")
 		}
-		if !enrollmentConfigured {
+		if !tlsConfigured {
 			return validateLogLevel(c.LogLevel)
 		}
 		for name, path := range map[string]string{
-			"GUARDIAN_MASTER_KEY_FILE": c.MasterKeyFile,
-			"GUARDIAN_TLS_CERT_FILE":   c.TLSCertificateFile,
-			"GUARDIAN_TLS_KEY_FILE":    c.TLSPrivateKeyFile,
+			"GUARDIAN_TLS_CERT_FILE": c.TLSCertificateFile,
+			"GUARDIAN_TLS_KEY_FILE":  c.TLSPrivateKeyFile,
 		} {
 			if path == "" || !filepath.IsAbs(path) || filepath.Clean(path) != path {
 				return fmt.Errorf("%s must be an absolute clean path", name)
@@ -159,11 +162,20 @@ func (c Config) Validate(command Command) error {
 	return validateLogLevel(c.LogLevel)
 }
 
-// EnrollmentEnabled reports whether the fail-closed device enrollment bundle
-// was configured completely. An unconfigured bundle leaves only the baseline
-// Control Plane endpoints available; partial bundles are rejected.
+// EnrollmentEnabled reports whether the fail-closed direct-TLS/device
+// enrollment bundle was configured completely. Authentication always requires
+// the master key; direct TLS additionally requires both certificate paths.
 func (c Config) EnrollmentEnabled() bool {
 	return c.MasterKeyFile != "" && c.TLSCertificateFile != "" && c.TLSPrivateKeyFile != ""
+}
+
+func validPublicOrigin(value string) bool {
+	if len(value) < len("https://a") || len(value) > 2048 || !strings.HasPrefix(value, "https://") || strings.HasSuffix(value, "/") {
+		return false
+	}
+	parsed, err := url.Parse(value)
+	return err == nil && parsed.Scheme == "https" && parsed.Host != "" && parsed.User == nil &&
+		parsed.Path == "" && parsed.RawQuery == "" && parsed.Fragment == ""
 }
 
 func validateLogLevel(value string) error {
