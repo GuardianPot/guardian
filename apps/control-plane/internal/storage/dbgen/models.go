@@ -5,6 +5,8 @@
 package dbgen
 
 import (
+	"net/netip"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -117,6 +119,33 @@ type GuardianDevicesEnrollmentToken struct {
 	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
 	RevokedAt  pgtype.Timestamptz `json:"revoked_at"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+type GuardianEnvironmentEnvironment struct {
+	EnvironmentID  pgtype.UUID        `json:"environment_id"`
+	OrganizationID pgtype.UUID        `json:"organization_id"`
+	DisplayName    string             `json:"display_name"`
+	NameKey        string             `json:"name_key"`
+	Revision       int64              `json:"revision"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type GuardianEnvironmentOrganization struct {
+	Singleton      bool               `json:"singleton"`
+	OrganizationID pgtype.UUID        `json:"organization_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type GuardianEnvironmentZone struct {
+	ZoneID        pgtype.UUID        `json:"zone_id"`
+	EnvironmentID pgtype.UUID        `json:"environment_id"`
+	DisplayName   string             `json:"display_name"`
+	NameKey       string             `json:"name_key"`
+	Network       netip.Prefix       `json:"network"`
+	Revision      int64              `json:"revision"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
 type GuardianJobsJob struct {

@@ -158,6 +158,265 @@ paths:
           description: Current password, session, CSRF, or origin validation failed.
         '426':
           description: TLS is required.
+  /v1/organization:
+    get:
+      operationId: getOrganizationSingleton
+      summary: Read the immutable Phase 1 organization singleton
+      security:
+        - guardianSession: []
+      responses:
+        '200':
+          description: The implicit organization for the authenticated local owner.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationResponse'
+        '401':
+          description: A valid Guardian owner session is required.
+        '426':
+          description: TLS is required.
+  /v1/environments:
+    get:
+      operationId: listEnvironments
+      summary: List environments in the implicit organization
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentListLimit'
+      responses:
+        '200':
+          description: A deterministic bounded environment list.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvironmentPage'
+        '400':
+          description: The list query is invalid.
+        '401':
+          description: A valid Guardian owner session is required.
+        '426':
+          description: TLS is required.
+    post:
+      operationId: createEnvironment
+      summary: Create an environment in the implicit organization
+      description: >-
+        Requires the exact configured HTTPS Origin and synchronizer CSRF token.
+        Saving persists and audits configuration only; it never scans or mutates
+        the network.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnvironmentWriteRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/EnvironmentResponse'
+        '400':
+          description: The strict bounded request is invalid.
+        '401':
+          description: Session, CSRF, or exact-origin validation failed.
+        '409':
+          description: The normalized environment name already exists.
+        '426':
+          description: TLS is required.
+  /v1/environments/{environmentId}:
+    get:
+      operationId: getEnvironment
+      summary: Read one environment from the implicit organization
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+      responses:
+        '200':
+          $ref: '#/components/responses/EnvironmentResponse'
+        '401':
+          description: A valid Guardian owner session is required.
+        '404':
+          description: The environment does not exist in the implicit organization.
+        '426':
+          description: TLS is required.
+    patch:
+      operationId: updateEnvironment
+      summary: Rename one environment with optimistic concurrency
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/IfMatchRevision'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnvironmentWriteRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/EnvironmentResponse'
+        '400':
+          description: The strict bounded request or ETag is invalid.
+        '401':
+          description: Session, CSRF, or exact-origin validation failed.
+        '404':
+          description: The environment does not exist in the implicit organization.
+        '409':
+          description: The normalized environment name already exists.
+        '412':
+          description: The strong revision ETag is stale.
+        '426':
+          description: TLS is required.
+        '428':
+          description: A strong If-Match revision ETag is required.
+  /v1/environments/{environmentId}/zones:
+    get:
+      operationId: listEnvironmentZones
+      summary: List private IPv4 zones in one environment
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/EnvironmentListLimit'
+      responses:
+        '200':
+          description: A deterministic bounded zone list.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ZonePage'
+        '400':
+          description: The list query is invalid.
+        '401':
+          description: A valid Guardian owner session is required.
+        '404':
+          description: The environment does not exist in the implicit organization.
+        '426':
+          description: TLS is required.
+    post:
+      operationId: createEnvironmentZone
+      summary: Add one canonical RFC1918 IPv4 zone
+      description: >-
+        Duplicate, nested, or otherwise overlapping prefixes in the same
+        environment are rejected. Cross-environment overlap remains valid.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ZoneWriteRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/ZoneResponse'
+        '400':
+          description: The name or canonical private IPv4 CIDR is invalid.
+        '401':
+          description: Session, CSRF, or exact-origin validation failed.
+        '404':
+          description: The environment does not exist in the implicit organization.
+        '409':
+          description: The normalized name or CIDR conflicts in this environment.
+        '426':
+          description: TLS is required.
+  /v1/environments/{environmentId}/zones/{zoneId}:
+    get:
+      operationId: getEnvironmentZone
+      summary: Read one private IPv4 zone
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/ZoneId'
+      responses:
+        '200':
+          $ref: '#/components/responses/ZoneResponse'
+        '401':
+          description: A valid Guardian owner session is required.
+        '404':
+          description: The zone does not exist in the requested environment.
+        '426':
+          description: TLS is required.
+    patch:
+      operationId: updateEnvironmentZone
+      summary: Update one zone with optimistic concurrency
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/ZoneId'
+        - $ref: '#/components/parameters/IfMatchRevision'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ZoneWriteRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/ZoneResponse'
+        '400':
+          description: The strict bounded request or ETag is invalid.
+        '401':
+          description: Session, CSRF, or exact-origin validation failed.
+        '404':
+          description: The zone does not exist in the requested environment.
+        '409':
+          description: The normalized name or CIDR conflicts in this environment.
+        '412':
+          description: The strong revision ETag is stale.
+        '426':
+          description: TLS is required.
+        '428':
+          description: A strong If-Match revision ETag is required.
+    delete:
+      operationId: deleteEnvironmentZone
+      summary: Remove one zone with optimistic concurrency
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/ZoneId'
+        - $ref: '#/components/parameters/IfMatchRevision'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      responses:
+        '204':
+          description: The zone was removed and the mutation was audited atomically.
+        '400':
+          description: The ETag is invalid.
+        '401':
+          description: Session, CSRF, or exact-origin validation failed.
+        '404':
+          description: The zone does not exist in the requested environment.
+        '412':
+          description: The strong revision ETag is stale.
+        '426':
+          description: TLS is required.
+        '428':
+          description: A strong If-Match revision ETag is required.
   /v1/environments/{environmentId}/enrollment-tokens:
     post:
       operationId: createEnrollmentToken
@@ -545,8 +804,36 @@ components:
       description: Canonical environment identity.
       schema:
         type: string
-        minLength: 1
-        maxLength: 128
+        format: uuid
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    ZoneId:
+      name: zoneId
+      in: path
+      required: true
+      description: Canonical UUIDv7 zone identity.
+      schema:
+        type: string
+        format: uuid
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    EnvironmentListLimit:
+      name: limit
+      in: query
+      required: false
+      description: Maximum number of deterministic results; defaults to 50.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 200
+        default: 50
+    IfMatchRevision:
+      name: If-Match
+      in: header
+      required: true
+      description: Strong decimal revision ETag returned by the resource endpoint.
+      schema:
+        type: string
+        pattern: '^"[1-9][0-9]*"$'
     DeviceId:
       name: deviceId
       in: path
@@ -592,6 +879,34 @@ components:
         minLength: 1
         maxLength: 2048
   responses:
+    EnvironmentResponse:
+      description: One environment and its strong revision ETag.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+        ETag:
+          required: true
+          schema:
+            type: string
+            pattern: '^"[1-9][0-9]*"$'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/EnvironmentResponse'
+    ZoneResponse:
+      description: One private IPv4 zone and its strong revision ETag.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+        ETag:
+          required: true
+          schema:
+            type: string
+            pattern: '^"[1-9][0-9]*"$'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ZoneResponse'
     AuthSessionCredentialsResponse:
       description: >-
         A rotated opaque Secure, HttpOnly, SameSite=Strict __Host- session
@@ -651,6 +966,159 @@ components:
         type: string
         const: no-store
   schemas:
+    OrganizationResponse:
+      type: object
+      additionalProperties: false
+      required: [organization]
+      properties:
+        organization:
+          $ref: '#/components/schemas/Organization'
+    Organization:
+      type: object
+      additionalProperties: false
+      required: [organization_id, created_at]
+      properties:
+        organization_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        created_at:
+          type: string
+          format: date-time
+    EnvironmentWriteRequest:
+      type: object
+      additionalProperties: false
+      required: [display_name]
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Trimmed NFC text, additionally bounded to 128 Unicode code points.
+    EnvironmentResponse:
+      type: object
+      additionalProperties: false
+      required: [environment]
+      properties:
+        environment:
+          $ref: '#/components/schemas/Environment'
+    EnvironmentPage:
+      type: object
+      additionalProperties: false
+      required: [environments]
+      properties:
+        environments:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/Environment'
+    Environment:
+      type: object
+      additionalProperties: false
+      required:
+        - environment_id
+        - organization_id
+        - display_name
+        - revision
+        - zone_count
+        - status
+        - created_at
+        - updated_at
+      properties:
+        environment_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        organization_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 512
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        zone_count:
+          type: integer
+          format: int64
+          minimum: 0
+        status:
+          type: string
+          enum: [needs_zones, zones_defined]
+          description: Configuration completeness only; never health or protection state.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ZoneWriteRequest:
+      type: object
+      additionalProperties: false
+      required: [display_name, cidr]
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Trimmed NFC text, additionally bounded to 128 Unicode code points.
+        cidr:
+          type: string
+          minLength: 9
+          maxLength: 18
+          pattern: '^(10|172|192)\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/([1-9]|[12][0-9]|3[0-2])$'
+          description: Canonical host-bit-free IPv4 CIDR wholly contained by an RFC1918 range.
+    ZoneResponse:
+      type: object
+      additionalProperties: false
+      required: [zone]
+      properties:
+        zone:
+          $ref: '#/components/schemas/Zone'
+    ZonePage:
+      type: object
+      additionalProperties: false
+      required: [zones]
+      properties:
+        zones:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/Zone'
+    Zone:
+      type: object
+      additionalProperties: false
+      required: [zone_id, environment_id, display_name, cidr, revision, created_at, updated_at]
+      properties:
+        zone_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        environment_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 512
+        cidr:
+          type: string
+          minLength: 9
+          maxLength: 18
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     AuthBootstrapRequest:
       type: object
       additionalProperties: false
