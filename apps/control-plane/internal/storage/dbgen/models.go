@@ -24,6 +24,54 @@ type GuardianAuditRecord struct {
 	AfterSnapshot  []byte             `json:"after_snapshot"`
 }
 
+type GuardianAuthAuthenticationThrottle struct {
+	ScopeHash       []byte             `json:"scope_hash"`
+	WindowStartedAt pgtype.Timestamptz `json:"window_started_at"`
+	Failures        int32              `json:"failures"`
+	BlockedUntil    pgtype.Timestamptz `json:"blocked_until"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type GuardianAuthBootstrapToken struct {
+	TokenID    pgtype.UUID        `json:"token_id"`
+	TokenHash  []byte             `json:"token_hash"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
+	RevokedAt  pgtype.Timestamptz `json:"revoked_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+type GuardianAuthRecoveryCode struct {
+	UserID     pgtype.UUID        `json:"user_id"`
+	CodeHash   []byte             `json:"code_hash"`
+	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+type GuardianAuthSession struct {
+	SessionID        pgtype.UUID        `json:"session_id"`
+	UserID           pgtype.UUID        `json:"user_id"`
+	TokenHash        []byte             `json:"token_hash"`
+	CsrfHash         []byte             `json:"csrf_hash"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	LastSeenAt       pgtype.Timestamptz `json:"last_seen_at"`
+	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
+	RevokedAt        pgtype.Timestamptz `json:"revoked_at"`
+	RevocationReason pgtype.Text        `json:"revocation_reason"`
+}
+
+type GuardianAuthUser struct {
+	UserID           pgtype.UUID        `json:"user_id"`
+	Username         string             `json:"username"`
+	Role             string             `json:"role"`
+	Status           string             `json:"status"`
+	PasswordPhc      string             `json:"password_phc"`
+	TotpSeedEnvelope []byte             `json:"totp_seed_envelope"`
+	LastTotpCounter  int64              `json:"last_totp_counter"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
 type GuardianDevicesCertificate struct {
 	Serial            string             `json:"serial"`
 	DeviceID          pgtype.UUID        `json:"device_id"`

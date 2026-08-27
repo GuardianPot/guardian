@@ -11,6 +11,153 @@ info:
 security:
   - bearerAuth: []
 paths:
+  /v1/auth/bootstrap:
+    post:
+      operationId: bootstrapLocalOwner
+      summary: Atomically exchange the one-time bootstrap token for the sole owner
+      description: >-
+        TLS-only. The CLI-created 32-byte token expires after 15 minutes and is
+        consumed atomically. This response returns the TOTP provisioning URI
+        and ten recovery codes exactly once and does not create a session.
+      security:
+        - bootstrapToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthBootstrapRequest'
+      responses:
+        '201':
+          description: The pending-MFA owner was created.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthBootstrapResult'
+        '401':
+          description: The bootstrap exchange was generically denied.
+        '426':
+          description: TLS is required.
+  /v1/auth/login:
+    post:
+      operationId: loginLocalOwner
+      summary: Establish a server-side owner session with password and MFA
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthSessionCredentialsResponse'
+        '401':
+          description: Authentication was generically denied.
+        '429':
+          description: Persistent account or source throttling denied the attempt.
+        '426':
+          description: TLS is required.
+  /v1/auth/session:
+    get:
+      operationId: getLocalSession
+      summary: Read the current authenticated owner session
+      security:
+        - guardianSession: []
+      responses:
+        '200':
+          description: The current server-side session.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '401':
+          description: The session was denied or expired.
+        '426':
+          description: TLS is required.
+  /v1/auth/logout:
+    post:
+      operationId: logoutLocalSession
+      summary: Revoke and clear the current owner session
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      responses:
+        '204':
+          description: The current session was revoked and its cookie cleared.
+        '401':
+          description: Session, CSRF, or exact-origin validation failed.
+        '426':
+          description: TLS is required.
+  /v1/auth/sessions:
+    get:
+      operationId: listLocalSessions
+      summary: List at most 200 owner sessions, including revoked history
+      security:
+        - guardianSession: []
+      responses:
+        '200':
+          description: Newest-first bounded session history.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionPage'
+        '401':
+          description: The current session was denied.
+        '426':
+          description: TLS is required.
+  /v1/auth/sessions/{sessionId}:
+    delete:
+      operationId: revokeLocalSession
+      summary: Revoke one session owned by the current local owner
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      responses:
+        '204':
+          description: The target session was revoked.
+        '401':
+          description: Session, CSRF, origin, or target ownership validation failed.
+        '426':
+          description: TLS is required.
+  /v1/auth/password:
+    post:
+      operationId: changeLocalPassword
+      summary: Change the owner password and rotate the current session
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthPasswordChangeRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthSessionCredentialsResponse'
+        '400':
+          description: The replacement password does not meet policy.
+        '401':
+          description: Current password, session, CSRF, or origin validation failed.
+        '426':
+          description: TLS is required.
   /v1/environments/{environmentId}/enrollment-tokens:
     post:
       operationId: createEnrollmentToken
@@ -376,7 +523,12 @@ components:
         authentication. P1-W2 issues it with Secure, HttpOnly, SameSite=Strict,
         Path=/, and no Domain attribute. The audit boundary accepts at most 512
         bytes before handing the opaque value to its authorizer. Health reads
-        remain default-denied until P1-W2 supplies that approved authorizer.
+        are authorized by the same server-side owner session.
+    bootstrapToken:
+      type: http
+      scheme: bearer
+      bearerFormat: 32-byte Base64URL one-time token
+      description: TLS-only, 15-minute, one-time local-owner bootstrap credential.
     enrollmentToken:
       type: http
       scheme: bearer
@@ -413,14 +565,24 @@ components:
         type: string
         format: uuid
         pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      description: Server-side local session identity.
+      schema:
+        type: string
+        format: uuid
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
     CSRFToken:
       name: X-CSRF-Token
       in: header
       required: true
       schema:
         type: string
-        minLength: 1
-        maxLength: 512
+        minLength: 43
+        maxLength: 43
+        pattern: '^[A-Za-z0-9_-]{43}$'
     Origin:
       name: Origin
       in: header
@@ -430,6 +592,21 @@ components:
         minLength: 1
         maxLength: 2048
   responses:
+    AuthSessionCredentialsResponse:
+      description: >-
+        A rotated opaque Secure, HttpOnly, SameSite=Strict __Host- session
+        cookie plus a no-store synchronizer CSRF token for memory-only use.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+        Set-Cookie:
+          required: true
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthSessionCredentials'
     EnrollmentTokenSecretResponse:
       description: A secret enrollment token returned exactly once.
       headers:
@@ -467,7 +644,176 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/HealthView'
+  headers:
+    NoStore:
+      required: true
+      schema:
+        type: string
+        const: no-store
   schemas:
+    AuthBootstrapRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 64
+          pattern: '^[a-z0-9._-]+$'
+        password:
+          type: string
+          minLength: 12
+          maxLength: 1024
+    AuthBootstrapResult:
+      type: object
+      additionalProperties: false
+      required:
+        - user_id
+        - username
+        - provisioning_uri
+        - recovery_codes
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        username:
+          type: string
+          minLength: 3
+          maxLength: 64
+        provisioning_uri:
+          type: string
+          format: uri
+          pattern: '^otpauth://totp/'
+          maxLength: 2048
+        recovery_codes:
+          type: array
+          minItems: 10
+          maxItems: 10
+          items:
+            type: string
+            minLength: 22
+            maxLength: 22
+            pattern: '^[A-Za-z0-9_-]{22}$'
+    AuthLoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - username
+        - password
+      oneOf:
+        - required: [totp_code]
+        - required: [recovery_code]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 64
+        password:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        totp_code:
+          type: string
+          pattern: '^[0-9]{6}$'
+        recovery_code:
+          type: string
+          minLength: 22
+          maxLength: 22
+          pattern: '^[A-Za-z0-9_-]{22}$'
+    AuthPasswordChangeRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - current_password
+        - new_password
+      properties:
+        current_password:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        new_password:
+          type: string
+          minLength: 12
+          maxLength: 1024
+    AuthSessionCredentials:
+      type: object
+      additionalProperties: false
+      required:
+        - csrf_token
+        - session
+      properties:
+        csrf_token:
+          type: string
+          minLength: 43
+          maxLength: 43
+          pattern: '^[A-Za-z0-9_-]{43}$'
+        session:
+          $ref: '#/components/schemas/AuthSession'
+    AuthSessionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - session
+      properties:
+        session:
+          $ref: '#/components/schemas/AuthSession'
+    AuthSessionPage:
+      type: object
+      additionalProperties: false
+      required:
+        - sessions
+      properties:
+        sessions:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/AuthSession'
+    AuthSession:
+      type: object
+      additionalProperties: false
+      required:
+        - session_id
+        - user_id
+        - username
+        - role
+        - created_at
+        - last_seen_at
+        - expires_at
+        - current
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        user_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        username:
+          type: string
+          minLength: 3
+          maxLength: 64
+        role:
+          type: string
+          const: owner
+        created_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        revoked_at:
+          type: string
+          format: date-time
+        current:
+          type: boolean
     CreateEnrollmentTokenRequest:
       type: object
       additionalProperties: false

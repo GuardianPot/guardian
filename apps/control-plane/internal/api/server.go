@@ -30,6 +30,7 @@ type Server struct {
 	auditAuthorizer    AuditAuthorizer
 	deviceService      DeviceService
 	deviceAuthorizer   DeviceAdminAuthorizer
+	authService        AuthService
 	logger             *slog.Logger
 	http               *http.Server
 	listener           net.Listener
@@ -64,7 +65,7 @@ func NewServer(address string, readiness Readiness, logger *slog.Logger, options
 	}
 	server.http = &http.Server{
 		Addr:              address,
-		Handler:           otelhttp.NewHandler(server.routes(), "guardian.control-plane.http"),
+		Handler:           otelhttp.NewHandler(securityHeaders(server.routes()), "guardian.control-plane.http"),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -89,6 +90,13 @@ func (s *Server) routes() http.Handler {
 		}
 		writeStatus(writer, http.StatusOK, "ready")
 	})
+	mux.HandleFunc("POST /v1/auth/bootstrap", s.handleBootstrap)
+	mux.HandleFunc("POST /v1/auth/login", s.handleLogin)
+	mux.HandleFunc("GET /v1/auth/session", s.handleSession)
+	mux.HandleFunc("POST /v1/auth/logout", s.handleLogout)
+	mux.HandleFunc("GET /v1/auth/sessions", s.handleListSessions)
+	mux.HandleFunc("DELETE /v1/auth/sessions/{sessionId}", s.handleRevokeSession)
+	mux.HandleFunc("POST /v1/auth/password", s.handleChangePassword)
 	mux.HandleFunc("GET /v1/audit/events", s.handleListAuditEvents)
 	mux.HandleFunc("POST /v1/environments/{environmentId}/enrollment-tokens", s.handleCreateEnrollmentToken)
 	mux.HandleFunc("GET /v1/environments/{environmentId}/enrollment-tokens", s.handleListEnrollmentTokens)
@@ -99,6 +107,15 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /v1/environments/{environmentId}/devices/{deviceId}/disable", s.handleDisableDevice)
 	mux.HandleFunc("POST /v1/environments/{environmentId}/devices/{deviceId}/revoke", s.handleRevokeDevice)
 	return mux
+}
+
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+		writer.Header().Set("Referrer-Policy", "no-referrer")
+		writer.Header().Set("X-Content-Type-Options", "nosniff")
+		next.ServeHTTP(writer, request)
+	})
 }
 
 // Handler exposes the production handler for bounded unit tests.

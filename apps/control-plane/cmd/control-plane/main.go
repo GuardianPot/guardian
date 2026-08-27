@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/app"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/auth"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/config"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/devicepki"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/secretstore"
@@ -65,6 +66,29 @@ func run(ctx context.Context, args []string, lookup config.LookupEnv, stdout, st
 			return err
 		}
 		_, err = fmt.Fprintln(stdout, "device CA initialized")
+		return err
+	case config.CommandCreateBootstrapToken:
+		secrets, err := secretstore.LoadLocal(cfg.MasterKeyFile)
+		if err != nil {
+			return err
+		}
+		store, err := storage.Open(ctx, cfg.DatabaseURL, cfg.DatabaseMaxConns)
+		if err != nil {
+			return err
+		}
+		defer store.Close()
+		if err := store.Ready(ctx); err != nil {
+			return err
+		}
+		service, err := auth.NewService(store, secrets, auth.DefaultArgon2Params, "https://bootstrap.invalid")
+		if err != nil {
+			return err
+		}
+		token, expiresAt, err := service.CreateBootstrapToken(ctx)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(stdout, "bootstrap_token=%s\nexpires_at=%s\n", token, expiresAt.Format(time.RFC3339))
 		return err
 	case config.CommandServe:
 		return app.Run(ctx, cfg, newLogger(stderr, cfg.LogLevel))

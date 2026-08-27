@@ -9,4 +9,4 @@ import "embed"
 var Files embed.FS
 
 // LatestVersion is the schema version required by this Control Plane build.
-const LatestVersion int64 = 3
+const LatestVersion int64 = 4

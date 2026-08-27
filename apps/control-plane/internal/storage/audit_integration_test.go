@@ -13,6 +13,7 @@ import (
 
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/audit"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage/dbgen"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage/migrations"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -822,8 +823,8 @@ func openAuditTestStore(t *testing.T, maximumConnections int32) *Store {
 	if err != nil {
 		t.Fatalf("Migrate() error = %v", err)
 	}
-	if report.Applied != 3 || report.Version != 3 {
-		t.Fatalf("Migrate() = %+v, want three migrations at version 3", report)
+	if report.Applied != int(migrations.LatestVersion) || report.Version != migrations.LatestVersion {
+		t.Fatalf("Migrate() = %+v, want %d migrations at version %d", report, migrations.LatestVersion, migrations.LatestVersion)
 	}
 	store, err := Open(ctx, databaseURL, maximumConnections)
 	if err != nil {

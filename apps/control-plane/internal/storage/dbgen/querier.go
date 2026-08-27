@@ -6,6 +6,8 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -15,9 +17,12 @@ type Querier interface {
 	AppendAuditRecord(ctx context.Context, arg AppendAuditRecordParams) (AppendAuditRecordRow, error)
 	CreateJob(ctx context.Context, arg CreateJobParams) error
 	GetAuditAnchor(ctx context.Context) (int64, error)
+	GetAuthCredentialByUserID(ctx context.Context, userID pgtype.UUID) (GetAuthCredentialByUserIDRow, error)
+	GetAuthCredentialByUsername(ctx context.Context, username string) (GetAuthCredentialByUsernameRow, error)
 	GetJob(ctx context.Context, jobID string) (GuardianJobsJob, error)
 	GetServiceState(ctx context.Context, stateKey string) (GuardianSystemServiceState, error)
 	ListAuditRecords(ctx context.Context, arg ListAuditRecordsParams) ([]ListAuditRecordsRow, error)
+	ListAuthSessions(ctx context.Context, userID pgtype.UUID) ([]ListAuthSessionsRow, error)
 	PutServiceState(ctx context.Context, arg PutServiceStateParams) error
 }
 
