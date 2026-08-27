@@ -81,8 +81,8 @@ tasks:
           esac
         }
         trap cleanup_key EXIT
-        umask 077
         head -c 32 /dev/urandom >"$temporary_key"
+        chmod 600 "$temporary_key"
         GUARDIAN_MASTER_KEY_FILE="$temporary_key" \
           GUARDIAN_PUBLIC_ORIGIN="https://guardian.example.test" \
           bash tests/integration/control-plane/run.sh
