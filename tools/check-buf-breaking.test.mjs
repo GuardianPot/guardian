@@ -82,6 +82,7 @@ test('invalid resolved commit is rejected before baseline inspection', () => {
 
   assert.equal(
     checkBufBreaking({
+      environment: {},
       execute,
       reportError: (message) => errors.push(message),
     }),
@@ -101,7 +102,7 @@ test('missing Protobuf baseline defers without invoking Buf', () => {
     throw new Error('Buf must not run without a Protobuf baseline.');
   };
 
-  assert.equal(checkBufBreaking({ execute, log: (message) => logs.push(message) }), 0);
+  assert.equal(checkBufBreaking({ environment: {}, execute, log: (message) => logs.push(message) }), 0);
   assert.equal(calls.length, 2);
   assert.match(logs[0], /breaking signal is deferred/);
 });
@@ -114,7 +115,10 @@ test('Buf compatibility finding remains informational', () => {
     throw Object.assign(new Error('breaking change'), { status: 100 });
   };
 
-  assert.equal(checkBufBreaking({ execute, reportError: (message) => errors.push(message) }), 0);
+  assert.equal(
+    checkBufBreaking({ environment: {}, execute, reportError: (message) => errors.push(message) }),
+    0,
+  );
   assert.match(errors[0], /Buf reported a compatibility finding/);
 });
 
@@ -126,6 +130,9 @@ test('Buf operational failure remains blocking', () => {
     throw Object.assign(new Error('operational failure'), { status: 1 });
   };
 
-  assert.equal(checkBufBreaking({ execute, reportError: (message) => errors.push(message) }), 1);
+  assert.equal(
+    checkBufBreaking({ environment: {}, execute, reportError: (message) => errors.push(message) }),
+    1,
+  );
   assert.deepEqual(errors, ['Buf breaking execution failed with status 1.']);
 });
