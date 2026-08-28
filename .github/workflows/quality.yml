@@ -54,8 +54,11 @@ jobs:
         run: task container:check
       - name: Cowrie adapter fixture
         run: bash tools/cowrie-fixture.sh
+      - name: Buf breaking regression tests
+        run: node --test tools/check-buf-breaking.test.mjs
       - name: Buf breaking signal
-        continue-on-error: true
+        env:
+          GUARDIAN_BUF_BASE_REF: ${{ github.event.pull_request.base.sha || github.sha }}
         run: node tools/check-buf-breaking.mjs
       - name: Secret pattern scan
         run: npm run security:check
