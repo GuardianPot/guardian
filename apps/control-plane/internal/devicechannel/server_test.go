@@ -133,8 +133,11 @@ func TestExpiredCertificateAndIdentityMismatchFailClosed(t *testing.T) {
 	mismatchVerifier.eligible.Store(true)
 	mismatchServer := newTestServer(t, fixture, mismatchVerifier)
 	mismatchStream := openTestStream(t, mismatchServer.Address(), mismatch)
-	if err := mismatchStream.Send(helloFrame(ProtocolMajor, ProtocolMinor)); err != nil {
-		t.Fatal(err)
+	if err := mismatchStream.Send(helloFrame(ProtocolMajor, ProtocolMinor)); err != nil && !errors.Is(err, io.EOF) {
+		if status.Code(err) != codes.Unauthenticated {
+			t.Fatalf("identity mismatch send error = %v", err)
+		}
+		return
 	}
 	if _, err := mismatchStream.Recv(); status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("identity mismatch error = %v", err)
