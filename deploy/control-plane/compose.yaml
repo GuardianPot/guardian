@@ -1,4 +1,38 @@
 services:
+  control-plane:
+    profiles: ["application"]
+    build:
+      context: ../..
+      dockerfile: apps/control-plane/Dockerfile
+    command: ["serve"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      GUARDIAN_DATABASE_URL: postgres://${GUARDIAN_POSTGRES_USER:-guardian}:${GUARDIAN_POSTGRES_PASSWORD}@postgres:5432/${GUARDIAN_POSTGRES_DB:-guardian}?sslmode=disable
+      GUARDIAN_HTTP_ADDRESS: 0.0.0.0:8080
+      GUARDIAN_DEVICE_CHANNEL_ADDRESS: 0.0.0.0:8443
+      GUARDIAN_MASTER_KEY_FILE: /run/secrets/guardian-master.key
+      GUARDIAN_PUBLIC_ORIGIN: ${GUARDIAN_PUBLIC_ORIGIN:-https://guardian.example.test}
+      GUARDIAN_TLS_CERT_FILE: /run/tls/server.crt
+      GUARDIAN_TLS_KEY_FILE: /run/tls/server.key
+    ports:
+      - "127.0.0.1:${GUARDIAN_HTTP_PORT:-8080}:8080"
+      - "127.0.0.1:${GUARDIAN_DEVICE_CHANNEL_PORT:-8443}:8443"
+    volumes:
+      - ${GUARDIAN_MASTER_KEY_SOURCE:-./development/guardian-master.key}:/run/secrets/guardian-master.key:ro
+      - ${GUARDIAN_TLS_CERT_SOURCE:-./development/server.crt}:/run/tls/server.crt:ro
+      - ${GUARDIAN_TLS_KEY_SOURCE:-./development/server.key}:/run/tls/server.key:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    stop_grace_period: 20s
+    restart: "no"
+
   postgres:
     image: postgres:18.6-trixie@sha256:06cad38a5d9f5d24b4d83d86def30795d5e4b757fedbf5281172b576dedcd941
     environment:

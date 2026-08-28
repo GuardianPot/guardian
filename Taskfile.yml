@@ -115,14 +115,22 @@ tasks:
 
   privileged:generate:
     desc: Regenerate the typed privileged-helper Protobuf and gRPC contract
+    env:
+      GOWORK: 'off'
     cmds:
       - buf generate
 
   privileged:generated:
-    desc: Verify committed privileged-helper generated code is current
+    desc: Verify committed privileged-helper and device-channel generated code is current
     cmds:
       - task: privileged:generate
-      - git diff --exit-code -- apps/edge-agent/internal/privileged/gen
+      - git diff --exit-code -- apps/edge-agent/internal/privileged/gen apps/control-plane/internal/devicechannel/gen apps/edge-agent/internal/devicechannel/gen
+
+  device-channel:integration:
+    desc: Run P1-W5 mTLS, reconnect, revocation, bounds, and race evidence
+    deps: [control-plane:generated, privileged:generated]
+    cmds:
+      - bash tests/integration/device-channel/run.sh
 
   privileged:security:
     desc: Run privileged-helper boundary, abuse, socket, peer, and service-profile tests
@@ -263,7 +271,7 @@ tasks:
 
   validate:
     desc: Run all local quality checks
-    deps: [format:check, go:check, web:check, policy, contracts, container:check, control-plane:integration, enrollment:integration, auth:integration, environment:integration]
+    deps: [format:check, go:check, web:check, policy, contracts, container:check, control-plane:integration, enrollment:integration, auth:integration, environment:integration, device-channel:integration]
 
   build:
     desc: Build all skeleton applications

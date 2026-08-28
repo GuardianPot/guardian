@@ -3,12 +3,42 @@ version: v2
 clean: true
 
 plugins:
-  - local: ["env", "GOWORK=off", "go", "-C", "apps/edge-agent", "tool", "protoc-gen-go"]
+  - local: ["go", "-C", "apps/edge-agent", "tool", "protoc-gen-go"]
     out: apps/edge-agent/internal/privileged/gen
+    types:
+      - "guardian.privileged.v1.**"
     opt:
       - paths=source_relative
-  - local: ["env", "GOWORK=off", "go", "-C", "apps/edge-agent", "tool", "protoc-gen-go-grpc"]
+  - local: ["go", "-C", "apps/edge-agent", "tool", "protoc-gen-go-grpc"]
     out: apps/edge-agent/internal/privileged/gen
+    types:
+      - "guardian.privileged.v1.**"
+    opt:
+      - paths=source_relative
+      - require_unimplemented_servers=true
+  - local: ["go", "-C", "apps/edge-agent", "tool", "protoc-gen-go"]
+    out: apps/control-plane/internal/devicechannel/gen
+    types:
+      - "guardian.device.v1.**"
+    opt:
+      - paths=source_relative
+  - local: ["go", "-C", "apps/edge-agent", "tool", "protoc-gen-go-grpc"]
+    out: apps/control-plane/internal/devicechannel/gen
+    types:
+      - "guardian.device.v1.**"
+    opt:
+      - paths=source_relative
+      - require_unimplemented_servers=true
+  - local: ["go", "-C", "apps/edge-agent", "tool", "protoc-gen-go"]
+    out: apps/edge-agent/internal/devicechannel/gen
+    types:
+      - "guardian.device.v1.**"
+    opt:
+      - paths=source_relative
+  - local: ["go", "-C", "apps/edge-agent", "tool", "protoc-gen-go-grpc"]
+    out: apps/edge-agent/internal/devicechannel/gen
+    types:
+      - "guardian.device.v1.**"
     opt:
       - paths=source_relative
       - require_unimplemented_servers=true
@@ -17,3 +47,4 @@ inputs:
   - directory: proto
     paths:
       - proto/guardian/privileged
+      - proto/guardian/device

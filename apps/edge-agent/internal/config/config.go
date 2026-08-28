@@ -44,13 +44,14 @@ type Invocation struct {
 // Config contains non-secret Edge runtime settings. Enrollment tokens and
 // private-key material are intentionally not accepted in this file.
 type Config struct {
-	ControlPlaneEndpoint string `json:"control_plane_endpoint"`
-	DatabasePath         string `json:"database_path"`
-	SpoolDirectory       string `json:"spool_directory"`
-	IdentityCertPath     string `json:"identity_certificate_path"`
-	IdentityKeyPath      string `json:"identity_private_key_path"`
-	ShutdownSeconds      int    `json:"shutdown_timeout_seconds,omitempty"`
-	LogLevel             string `json:"log_level,omitempty"`
+	ControlPlaneEndpoint  string `json:"control_plane_endpoint"`
+	DeviceChannelEndpoint string `json:"device_channel_endpoint,omitempty"`
+	DatabasePath          string `json:"database_path"`
+	SpoolDirectory        string `json:"spool_directory"`
+	IdentityCertPath      string `json:"identity_certificate_path"`
+	IdentityKeyPath       string `json:"identity_private_key_path"`
+	ShutdownSeconds       int    `json:"shutdown_timeout_seconds,omitempty"`
+	LogLevel              string `json:"log_level,omitempty"`
 }
 
 // ShutdownTimeout returns the validated shutdown window.
@@ -174,6 +175,16 @@ func (c Config) Validate() error {
 	port, err := strconv.Atoi(portText)
 	if err != nil || port < 1 || port > 65535 {
 		return errors.New("control_plane_endpoint port must be between 1 and 65535")
+	}
+	if c.DeviceChannelEndpoint != "" {
+		channelHost, channelPortText, err := net.SplitHostPort(c.DeviceChannelEndpoint)
+		if err != nil || !validEndpointHost(channelHost) {
+			return errors.New("device_channel_endpoint must be a host:port endpoint")
+		}
+		channelPort, err := strconv.Atoi(channelPortText)
+		if err != nil || channelPort < 1 || channelPort > 65535 {
+			return errors.New("device_channel_endpoint port must be between 1 and 65535")
+		}
 	}
 	paths := []struct {
 		name  string

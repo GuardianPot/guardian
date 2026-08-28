@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"net/url"
 	"path/filepath"
 	"strconv"
@@ -25,6 +26,7 @@ const (
 
 const (
 	defaultHTTPAddress    = "127.0.0.1:8080"
+	defaultDeviceAddress  = "127.0.0.1:8443"
 	defaultShutdown       = 15 * time.Second
 	defaultDatabaseConns  = int32(10)
 	defaultLogLevel       = "info"
@@ -34,15 +36,16 @@ const (
 // Config contains runtime settings. DatabaseURL is sensitive and must never be
 // rendered through logs or diagnostics.
 type Config struct {
-	HTTPAddress        string
-	DatabaseURL        string
-	ShutdownTimeout    time.Duration
-	DatabaseMaxConns   int32
-	LogLevel           string
-	MasterKeyFile      string
-	PublicOrigin       string
-	TLSCertificateFile string
-	TLSPrivateKeyFile  string
+	HTTPAddress          string
+	DeviceChannelAddress string
+	DatabaseURL          string
+	ShutdownTimeout      time.Duration
+	DatabaseMaxConns     int32
+	LogLevel             string
+	MasterKeyFile        string
+	PublicOrigin         string
+	TLSCertificateFile   string
+	TLSPrivateKeyFile    string
 }
 
 // LookupEnv matches os.LookupEnv and keeps parsing deterministic in tests.
@@ -69,15 +72,16 @@ func Load(args []string, lookup LookupEnv) (Command, Config, error) {
 	}
 
 	cfg := Config{
-		HTTPAddress:        envOr(lookup, "GUARDIAN_HTTP_ADDRESS", defaultHTTPAddress),
-		DatabaseURL:        envOr(lookup, "GUARDIAN_DATABASE_URL", ""),
-		ShutdownTimeout:    defaultShutdown,
-		DatabaseMaxConns:   defaultDatabaseConns,
-		LogLevel:           envOr(lookup, "GUARDIAN_LOG_LEVEL", defaultLogLevel),
-		MasterKeyFile:      envOr(lookup, "GUARDIAN_MASTER_KEY_FILE", ""),
-		PublicOrigin:       envOr(lookup, "GUARDIAN_PUBLIC_ORIGIN", ""),
-		TLSCertificateFile: envOr(lookup, "GUARDIAN_TLS_CERT_FILE", ""),
-		TLSPrivateKeyFile:  envOr(lookup, "GUARDIAN_TLS_KEY_FILE", ""),
+		HTTPAddress:          envOr(lookup, "GUARDIAN_HTTP_ADDRESS", defaultHTTPAddress),
+		DeviceChannelAddress: envOr(lookup, "GUARDIAN_DEVICE_CHANNEL_ADDRESS", defaultDeviceAddress),
+		DatabaseURL:          envOr(lookup, "GUARDIAN_DATABASE_URL", ""),
+		ShutdownTimeout:      defaultShutdown,
+		DatabaseMaxConns:     defaultDatabaseConns,
+		LogLevel:             envOr(lookup, "GUARDIAN_LOG_LEVEL", defaultLogLevel),
+		MasterKeyFile:        envOr(lookup, "GUARDIAN_MASTER_KEY_FILE", ""),
+		PublicOrigin:         envOr(lookup, "GUARDIAN_PUBLIC_ORIGIN", ""),
+		TLSCertificateFile:   envOr(lookup, "GUARDIAN_TLS_CERT_FILE", ""),
+		TLSPrivateKeyFile:    envOr(lookup, "GUARDIAN_TLS_KEY_FILE", ""),
 	}
 	if value, ok := lookup("GUARDIAN_SHUTDOWN_TIMEOUT"); ok && value != "" {
 		duration, err := time.ParseDuration(value)
@@ -98,6 +102,7 @@ func Load(args []string, lookup LookupEnv) (Command, Config, error) {
 	flags.SetOutput(new(discardWriter))
 	if command == CommandServe {
 		flags.StringVar(&cfg.HTTPAddress, "http-address", cfg.HTTPAddress, "HTTP listen address")
+		flags.StringVar(&cfg.DeviceChannelAddress, "device-channel-address", cfg.DeviceChannelAddress, "device gRPC listen address")
 	}
 	if err := flags.Parse(args[1:]); err != nil {
 		return "", Config{}, fmt.Errorf("parse %s options: %w", command, err)
@@ -127,6 +132,11 @@ func (c Config) Validate(command Command) error {
 	}
 	if command == CommandServe && c.HTTPAddress == "" {
 		return errors.New("HTTP address must not be empty")
+	}
+	if command == CommandServe {
+		if _, _, err := net.SplitHostPort(c.DeviceChannelAddress); err != nil {
+			return errors.New("device channel address must be a host:port listen address")
+		}
 	}
 	if command == CommandInitDeviceCA || command == CommandCreateBootstrapToken || command == CommandServe {
 		if c.MasterKeyFile == "" {
@@ -167,6 +177,13 @@ func (c Config) Validate(command Command) error {
 // the master key; direct TLS additionally requires both certificate paths.
 func (c Config) EnrollmentEnabled() bool {
 	return c.MasterKeyFile != "" && c.TLSCertificateFile != "" && c.TLSPrivateKeyFile != ""
+}
+
+// DeviceChannelEnabled reports whether the dedicated listener has every TLS
+// and PKI prerequisite. A directly constructed test config can leave the
+// address empty to exercise the pre-channel lifecycle.
+func (c Config) DeviceChannelEnabled() bool {
+	return c.DeviceChannelAddress != "" && c.EnrollmentEnabled()
 }
 
 func validPublicOrigin(value string) bool {

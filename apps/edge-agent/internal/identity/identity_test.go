@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"math/big"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,7 +23,7 @@ func TestLoadValidProtectedIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(metadata.CertificateSHA256) != 64 || !metadata.NotAfter.Equal(now.Add(time.Hour)) {
+	if metadata.DeviceID != "0198f7c4-7b30-7f11-8a44-111111111111" || metadata.CertificateSerial == "" || len(metadata.CertificateSHA256) != 64 || !metadata.NotAfter.Equal(now.Add(time.Hour)) {
 		t.Fatalf("metadata = %+v", metadata)
 	}
 }
@@ -89,6 +90,7 @@ func writeIdentity(t *testing.T, notBefore, notAfter time.Time, key *ecdsa.Priva
 		NotAfter:     notAfter,
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		URIs:         []*url.URL{{Scheme: "urn", Opaque: "guardian:device:0198f7c4-7b30-7f11-8a44-111111111111"}},
 	}
 	certificateDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
 	if err != nil {

@@ -58,6 +58,7 @@ func TestLoadStrictConfigurationAndDefaults(t *testing.T) {
 	path := filepath.Join(root, "edge.json")
 	writeConfig(t, path, `{
   "control_plane_endpoint": "guardian.example:443",
+  "device_channel_endpoint": "devices.guardian.example:443",
   "database_path": "`+filepath.Join(root, "edge.db")+`",
   "spool_directory": "`+filepath.Join(root, "spool")+`",
   "identity_certificate_path": "`+filepath.Join(root, "identity.crt")+`",
@@ -68,7 +69,7 @@ func TestLoadStrictConfigurationAndDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.ShutdownTimeout() != 15*time.Second || cfg.LogLevel != "info" {
+	if cfg.ShutdownTimeout() != 15*time.Second || cfg.LogLevel != "info" || cfg.DeviceChannelEndpoint != "devices.guardian.example:443" {
 		t.Fatalf("defaults = timeout %s level %q", cfg.ShutdownTimeout(), cfg.LogLevel)
 	}
 }
@@ -116,13 +117,14 @@ func TestLoadRejectsMissingUnknownOversizedAndWritableConfiguration(t *testing.T
 func TestValidateRejectsUnsafeConfiguration(t *testing.T) {
 	root := t.TempDir()
 	valid := Config{
-		ControlPlaneEndpoint: "guardian.example:443",
-		DatabasePath:         filepath.Join(root, "edge.db"),
-		SpoolDirectory:       filepath.Join(root, "spool"),
-		IdentityCertPath:     filepath.Join(root, "device.crt"),
-		IdentityKeyPath:      filepath.Join(root, "device.key"),
-		ShutdownSeconds:      15,
-		LogLevel:             "info",
+		ControlPlaneEndpoint:  "guardian.example:443",
+		DeviceChannelEndpoint: "devices.guardian.example:443",
+		DatabasePath:          filepath.Join(root, "edge.db"),
+		SpoolDirectory:        filepath.Join(root, "spool"),
+		IdentityCertPath:      filepath.Join(root, "device.crt"),
+		IdentityKeyPath:       filepath.Join(root, "device.key"),
+		ShutdownSeconds:       15,
+		LogLevel:              "info",
 	}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("valid configuration: %v", err)
@@ -130,6 +132,7 @@ func TestValidateRejectsUnsafeConfiguration(t *testing.T) {
 
 	tests := []Config{
 		func() Config { c := valid; c.ControlPlaneEndpoint = "http://guardian"; return c }(),
+		func() Config { c := valid; c.DeviceChannelEndpoint = "https://guardian"; return c }(),
 		func() Config { c := valid; c.DatabasePath = "edge.db"; return c }(),
 		func() Config { c := valid; c.IdentityKeyPath = c.IdentityCertPath; return c }(),
 		func() Config { c := valid; c.ShutdownSeconds = 121; return c }(),

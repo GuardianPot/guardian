@@ -14,6 +14,7 @@ import (
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/auth"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/config"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/deception"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/devicechannel"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/devicepki"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/devices"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/environment"
@@ -75,6 +76,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 			return session.UserID, err
 		})),
 	}
+	var channelServer *devicechannel.Server
 	if cfg.EnrollmentEnabled() {
 		caMaterial, err := store.DeviceCAMaterial(ctx)
 		if err != nil {
@@ -92,6 +94,16 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 			api.WithDeviceService(deviceService),
 			api.WithTLSFiles(cfg.TLSCertificateFile, cfg.TLSPrivateKeyFile, authority.CertificatePEM()),
 		)
+		if cfg.DeviceChannelEnabled() {
+			channelServer, err = devicechannel.NewServer(devicechannel.Config{
+				Address: cfg.DeviceChannelAddress, TLSCertificateFile: cfg.TLSCertificateFile,
+				TLSPrivateKeyFile: cfg.TLSPrivateKeyFile, DeviceCAPEM: authority.CertificatePEM(),
+				Verifier: deviceService, Logger: logger,
+			})
+			if err != nil {
+				return fmt.Errorf("build device channel server: %w", err)
+			}
+		}
 	}
 	components, err := lifecycle.New(
 		auth.New(),
@@ -114,9 +126,21 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err := server.Start(); err != nil {
 		return errors.Join(fmt.Errorf("start HTTP server: %w", err), components.Stop(context.Background()))
 	}
+	if channelServer != nil {
+		if err := channelServer.Start(); err != nil {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+			defer cancel()
+			return errors.Join(fmt.Errorf("start device channel server: %w", err), server.Shutdown(shutdownCtx), components.Stop(shutdownCtx))
+		}
+		logger.InfoContext(ctx, "Device channel started", "device_channel_address", channelServer.Address())
+	}
 	logger.InfoContext(ctx, "Control Plane started", "http_address", server.Address())
 
 	var runErr error
+	var channelErrors <-chan error
+	if channelServer != nil {
+		channelErrors = channelServer.Errors()
+	}
 	select {
 	case <-ctx.Done():
 		logger.Info("Control Plane shutdown requested")
@@ -126,11 +150,21 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		} else {
 			runErr = errors.New("HTTP server stopped unexpectedly")
 		}
+	case serveErr := <-channelErrors:
+		if serveErr != nil {
+			runErr = fmt.Errorf("serve device channel: %w", serveErr)
+		} else {
+			runErr = errors.New("device channel server stopped unexpectedly")
+		}
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 	shutdownErr := server.Shutdown(shutdownCtx)
+	var channelShutdownErr error
+	if channelServer != nil {
+		channelShutdownErr = channelServer.Shutdown(shutdownCtx)
+	}
 	componentErr := components.Stop(shutdownCtx)
-	return errors.Join(runErr, shutdownErr, componentErr)
+	return errors.Join(runErr, channelShutdownErr, shutdownErr, componentErr)
 }

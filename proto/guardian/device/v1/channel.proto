@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package guardian.device.v1;
+
+import "google/protobuf/timestamp.proto";
+import "guardian/device/v1/device.proto";
+
+option go_package = "github.com/GuardianPot/guardian/gen/go/guardian/device/v1;devicev1";
+
+// DeviceChannel is the single authenticated Control Plane to Edge management
+// stream. The peer identity is supplied exclusively by mTLS, never by a field
+// in these envelopes.
+service DeviceChannelService {
+  rpc Connect(stream ConnectRequest) returns (stream ConnectResponse);
+}
+
+message ProtocolVersion {
+  uint32 major = 1;
+  uint32 minor = 2;
+}
+
+message EdgeHello {
+  ProtocolVersion protocol = 1;
+  string agent_version = 2;
+}
+
+message ProtocolSelection {
+  ProtocolVersion selected = 1;
+  bool accepted = 2;
+  string reason = 3;
+}
+
+message Heartbeat {
+  google.protobuf.Timestamp sent_at = 1;
+}
+
+// DesiredStateSnapshot is deliberately revision-only in P1-W5. P1-W6 owns
+// the typed desired objects and adds them atomically with every consumer.
+message DesiredStateSnapshot {
+  string message_id = 1;
+  uint64 revision = 2;
+}
+
+// ObservedState is the transport acknowledgement boundary. Durable reconcile
+// attempts and typed conditions remain owned by P1-W6.
+message ObservedState {
+  string message_id = 1;
+  uint64 desired_revision = 2;
+  uint64 observed_revision = 3;
+}
+
+enum AcknowledgementKind {
+  ACKNOWLEDGEMENT_KIND_UNSPECIFIED = 0;
+  ACKNOWLEDGEMENT_KIND_DESIRED_STATE = 1;
+  ACKNOWLEDGEMENT_KIND_OBSERVED_STATE = 2;
+  ACKNOWLEDGEMENT_KIND_HEALTH_REPORT = 3;
+}
+
+message Acknowledgement {
+  string message_id = 1;
+  AcknowledgementKind kind = 2;
+  uint64 revision = 3;
+}
+
+message ConnectRequest {
+  oneof payload {
+    EdgeHello hello = 1;
+    Heartbeat heartbeat = 2;
+    ObservedState observed_state = 3;
+    HealthReport health_report = 4;
+    Acknowledgement acknowledgement = 5;
+  }
+}
+
+message ConnectResponse {
+  oneof payload {
+    ProtocolSelection protocol_selection = 1;
+    DesiredStateSnapshot desired_state = 2;
+    Acknowledgement acknowledgement = 3;
+  }
+}

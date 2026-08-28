@@ -11,6 +11,7 @@ import (
 
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/components"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/config"
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/devicechannel"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/enrollment"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/identity"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/lifecycle"
@@ -20,15 +21,21 @@ import (
 
 const tracerName = "github.com/GuardianPot/guardian/apps/edge-agent"
 
+const channelAgentVersion = "guardian-edge/phase-1"
+
 // Run validates the protected identity before creating state, starts the fixed
 // component graph, and drains it on cancellation.
 func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) (runErr error) {
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "edge-agent.run")
 	defer span.End()
 
-	metadata, err := identity.Load(cfg.IdentityCertPath, cfg.IdentityKeyPath, time.Now().UTC())
+	credentials, err := identity.LoadCredentials(cfg.IdentityCertPath, cfg.IdentityKeyPath, time.Now().UTC())
 	if err != nil {
 		return fmt.Errorf("load secure Edge identity: %w", err)
+	}
+	metadata := credentials.Metadata
+	if cfg.DeviceChannelEndpoint == "" {
+		return errors.New("device_channel_endpoint is required for Edge serve")
 	}
 	store, err := storage.Open(ctx, storage.Options{
 		DatabasePath: cfg.DatabasePath, SpoolDirectory: cfg.SpoolDirectory,
@@ -62,6 +69,23 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) (runErr er
 	}
 
 	graph := components.NewFoundation(store, metadata, enrollmentStatus)
+	channel, err := devicechannel.NewClient(devicechannel.Config{
+		Endpoint: cfg.DeviceChannelEndpoint, AgentVersion: channelAgentVersion,
+		Credentials: credentials, Logger: logger,
+		StateRecorder: devicechannel.StateRecorderFunc(func(ctx context.Context, state, reason string) error {
+			status := "degraded"
+			if state == "connected" {
+				status = "healthy"
+			} else if state == "stopped" {
+				status = "stopped"
+			}
+			return store.SetHealth(ctx, storage.HealthCondition{Name: "device-channel", Status: status, ReasonCode: reason})
+		}),
+	})
+	if err != nil {
+		return fmt.Errorf("build device channel client: %w", err)
+	}
+	graph.Channel = channel
 	ordered := graph.Ordered()
 	ordered = append(ordered, enrollment.NewRotationManager(
 		cfg.ControlPlaneEndpoint,

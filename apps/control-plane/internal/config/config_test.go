@@ -31,7 +31,7 @@ func TestLoadServeDefaultsAndOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if command != CommandServe || cfg.HTTPAddress != "127.0.0.1:9090" || cfg.ShutdownTimeout != 20*time.Second || cfg.DatabaseMaxConns != 12 || cfg.LogLevel != "debug" {
+	if command != CommandServe || cfg.HTTPAddress != "127.0.0.1:9090" || cfg.DeviceChannelAddress != "127.0.0.1:8443" || cfg.ShutdownTimeout != 20*time.Second || cfg.DatabaseMaxConns != 12 || cfg.LogLevel != "debug" {
 		t.Fatalf("Load() = (%q, %+v), unexpected configuration", command, cfg)
 	}
 }
