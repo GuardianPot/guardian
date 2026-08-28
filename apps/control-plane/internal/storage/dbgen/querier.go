@@ -15,15 +15,30 @@ type Querier interface {
 	// append/anchor protocol v1). The first-page reader takes the exclusive side.
 	AcquireAuditAnchorLock(ctx context.Context) error
 	AppendAuditRecord(ctx context.Context, arg AppendAuditRecordParams) (AppendAuditRecordRow, error)
+	BumpEnvironmentRevision(ctx context.Context, environmentID pgtype.UUID) error
+	CreateEnvironment(ctx context.Context, arg CreateEnvironmentParams) (CreateEnvironmentRow, error)
 	CreateJob(ctx context.Context, arg CreateJobParams) error
+	CreateZone(ctx context.Context, arg CreateZoneParams) (CreateZoneRow, error)
+	DeleteZone(ctx context.Context, arg DeleteZoneParams) (int64, error)
 	GetAuditAnchor(ctx context.Context) (int64, error)
 	GetAuthCredentialByUserID(ctx context.Context, userID pgtype.UUID) (GetAuthCredentialByUserIDRow, error)
 	GetAuthCredentialByUsername(ctx context.Context, username string) (GetAuthCredentialByUsernameRow, error)
+	GetEnvironment(ctx context.Context, environmentID pgtype.UUID) (GetEnvironmentRow, error)
+	GetEnvironmentForUpdate(ctx context.Context, environmentID pgtype.UUID) (GetEnvironmentForUpdateRow, error)
 	GetJob(ctx context.Context, jobID string) (GuardianJobsJob, error)
+	GetOrganizationSingleton(ctx context.Context) (GetOrganizationSingletonRow, error)
 	GetServiceState(ctx context.Context, stateKey string) (GuardianSystemServiceState, error)
+	GetZone(ctx context.Context, arg GetZoneParams) (GetZoneRow, error)
+	GetZoneForUpdate(ctx context.Context, arg GetZoneForUpdateParams) (GetZoneForUpdateRow, error)
 	ListAuditRecords(ctx context.Context, arg ListAuditRecordsParams) ([]ListAuditRecordsRow, error)
 	ListAuthSessions(ctx context.Context, userID pgtype.UUID) ([]ListAuthSessionsRow, error)
+	ListEnvironments(ctx context.Context, limit int32) ([]ListEnvironmentsRow, error)
+	ListZones(ctx context.Context, arg ListZonesParams) ([]ListZonesRow, error)
+	LockEnvironmentZoneSet(ctx context.Context, environmentID string) error
 	PutServiceState(ctx context.Context, arg PutServiceStateParams) error
+	UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentParams) (UpdateEnvironmentRow, error)
+	UpdateZone(ctx context.Context, arg UpdateZoneParams) (UpdateZoneRow, error)
+	ZoneOverlapExists(ctx context.Context, arg ZoneOverlapExistsParams) (bool, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -19,6 +19,7 @@ import (
 
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/devicepki"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/devices"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/environment"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/secretstore"
 )
 
@@ -61,8 +62,16 @@ func TestDurableEnrollmentReplayReenrollmentRotationAndRevocation(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	environmentService, err := environment.NewService(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configuredEnvironment, err := environmentService.CreateEnvironment(ctx, "Enrollment integration", environment.Mutation{ActorID: "owner-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	const environmentID = "0198dc8c-c600-7000-8000-000000000003"
+	environmentID := configuredEnvironment.EnvironmentID
 	expiredToken, err := service.CreateEnrollmentToken(ctx, environmentID, "expired-edge", "owner-1")
 	if err != nil {
 		t.Fatal(err)

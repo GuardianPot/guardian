@@ -43,8 +43,23 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("build local authentication service: %w", err)
 	}
+	environmentService, err := environment.NewService(store)
+	if err != nil {
+		return fmt.Errorf("build environment service: %w", err)
+	}
 	serverOptions := []api.Option{
 		api.WithAuthService(authService),
+		api.WithEnvironmentService(environmentService),
+		api.WithEnvironmentAuthorizer(api.EnvironmentAuthorizerFunc(func(
+			ctx context.Context, sessionToken, csrf, origin string, mutation bool,
+		) (string, error) {
+			if mutation {
+				session, err := authService.AuthorizeMutation(ctx, sessionToken, csrf, origin)
+				return session.UserID, err
+			}
+			session, err := authService.AuthorizeRead(ctx, sessionToken)
+			return session.UserID, err
+		})),
 		api.WithAuditAuthorizer(api.AuditAuthorizerFunc(func(ctx context.Context, sessionToken string) error {
 			_, err := authService.AuthorizeRead(ctx, sessionToken)
 			return err

@@ -30,6 +30,8 @@ type Server struct {
 	auditAuthorizer    AuditAuthorizer
 	deviceService      DeviceService
 	deviceAuthorizer   DeviceAdminAuthorizer
+	environmentService EnvironmentService
+	environmentAuth    EnvironmentAuthorizer
 	authService        AuthService
 	logger             *slog.Logger
 	http               *http.Server
@@ -52,6 +54,7 @@ func NewServer(address string, readiness Readiness, logger *slog.Logger, options
 		readiness:        readiness,
 		auditAuthorizer:  denyAuditAuthorizer{},
 		deviceAuthorizer: denyDeviceAdminAuthorizer{},
+		environmentAuth:  denyEnvironmentAuthorizer{},
 		logger:           logger,
 		errors:           make(chan error, 1),
 	}
@@ -98,6 +101,16 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("DELETE /v1/auth/sessions/{sessionId}", s.handleRevokeSession)
 	mux.HandleFunc("POST /v1/auth/password", s.handleChangePassword)
 	mux.HandleFunc("GET /v1/audit/events", s.handleListAuditEvents)
+	mux.HandleFunc("GET /v1/organization", s.handleGetOrganization)
+	mux.HandleFunc("GET /v1/environments", s.handleListEnvironments)
+	mux.HandleFunc("POST /v1/environments", s.handleCreateEnvironment)
+	mux.HandleFunc("GET /v1/environments/{environmentId}", s.handleGetEnvironment)
+	mux.HandleFunc("PATCH /v1/environments/{environmentId}", s.handleUpdateEnvironment)
+	mux.HandleFunc("GET /v1/environments/{environmentId}/zones", s.handleListZones)
+	mux.HandleFunc("POST /v1/environments/{environmentId}/zones", s.handleCreateZone)
+	mux.HandleFunc("GET /v1/environments/{environmentId}/zones/{zoneId}", s.handleGetZone)
+	mux.HandleFunc("PATCH /v1/environments/{environmentId}/zones/{zoneId}", s.handleUpdateZone)
+	mux.HandleFunc("DELETE /v1/environments/{environmentId}/zones/{zoneId}", s.handleDeleteZone)
 	mux.HandleFunc("POST /v1/environments/{environmentId}/enrollment-tokens", s.handleCreateEnrollmentToken)
 	mux.HandleFunc("GET /v1/environments/{environmentId}/enrollment-tokens", s.handleListEnrollmentTokens)
 	mux.HandleFunc("DELETE /v1/environments/{environmentId}/enrollment-tokens/{tokenId}", s.handleRevokeEnrollmentToken)
