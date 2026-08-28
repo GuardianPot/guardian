@@ -1,5 +1,6 @@
 {
   "control_plane_endpoint": "guardian.example:443",
+  "device_channel_endpoint": "devices.guardian.example:443",
   "database_path": "/var/lib/guardian-edge/edge.db",
   "spool_directory": "/var/lib/guardian-edge/spool",
   "identity_certificate_path": "/var/lib/guardian-edge/identity/device.crt",

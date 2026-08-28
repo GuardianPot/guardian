@@ -1,13 +1,14 @@
 # Edge Agent dependency review
 
-Reviewed for P1-W7 and P1-W8 on 2026-08-23.
+Reviewed for P1-W7/P1-W8 on 2026-08-23 and P1-W5 on 2026-08-28.
 
 | Dependency | Pinned version | Purpose | Security/license note |
 |---|---:|---|---|
 | Go | 1.27.0 | Native Edge daemon | Approved by EN-01; static application build supported. |
 | modernc.org/sqlite | v1.57.0 | Pure-Go SQLite WAL driver | Current module release at review time; BSD-3-Clause. No CGO/native SQLite runtime dependency. |
-| go.opentelemetry.io/otel | v1.45.0 | Vendor-neutral trace API | Matches ADR 0014 and the Control Plane baseline; Apache-2.0. |
-| google.golang.org/grpc | v1.83.1 | Typed local privileged-helper RPC | Current module release at review time; Apache-2.0. Transport is restricted to the fixed Unix socket and kernel peer credentials. |
+| go.opentelemetry.io/otel | v1.46.0 | Vendor-neutral trace API | Matches ADR 0014 and the Control Plane baseline; Apache-2.0. |
+| go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc | v0.71.0 | W3C trace context on the device channel | Apache-2.0; payloads and credentials are not recorded. |
+| google.golang.org/grpc | v1.83.2 | Typed local helper RPC and remote mTLS device channel | Current secure patch release at review time; Apache-2.0. Each transport has distinct credentials and limits. |
 | google.golang.org/protobuf | v1.36.12 | Generated privileged-helper messages | Current module/tool release at review time; BSD-3-Clause. |
 | google.golang.org/grpc/cmd/protoc-gen-go-grpc | v1.6.2 | Pinned gRPC stub generator | Repository tool only; Apache-2.0. Declared with the Go `tool` directive. |
 | golang.org/x/sys | v0.47.0 | `SO_PEERCRED` and pidfd Linux primitives | Direct P1-W8 dependency; BSD-3-Clause. |
@@ -33,9 +34,10 @@ Verification results:
 - P1-W8 pins `protoc-gen-go` through the Protobuf module and
   `protoc-gen-go-grpc` through its generator module. `buf generate` invokes
   both with `go tool`; no unpinned binary from `PATH` generates committed code.
-- `grpc-go` and Protobuf are used only for the local typed v1 contract. The
-  helper exposes no reflection service, TCP listener, arbitrary command/path,
-  raw nftables ruleset, or container-runtime socket.
+- The privileged-helper service still exposes no reflection service, TCP
+  listener, arbitrary command/path, raw nftables ruleset, or container-runtime
+  socket. The separate P1-W5 TCP service is the authenticated product device
+  plane and cannot invoke privileged-helper methods.
 
 The SQLite v1.57.0 module's resolved modernc transitive set is retained rather
 than overriding individual internals beyond the upstream-tested graph. This is

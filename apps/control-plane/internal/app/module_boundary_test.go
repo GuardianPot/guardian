@@ -19,6 +19,7 @@ var domainPackageRoots = []string{
 	"audit",
 	"auth",
 	"deception",
+	"devicechannel",
 	"devices",
 	"environment",
 	"health",

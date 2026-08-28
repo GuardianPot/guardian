@@ -46,6 +46,7 @@ GOWORK=off go -C "$repo_root/apps/edge-agent" build \
 cat >"$config_path" <<EOF
 {
   "control_plane_endpoint": "127.0.0.1:7443",
+  "device_channel_endpoint": "127.0.0.1:7444",
   "database_path": "$database_path",
   "spool_directory": "$spool_path",
   "identity_certificate_path": "$cert_path",
@@ -73,6 +74,8 @@ fi
 
 openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 \
   -subj '/CN=guardian-edge-integration' \
+  -addext 'subjectAltName=URI:urn:guardian:device:0198f7c4-7b30-7f11-8a44-111111111111' \
+  -addext 'extendedKeyUsage=clientAuth' \
   -keyout "$key_path" \
   -out "$cert_path" \
   >/dev/null 2>&1

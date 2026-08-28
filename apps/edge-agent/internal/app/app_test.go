@@ -13,6 +13,7 @@ import (
 	"io"
 	"log/slog"
 	"math/big"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,13 +100,14 @@ func TestRunStartsAndStopsAllComponentsOnCancellation(t *testing.T) {
 
 func testConfig(root string) config.Config {
 	return config.Config{
-		ControlPlaneEndpoint: "127.0.0.1:7443",
-		DatabasePath:         filepath.Join(root, "state", "edge.db"),
-		SpoolDirectory:       filepath.Join(root, "spool"),
-		IdentityCertPath:     filepath.Join(root, "identity", "device.crt"),
-		IdentityKeyPath:      filepath.Join(root, "identity", "device.key"),
-		ShutdownSeconds:      1,
-		LogLevel:             "info",
+		ControlPlaneEndpoint:  "127.0.0.1:7443",
+		DeviceChannelEndpoint: "127.0.0.1:7444",
+		DatabasePath:          filepath.Join(root, "state", "edge.db"),
+		SpoolDirectory:        filepath.Join(root, "spool"),
+		IdentityCertPath:      filepath.Join(root, "identity", "device.crt"),
+		IdentityKeyPath:       filepath.Join(root, "identity", "device.key"),
+		ShutdownSeconds:       1,
+		LogLevel:              "info",
 	}
 }
 
@@ -135,6 +137,7 @@ func writeAppIdentity(t *testing.T, certPath, keyPath string) {
 		NotAfter:     now.Add(time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		URIs:         []*url.URL{{Scheme: "urn", Opaque: "guardian:device:0198f7c4-7b30-7f11-8a44-111111111111"}},
 	}
 	certificateDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
 	if err != nil {

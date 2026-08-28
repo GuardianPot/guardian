@@ -1,4 +1,4 @@
-# P1-W1 dependency and license inventory
+# Control Plane dependency and license inventory
 
 Resolved versions are committed in the relevant `go.mod` and `go.sum` files.
 
@@ -11,15 +11,20 @@ Resolved versions are committed in the relevant `go.mod` and `go.sum` files.
 | `github.com/jackc/pgx/v5` | 5.10.0 | PostgreSQL driver/pool | MIT |
 | `github.com/pressly/goose/v3` | 3.27.3 | Embedded forward migrations | MIT |
 | `github.com/sqlc-dev/sqlc` | 1.31.1 | Isolated repository tool module | MIT |
-| `go.opentelemetry.io/otel` | 1.45.0 | HTTP trace/metric API | Apache-2.0 |
-| `otelhttp` | 0.70.0 | `net/http` instrumentation | Apache-2.0 |
+| `go.opentelemetry.io/otel` | 1.46.0 | HTTP/gRPC trace and metric API | Apache-2.0 |
+| `otelhttp` | 0.71.0 | `net/http` instrumentation | Apache-2.0 |
+| `otelgrpc` | 0.71.0 | gRPC trace-context instrumentation | Apache-2.0 |
+| `google.golang.org/grpc` | 1.83.2 | Bounded TLS 1.3 device channel | Apache-2.0 |
+| `google.golang.org/protobuf` | 1.36.12 | Generated device-channel messages | BSD-3-Clause |
 
 `sqlc` and the upstream goose CLI are tool-only modules under
 `apps/control-plane/tools/`; they are not linked into the Control Plane runtime.
 The runtime and goose tool modules explicitly raise retracted transitive
 `modernc.org/libc` 1.74.3 to fixed 1.74.4. The sqlc tool module raises its
 security-sensitive transitive graph to `cel-go` 0.30.0, gRPC 1.83.1,
-`x/net` 0.58.0, and `x/text` 0.41.0.
+`x/net` 0.58.0, and `x/text` 0.41.0. P1-W5 directly selects the newer runtime
+gRPC 1.83.2 for the device listener; the isolated sqlc tool graph remains
+separate from the application binary.
 
 The Control Plane is built with `CGO_ENABLED=0` and runs on the Debian 13
 distroless static nonroot image. The selected multi-platform digest is verified

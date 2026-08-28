@@ -41,6 +41,12 @@ It is not a complete production packaging matrix.
 8. Enable both units. The main daemon remains alive and reports a precise
    degraded reason if the helper is stopped or unavailable.
 
+`control_plane_endpoint` is the HTTPS enrollment/rotation endpoint.
+`device_channel_endpoint` is the dedicated outbound gRPC/mTLS endpoint and is
+required by `serve`. Its hostname must match the server certificate and its CA
+must be installed in the operating-system trust store. The Edge requires no
+inbound port or additional capability.
+
 The configuration accepts no enrollment token or private-key body. A missing,
 expired, mismatched, symlinked, or broadly readable key makes startup fail. No
 plaintext or unauthenticated channel fallback exists.
@@ -48,4 +54,5 @@ plaintext or unauthenticated channel fallback exists.
 See `docs/runbooks/edge-agent/development.md` for diagnostics and explicit
 development database recovery. See
 `docs/runbooks/privileged-helper/development.md` for P1-W8 operation and abuse
-evidence.
+evidence. See `docs/runbooks/device-channel/development.md` for P1-W5 channel
+operation and failure injection.
