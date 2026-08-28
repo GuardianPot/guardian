@@ -20,6 +20,12 @@ Status: Accepted for Phase 0 fixture scope
   executable or instruction field in canonical telemetry.
 - Malformed raw event lines are reported and skipped without discarding valid
   evidence or crashing the proof harness.
+- The SSH fixture client captures stdout and stderr in independent buffers.
+  This prevents the SSH package's concurrent stream-copy goroutines from
+  racing on one non-thread-safe `bytes.Buffer`.
+- A concurrent regression test runs under Go's race detector on Linux, and the
+  fixture completes five successful interactive sessions before event
+  normalization.
 
 ## Known limitations
 
@@ -29,10 +35,15 @@ Status: Accepted for Phase 0 fixture scope
   only; no production or user credential is involved.
 - Full product telemetry ingestion, file quarantine, and independent external
   penetration testing remain later-phase work.
+- Separate stream buffers do not preserve a total ordering between stdout and
+  stderr. The fixture only requires both streams to be captured without shared
+  mutable state; no canonical event contract depends on cross-stream ordering.
 
 ## Evidence commands
 
 ```text
 task cowrie:adapter
+bash tools/cowrie-fixture.sh
+GOWORK=off go -C tools/cowrie-client test -race ./...
 task validate
 ```
