@@ -51,10 +51,19 @@ mkdir -p "$client_dir"
 
 "$docker_bin" pull "$image" >/dev/null
 if command -v go >/dev/null 2>&1; then
-  (cd tools/cowrie-client && GOWORK=off GOOS=linux GOARCH=amd64 go mod download && GOWORK=off GOOS=linux GOARCH=amd64 go build -o "$client_bin" .)
+  (
+    cd tools/cowrie-client
+    if [ "$(go env GOOS)" = linux ]; then
+      GOWORK=off go test -race ./...
+    else
+      GOWORK=off go test ./...
+    fi
+    GOWORK=off GOOS=linux GOARCH=amd64 go mod download
+    GOWORK=off GOOS=linux GOARCH=amd64 go build -o "$client_bin" .
+  )
 elif [ -x '/mnt/c/Program Files/Go/bin/go.exe' ] && [ -x '/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe' ]; then
   repo_win="$(wslpath -w "$repo_root")"
-  "/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe" -NoProfile -Command "Set-Location -LiteralPath '$repo_win/tools/cowrie-client'; \$env:GOWORK='off'; \$env:GOOS='linux'; \$env:GOARCH='amd64'; go mod download; if (\$LASTEXITCODE -ne 0) { exit \$LASTEXITCODE }; go build -o '$client_bin_for_docker' ."
+  "/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe" -NoProfile -Command "Set-Location -LiteralPath '$repo_win/tools/cowrie-client'; \$env:GOWORK='off'; go test ./...; if (\$LASTEXITCODE -ne 0) { exit \$LASTEXITCODE }; \$env:GOOS='linux'; \$env:GOARCH='amd64'; go mod download; if (\$LASTEXITCODE -ne 0) { exit \$LASTEXITCODE }; go build -o '$client_bin_for_docker' ."
 else
   echo 'Go 1.27 is required to build the disposable Cowrie SSH client.' >&2
   exit 1
@@ -112,7 +121,9 @@ set +e
 bad_status=$?
 set -e
 test "$bad_status" -ne 0
-"$docker_bin" exec "$name" /cowrie/cowrie-git/var/guardian-p0-w7-cowrie-client -user root -password "$fixture_password" -command "id; uname -a; printf \"<script>alert(1)</script>$hostile_marker\"" >/dev/null
+for session_attempt in $(seq 1 5); do
+  "$docker_bin" exec "$name" /cowrie/cowrie-git/var/guardian-p0-w7-cowrie-client -user root -password "$fixture_password" -command "id; uname -a; printf \"<script>alert(1)</script>$hostile_marker\"" >/dev/null
+done
 
 raw_events="$("$docker_bin" exec "$name" /cowrie/cowrie-env/bin/python3 -c "from pathlib import Path; print(Path('var/log/cowrie/cowrie.json').read_text())")"
 printf '%s\n{malformed-cowrie-event\n' "$raw_events" | "$node_bin" "$normalizer" --validate --forbidden "$fixture_password" --hostile "$hostile_marker" >/dev/null

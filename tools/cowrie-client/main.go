@@ -50,9 +50,7 @@ func main() {
 	defer session.Close()
 
 	if *interactive {
-		var output bytes.Buffer
-		session.Stdout = &output
-		session.Stderr = &output
+		stdout, stderr := configureInteractiveOutput(session)
 		session.Stdin = bytes.NewBufferString(*command + "\nexit\n")
 		if err := session.RequestPty("xterm", 120, 40, ssh.TerminalModes{}); err != nil {
 			fmt.Fprintf(os.Stderr, "SSH PTY request failed: %v\n", err)
@@ -63,7 +61,8 @@ func main() {
 			os.Exit(1)
 		}
 		err = session.Wait()
-		_, _ = io.Copy(os.Stdout, &output)
+		_, _ = io.Copy(os.Stdout, stdout)
+		_, _ = io.Copy(os.Stderr, stderr)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "SSH shell failed: %v\n", err)
 			os.Exit(1)
@@ -77,4 +76,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "SSH command failed: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func configureInteractiveOutput(session *ssh.Session) (stdout, stderr *bytes.Buffer) {
+	stdout = new(bytes.Buffer)
+	stderr = new(bytes.Buffer)
+	session.Stdout = stdout
+	session.Stderr = stderr
+	return stdout, stderr
 }
