@@ -21,7 +21,7 @@ export default defineConfig({
     trace: 'off',
     video: 'off',
     screenshot: 'off',
-    reducedMotion: 'reduce',
+    contextOptions: { reducedMotion: 'reduce' },
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
