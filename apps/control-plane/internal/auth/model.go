@@ -108,7 +108,7 @@ type Repository interface {
 	RecordAuthenticationFailure(context.Context, [sha256.Size]byte, [sha256.Size]byte, time.Time) error
 	CompleteTOTPLogin(context.Context, LoginCompletion) error
 	CompleteRecoveryLogin(context.Context, RecoveryCompletion) error
-	AuthenticateSession(context.Context, [sha256.Size]byte, time.Time, time.Duration) (Session, error)
+	AuthenticateSession(context.Context, [sha256.Size]byte, time.Duration) (Session, error)
 	RevokeSession(context.Context, string, string, time.Time, string) error
 	ListSessions(context.Context, string, string, time.Time) ([]Session, error)
 	ChangePassword(context.Context, PasswordChange) error

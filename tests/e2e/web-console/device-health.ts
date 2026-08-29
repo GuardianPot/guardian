@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import process from 'node:process';
 
 type Connection = { close(): void };
+export type HealthTransitionTime = Readonly<{ seconds: string; nanos: number }>;
 
 const health = [
   ['HEALTH_CONDITION_TYPE_EDGE_CONNECTED', 'connected'],
@@ -18,7 +19,15 @@ const health = [
   ['HEALTH_CONDITION_TYPE_PRIVILEGED_HELPER_REACHABLE', 'reachable'],
 ];
 
-export async function publishHealthy(identityDirectory: string, sequence: number): Promise<Connection> {
+export function currentHealthTransitionTime(): HealthTransitionTime {
+  return { seconds: String(Math.floor(Date.now() / 1000)), nanos: 0 };
+}
+
+export async function publishHealthy(
+  identityDirectory: string,
+  sequence: number,
+  lastTransitionTime: HealthTransitionTime,
+): Promise<Connection> {
   const repoRoot = required('GUARDIAN_E2E_REPO_ROOT');
   const protoRoot = join(repoRoot, 'proto');
   const packageDefinition = protoLoader.loadSync([
@@ -54,7 +63,7 @@ export async function publishHealthy(identityDirectory: string, sequence: number
             reason,
             message: '',
             ...(index === 2 ? { observedRevision: '1' } : {}),
-            lastTransitionTime: now,
+            lastTransitionTime,
           })),
         } });
       }

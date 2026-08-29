@@ -6,7 +6,7 @@ Implementation review complete; Product Owner application/security evidence
 acceptance and human-controlled PR merge remain required.
 
 Work package: `P1-W11`. Decisions: DT-07, CP-04, CP-08, TS-02 through TS-05,
-SA-11, SEC-08, and Product Owner approval of W11-C1-A through W11-C8-A on
+SA-11, SEC-08, and Product Owner approval of W11-C1-A through W11-C9-A on
 2026-08-29. Acceptance reference: Phase 1 browser onboarding skeleton E2E.
 
 ## Security boundaries
@@ -15,6 +15,10 @@ SA-11, SEC-08, and Product Owner approval of W11-C1-A through W11-C8-A on
   and a synchronizer CSRF proof. The proof exists in React memory only.
 - Reloaded sessions are read-only until fresh MFA reauthentication returns a
   new CSRF proof. Logout is also a protected mutation.
+- PostgreSQL locks the session row before sampling its authoritative wall clock
+  for idle/absolute expiry and last-seen updates. Concurrent browser fan-out
+  cannot turn an older application timestamp into a false rollback signal;
+  database clock rollback still fails closed.
 - Enrollment secrets bypass TanStack Query and live only in route-local React
   state. Dismissal removes their DOM/state reference; route exit and unload
   destroy the owning component/page.
@@ -45,11 +49,12 @@ install scripts. No browser dependency is loaded from a CDN at runtime.
 |---|---|
 | Hostile display names or health messages | React text rendering plus JSON HTML escaping; component test verifies markup is not created. |
 | Session expiry or missing cookie | Authenticated 401 clears session/query state; browser test clears the cookie and observes sign-in. |
+| Concurrent requests on one session | Session authorization serializes on the PostgreSQL row and samples `clock_timestamp()` after the lock; a 32-request integration regression proves the active session remains valid and unrevoked. |
 | CSRF replay or forged value | Mutations send the memory-only proof and exact browser origin; real browser test confirms a forged proof receives 401. |
 | Hard reload | Cookie restores reads only; all mutation controls remain disabled until MFA reauthentication. |
 | Secret in cache/storage/artifact | Secret call bypasses query/mutation caches; unit and browser tests assert DOM removal and empty storage; traces/videos/automatic screenshots are off. |
 | API route confused with SPA route | Unknown `/v1` receives JSON 404 and `no-store`; handler test proves no index fallback. |
-| Stale or invented health | Missing projection is unavailable; `False` and `Unknown` remain blocking; disconnect/reconnect is exercised over the real device channel. |
+| Stale or invented health | Missing projection is unavailable; `False` and `Unknown` remain blocking; disconnect/reconnect is exercised over the real device channel, and unchanged conditions preserve transition history across reports. |
 | Cross-environment inventory read | Environment and device IDs are jointly scoped in SQL; integration test proves a mismatched environment returns not found. |
 | Unbounded inventory | Service fixes the list limit at 200; storage rejects larger bounds. |
 | Active-certificate disclosure | Only expiry is projected; serial, fingerprint, PEM, key, and history are excluded. |
@@ -65,6 +70,7 @@ npm audit --omit=dev
 npm audit
 npm run openapi:check
 go -C apps/control-plane test ./...
+task auth:integration
 go -C apps/control-plane test -tags=integration -run TestDeviceInventoryIsBoundedScopedAndIncludesOnlyActiveCertificateExpiry ./internal/storage
 task container:check
 task policy

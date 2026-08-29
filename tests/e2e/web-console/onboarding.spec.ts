@@ -4,7 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import process from 'node:process';
 import { spawn } from 'node:child_process';
-import { publishHealthy } from './device-health';
+import { currentHealthTransitionTime, publishHealthy } from './device-health';
 
 test('real owner onboarding, Edge enrollment, health degradation, and recovery', async ({ page, context }, testInfo) => {
   const projectIndex = ['chromium', 'firefox', 'webkit'].indexOf(testInfo.project.name);
@@ -53,7 +53,11 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
 
   await page.getByLabel('Zone name').fill(`Zone ${testInfo.project.name}`);
   await page.getByLabel('Private CIDR').fill(`10.${20 + projectIndex}.0.0/24`);
+  const zoneResponsePromise = page.waitForResponse((response) =>
+    response.request().method() === 'POST' && /\/v1\/environments\/[^/]+\/zones$/.test(new URL(response.url()).pathname));
   await page.getByRole('button', { name: 'Add zone' }).click();
+  const zoneResponse = await zoneResponsePromise;
+  expect(zoneResponse.status(), await zoneResponse.text()).toBe(201);
   await expect(page.getByText('Private network zone added.')).toBeVisible();
 
   expect(await runEdgeEnrollment(edgeConfig, runtimeConfig, Buffer.from('invalid\n'))).not.toBe(0);
@@ -69,7 +73,8 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
   await expect(page.getByTestId('enrollment-secret')).toHaveCount(0);
   await expect(page).not.toHaveURL(new RegExp(secretText!));
 
-  let connection = await publishHealthy(identityDirectory, 1);
+  const healthySince = currentHealthTransitionTime();
+  let connection = await publishHealthy(identityDirectory, 1, healthySince);
   const deviceLink = page.getByRole('link', { name: new RegExp(`edge-${testInfo.project.name}.*active`, 's') });
   await expect(deviceLink).toBeVisible();
   await deviceLink.click();
@@ -80,7 +85,7 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
   connection.close();
   await expect(page.getByText('Action required', { exact: true }).first()).toBeVisible({ timeout: 20_000 });
   await new Promise((resolve) => setTimeout(resolve, 100));
-  connection = await publishHealthy(identityDirectory, 2);
+  connection = await publishHealthy(identityDirectory, 2, healthySince);
   await expect(page.getByText('Healthy', { exact: true }).first()).toBeVisible({ timeout: 20_000 });
 
   expect(await page.evaluate(async () => ({
