@@ -36,12 +36,17 @@ type CertificateVerifier interface {
 	VerifyCertificate(context.Context, *x509.Certificate) (deviceID string, serial string, err error)
 }
 
-// IngestHandler is intentionally transport-only. P1-W6 and P1-W9 provide the
-// durable domain implementations without making this package import storage.
-type IngestHandler interface {
+// ReconciliationHandler owns only P1-W6 desired/observed state. P1-W9 health
+// remains a separate seam so an installed reconciler cannot discard or
+// acknowledge health truth.
+type ReconciliationHandler interface {
+	DesiredState(context.Context, DeviceIdentity) (*devicev1.DesiredStateSnapshot, error)
 	ObservedState(context.Context, DeviceIdentity, *devicev1.ObservedState) error
-	HealthReport(context.Context, DeviceIdentity, *devicev1.HealthReport) error
 	Acknowledgement(context.Context, DeviceIdentity, *devicev1.Acknowledgement) error
+}
+
+type HealthHandler interface {
+	HealthReport(context.Context, DeviceIdentity, *devicev1.HealthReport) error
 }
 
 type DeviceIdentity struct {
@@ -55,7 +60,8 @@ type Config struct {
 	TLSPrivateKeyFile  string
 	DeviceCAPEM        []byte
 	Verifier           CertificateVerifier
-	Handler            IngestHandler
+	Reconciliation     ReconciliationHandler
+	Health             HealthHandler
 	Logger             *slog.Logger
 }
 
@@ -64,7 +70,8 @@ type Server struct {
 
 	address         string
 	verifier        CertificateVerifier
-	handler         IngestHandler
+	reconciliation  ReconciliationHandler
+	health          HealthHandler
 	logger          *slog.Logger
 	grpc            *grpc.Server
 	errors          chan error
@@ -99,7 +106,8 @@ func NewServer(config Config) (*Server, error) {
 		ClientCAs:    clientRoots,
 	}
 	server := &Server{
-		address: config.Address, verifier: config.Verifier, handler: config.Handler,
+		address: config.Address, verifier: config.Verifier, reconciliation: config.Reconciliation,
+		health: config.Health,
 		logger: config.Logger, errors: make(chan error, 1), stopped: make(chan struct{}),
 		helloTimeout: HelloTimeout, recheckInterval: HeartbeatInterval, staleAfter: StaleAfter,
 	}
@@ -160,8 +168,8 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 // EnqueueDesired is the bounded P1-W6 integration seam. A successful return
 // means queued for the current stream, not applied by the Edge.
-func (s *Server) EnqueueDesired(deviceID, messageID string, revision uint64) error {
-	if !validUUIDv7(deviceID) || !validUUIDv7(messageID) || revision == 0 {
+func (s *Server) EnqueueDesired(deviceID string, desired *devicev1.DesiredStateSnapshot) error {
+	if !validUUIDv7(deviceID) || validateDesiredState(desired, deviceID) != nil {
 		return errors.New("desired-state envelope is invalid")
 	}
 	session := s.sessions.get(deviceID)
@@ -169,7 +177,7 @@ func (s *Server) EnqueueDesired(deviceID, messageID string, revision uint64) err
 		return ErrNotConnected
 	}
 	return session.outgoing.enqueue(&devicev1.ConnectResponse{Payload: &devicev1.ConnectResponse_DesiredState{
-		DesiredState: &devicev1.DesiredStateSnapshot{MessageId: messageID, Revision: revision},
+		DesiredState: desired,
 	}})
 }
 
@@ -210,6 +218,17 @@ func (s *Server) Connect(stream grpc.BidiStreamingServer[devicev1.ConnectRequest
 		s.sessions.remove(session)
 		session.cancel()
 	}()
+	if s.reconciliation != nil {
+		desired, handlerErr := s.reconciliation.DesiredState(stream.Context(), identity)
+		if handlerErr != nil {
+			return status.Error(codes.Internal, "desired-state publication failed")
+		}
+		if desired != nil {
+			if err := s.EnqueueDesired(deviceID, desired); err != nil {
+				return status.Error(codes.ResourceExhausted, "desired-state publication is saturated")
+			}
+		}
+	}
 	s.logger.InfoContext(stream.Context(), "Device channel connected", "device_id", deviceID)
 
 	receiveErrors := make(chan error, 1)
@@ -269,10 +288,10 @@ func (s *Server) receiveLoop(session *activeSession, certificate *x509.Certifica
 				}
 				continue
 			}
-			if s.handler == nil {
+			if s.reconciliation == nil {
 				return status.Error(codes.Unimplemented, "observed-state handler is unavailable")
 			}
-			if err := s.handler.ObservedState(stream.Context(), session.identity, payload.ObservedState); err != nil {
+			if err := s.reconciliation.ObservedState(stream.Context(), session.identity, payload.ObservedState); err != nil {
 				return status.Error(codes.Internal, "observed-state ingest failed")
 			}
 			session.duplicates.add(payload.ObservedState.MessageId)
@@ -295,10 +314,10 @@ func (s *Server) receiveLoop(session *activeSession, certificate *x509.Certifica
 				}
 				continue
 			}
-			if s.handler == nil {
+			if s.health == nil {
 				return status.Error(codes.Unimplemented, "health-report handler is unavailable")
 			}
-			if err := s.handler.HealthReport(stream.Context(), session.identity, payload.HealthReport); err != nil {
+			if err := s.health.HealthReport(stream.Context(), session.identity, payload.HealthReport); err != nil {
 				return status.Error(codes.Internal, "health-report ingest failed")
 			}
 			session.duplicates.add(payload.HealthReport.ReportId)
@@ -312,10 +331,11 @@ func (s *Server) receiveLoop(session *activeSession, certificate *x509.Certifica
 			if err := validateAcknowledgement(payload.Acknowledgement); err != nil {
 				return status.Error(codes.InvalidArgument, "acknowledgement is invalid")
 			}
-			if s.handler != nil {
-				if err := s.handler.Acknowledgement(stream.Context(), session.identity, payload.Acknowledgement); err != nil {
-					return status.Error(codes.Internal, "acknowledgement ingest failed")
-				}
+			if s.reconciliation == nil {
+				return status.Error(codes.Unimplemented, "desired acknowledgement handler is unavailable")
+			}
+			if err := s.reconciliation.Acknowledgement(stream.Context(), session.identity, payload.Acknowledgement); err != nil {
+				return status.Error(codes.Internal, "acknowledgement ingest failed")
 			}
 		default:
 			return status.Error(codes.InvalidArgument, "unexpected device channel frame")

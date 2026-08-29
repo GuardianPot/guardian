@@ -28,12 +28,27 @@ support-window behavior is added when a second minor generation exists.
 
 - `Heartbeat` is emitted every 30 seconds. The Control Plane uses its receive
   time and closes a stream after 90 seconds without a valid heartbeat.
-- `DesiredStateSnapshot` and `ObservedState` are revision-only P1-W5 transport
-  envelopes. P1-W6 owns their typed objects, persistence, reconciliation, and
-  process-restart idempotency.
+- `DesiredStateSnapshot` is a complete P1-W6 device-scoped snapshot. It carries
+  the authenticated device/environment binding, zone metadata ordered by zone
+  UUID, and at most 64 non-operational placeholder-decoy records. It never
+  carries credentials, artifacts, commands, firewall rules, or real decoy
+  lifecycle instructions.
+- The Control Plane assigns an immutable per-device monotonic revision and a
+  UUIDv7 message ID. A deterministic content digest excludes that transport
+  envelope, so unchanged content reuses the current revision while a later
+  complete snapshot may intentionally return to earlier content as a new
+  revision.
+- `ObservedState` reports desired, applied, and last-known-good revisions plus
+  one `pending`, `converged`, `retrying`, or `failed` condition. Retry output
+  includes a bounded attempt count and next retry time; other conditions must
+  not include a retry time.
 - Retriable state frames use UUIDv7 message IDs. A receiver acknowledges only
   after its configured domain handler accepts the frame. Exact duplicates in
   the active session are acknowledged without invoking the handler again.
+- Desired and observed acknowledgements are independent. The Edge retains the
+  same pending observed message across reconnects until its matching
+  acknowledgement arrives. P1-W6 reconciliation and P1-W9 health use separate
+  handlers; an unavailable handler returns `Unimplemented` and does not ACK.
 - `HealthReport` retains the P1-W9 full-snapshot contract. P1-W9 owns durable
   projection and aggregate truth; P1-W5 enforces transport bounds and quota.
 
@@ -52,6 +67,31 @@ support-window behavior is added when a second minor generation exists.
 - Queue saturation returns explicit backpressure. Credentials, certificate
   bodies, payloads, and arbitrary metadata are never logged or attached to
   traces. Only W3C trace context propagates.
+- Desired content is rejected before apply when the authenticated device
+  binding differs, the object type is unsupported, an identifier/CIDR/text
+  bound fails, or canonical ordering is absent. Validation has no privileged
+  or attacker-facing side effect and failure preserves last-known-good state.
+
+## P1-W6 delivery and reconciliation
+
+The current complete snapshot is generated and queued after every successful
+connection or reconnect. Delivery is at least once; correctness does not rely
+on connection-local duplicate memory.
+
+| Input | Durable Edge result |
+|---|---|
+| Same revision and digest | No reapply; republish the stable observed result. |
+| Same revision, different digest | Terminal `revision_conflict`; preserve candidate and last-known-good payloads. |
+| Older or out-of-order revision | Do not replace current truth; republish current observed result. |
+| Higher/skipped revision | Accept the complete snapshot atomically and reconcile it. |
+| Malformed, unsupported, or identity-mismatched snapshot | Terminal bounded reason; do not apply and do not erase last-known-good state. |
+| Retryable apply failure | Persist attempts and retry after 1, 2, 4, 8, then 16 seconds; a sixth application failure ends as `retry_exhausted`. |
+
+The Edge commits candidate, condition, retry metadata, last-known-good payload,
+and pending observed output in SQLite before reporting it. Restart resumes that
+durable row. Disconnect causes no destructive action. This Phase 1 skeleton
+applies metadata only; it cannot invoke the privileged helper or manage a real
+decoy.
 
 ## gRPC failure contract
 

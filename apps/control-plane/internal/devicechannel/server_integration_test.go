@@ -1,6 +1,6 @@
 //go:build integration
 
-package devicechannel
+package devicechannel_test
 
 import (
 	"bytes"
@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/devicechannel"
 	devicev1 "github.com/GuardianPot/guardian/apps/control-plane/internal/devicechannel/gen/guardian/device/v1"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/devicepki"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/devices"
@@ -94,7 +95,7 @@ func TestDurableP1W4VerifierRejectsRevokedActiveChannel(t *testing.T) {
 	}
 
 	serverIdentity := newChannelServerIdentity(t)
-	server, err := NewServer(Config{
+	server, err := devicechannel.NewServer(devicechannel.Config{
 		Address: "127.0.0.1:0", TLSCertificateFile: serverIdentity.certificateFile,
 		TLSPrivateKeyFile: serverIdentity.privateKeyFile, DeviceCAPEM: authority.CertificatePEM(),
 		Verifier: deviceService, Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -102,8 +103,6 @@ func TestDurableP1W4VerifierRejectsRevokedActiveChannel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server.recheckInterval = 10 * time.Millisecond
-	server.staleAfter = time.Second
 	if err := server.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +124,7 @@ func TestDurableP1W4VerifierRejectsRevokedActiveChannel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := stream.Send(helloFrame(ProtocolMajor, ProtocolMinor)); err != nil {
+	if err := stream.Send(channelHelloFrame()); err != nil {
 		t.Fatal(err)
 	}
 	selection, err := stream.Recv()
@@ -135,9 +134,25 @@ func TestDurableP1W4VerifierRejectsRevokedActiveChannel(t *testing.T) {
 	if err := deviceService.SetDeviceState(ctx, created.EnvironmentID, token.DeviceID, devices.DeviceRevoked, "owner-1"); err != nil {
 		t.Fatal(err)
 	}
+	if err := stream.Send(&devicev1.ConnectRequest{Payload: &devicev1.ConnectRequest_Acknowledgement{
+		Acknowledgement: &devicev1.Acknowledgement{
+			MessageId: token.DeviceID,
+			Kind:      devicev1.AcknowledgementKind_ACKNOWLEDGEMENT_KIND_DESIRED_STATE,
+			Revision:  1,
+		},
+	}}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := stream.Recv(); status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("revoked active durable channel error = %v", err)
 	}
+}
+
+func channelHelloFrame() *devicev1.ConnectRequest {
+	return &devicev1.ConnectRequest{Payload: &devicev1.ConnectRequest_Hello{Hello: &devicev1.EdgeHello{
+		Protocol:     &devicev1.ProtocolVersion{Major: devicechannel.ProtocolMajor, Minor: devicechannel.ProtocolMinor},
+		AgentVersion: "guardian-edge/channel-integration",
+	}}}
 }
 
 type channelServerIdentity struct {

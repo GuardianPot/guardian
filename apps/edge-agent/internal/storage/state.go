@@ -53,13 +53,14 @@ type SpoolStats struct {
 
 // Snapshot is a bounded, read-only diagnostic view.
 type Snapshot struct {
-	SchemaVersion int               `json:"schema_version"`
-	Identity      *IdentityRecord   `json:"identity,omitempty"`
-	Revisions     []RevisionRecord  `json:"revisions"`
-	Retries       []RetryRecord     `json:"retries"`
-	Health        []HealthCondition `json:"health"`
-	Queue         Stats             `json:"queue"`
-	Spool         SpoolStats        `json:"spool"`
+	SchemaVersion  int                    `json:"schema_version"`
+	Identity       *IdentityRecord        `json:"identity,omitempty"`
+	Reconciliation *ReconciliationSummary `json:"reconciliation,omitempty"`
+	Revisions      []RevisionRecord       `json:"revisions"`
+	Retries        []RetryRecord          `json:"retries"`
+	Health         []HealthCondition      `json:"health"`
+	Queue          Stats                  `json:"queue"`
+	Spool          SpoolStats             `json:"spool"`
 }
 
 // SetIdentity records only certificate metadata, never the private key.
@@ -221,6 +222,21 @@ FROM identity_metadata WHERE singleton = 1`).Scan(&fingerprint, &notBefore, &not
 	}
 	if snapshot.Health, err = s.readHealth(ctx); err != nil {
 		return Snapshot{}, err
+	}
+	reconciliationState, reconciliationErr := s.ReconciliationState(ctx)
+	if reconciliationErr == nil {
+		snapshot.Reconciliation = &ReconciliationSummary{
+			DesiredRevision:  reconciliationState.DesiredRevision,
+			ObservedRevision: reconciliationState.ObservedRevision,
+			LastGoodRevision: reconciliationState.LastGoodRevision,
+			ConditionStatus:  reconciliationState.ConditionStatus,
+			ReasonCode:       reconciliationState.ReasonCode,
+			AttemptCount:     reconciliationState.AttemptCount,
+			RetryAt:          reconciliationState.RetryAt,
+			ObservedPending:  reconciliationState.ObservedPending,
+		}
+	} else if !errors.Is(reconciliationErr, ErrReconciliationStateNotFound) {
+		return Snapshot{}, reconciliationErr
 	}
 	if snapshot.Queue, err = s.Stats(ctx); err != nil {
 		return Snapshot{}, err

@@ -161,6 +161,36 @@ type GuardianJobsJob struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
+type GuardianReconciliationDesiredStateRevision struct {
+	DeviceID       pgtype.UUID        `json:"device_id"`
+	Revision       int64              `json:"revision"`
+	MessageID      pgtype.UUID        `json:"message_id"`
+	ContentSha256  []byte             `json:"content_sha256"`
+	Payload        []byte             `json:"payload"`
+	AcknowledgedAt pgtype.Timestamptz `json:"acknowledged_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type GuardianReconciliationObservedMessage struct {
+	DeviceID   pgtype.UUID        `json:"device_id"`
+	MessageID  pgtype.UUID        `json:"message_id"`
+	ReceivedAt pgtype.Timestamptz `json:"received_at"`
+}
+
+type GuardianReconciliationObservedState struct {
+	DeviceID         pgtype.UUID        `json:"device_id"`
+	MessageID        pgtype.UUID        `json:"message_id"`
+	DesiredRevision  int64              `json:"desired_revision"`
+	ObservedRevision int64              `json:"observed_revision"`
+	LastGoodRevision int64              `json:"last_good_revision"`
+	ConditionStatus  string             `json:"condition_status"`
+	ReasonCode       string             `json:"reason_code"`
+	AttemptCount     int32              `json:"attempt_count"`
+	RetryAt          pgtype.Timestamptz `json:"retry_at"`
+	LastTransitionAt pgtype.Timestamptz `json:"last_transition_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
 type GuardianSystemServiceState struct {
 	StateKey   string             `json:"state_key"`
 	StateValue []byte             `json:"state_value"`

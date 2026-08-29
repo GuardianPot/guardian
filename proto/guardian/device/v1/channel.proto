@@ -34,19 +34,62 @@ message Heartbeat {
   google.protobuf.Timestamp sent_at = 1;
 }
 
-// DesiredStateSnapshot is deliberately revision-only in P1-W5. P1-W6 owns
-// the typed desired objects and adds them atomically with every consumer.
+// EdgeConfiguration binds a snapshot to the authenticated Edge and its
+// durable environment. It grants no runtime or privileged authority.
+message EdgeConfiguration {
+  string device_id = 1;
+  string environment_id = 2;
+}
+
+// NetworkZoneMetadata is descriptive environment data. Receiving it does not
+// trigger discovery, address, route, firewall, or namespace mutation.
+message NetworkZoneMetadata {
+  string zone_id = 1;
+  string display_name = 2;
+  string cidr = 3;
+  uint64 source_revision = 4;
+}
+
+// PlaceholderDecoyDesiredObject proves typed evolution without introducing a
+// real decoy lifecycle. It has no enabled, runtime, artifact, or action field.
+message PlaceholderDecoyDesiredObject {
+  string object_id = 1;
+  string zone_id = 2;
+  string display_name = 3;
+}
+
 message DesiredStateSnapshot {
   string message_id = 1;
   uint64 revision = 2;
+  EdgeConfiguration edge_configuration = 3;
+  repeated NetworkZoneMetadata zones = 4;
+  repeated PlaceholderDecoyDesiredObject placeholder_decoys = 5;
 }
 
-// ObservedState is the transport acknowledgement boundary. Durable reconcile
-// attempts and typed conditions remain owned by P1-W6.
+enum ReconciliationConditionStatus {
+  RECONCILIATION_CONDITION_STATUS_UNSPECIFIED = 0;
+  RECONCILIATION_CONDITION_STATUS_PENDING = 1;
+  RECONCILIATION_CONDITION_STATUS_CONVERGED = 2;
+  RECONCILIATION_CONDITION_STATUS_RETRYING = 3;
+  RECONCILIATION_CONDITION_STATUS_FAILED = 4;
+}
+
+// ReconciliationCondition exposes bounded, redaction-safe reconciliation
+// truth. reason_code is a stable identifier, never a raw remote error.
+message ReconciliationCondition {
+  ReconciliationConditionStatus status = 1;
+  string reason_code = 2;
+  uint32 attempt_count = 3;
+  google.protobuf.Timestamp retry_at = 4;
+  google.protobuf.Timestamp last_transition_time = 5;
+}
+
 message ObservedState {
   string message_id = 1;
   uint64 desired_revision = 2;
   uint64 observed_revision = 3;
+  uint64 last_good_revision = 4;
+  ReconciliationCondition condition = 5;
 }
 
 enum AcknowledgementKind {

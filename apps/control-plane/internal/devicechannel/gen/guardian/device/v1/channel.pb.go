@@ -22,6 +22,61 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type ReconciliationConditionStatus int32
+
+const (
+	ReconciliationConditionStatus_RECONCILIATION_CONDITION_STATUS_UNSPECIFIED ReconciliationConditionStatus = 0
+	ReconciliationConditionStatus_RECONCILIATION_CONDITION_STATUS_PENDING     ReconciliationConditionStatus = 1
+	ReconciliationConditionStatus_RECONCILIATION_CONDITION_STATUS_CONVERGED   ReconciliationConditionStatus = 2
+	ReconciliationConditionStatus_RECONCILIATION_CONDITION_STATUS_RETRYING    ReconciliationConditionStatus = 3
+	ReconciliationConditionStatus_RECONCILIATION_CONDITION_STATUS_FAILED      ReconciliationConditionStatus = 4
+)
+
+// Enum value maps for ReconciliationConditionStatus.
+var (
+	ReconciliationConditionStatus_name = map[int32]string{
+		0: "RECONCILIATION_CONDITION_STATUS_UNSPECIFIED",
+		1: "RECONCILIATION_CONDITION_STATUS_PENDING",
+		2: "RECONCILIATION_CONDITION_STATUS_CONVERGED",
+		3: "RECONCILIATION_CONDITION_STATUS_RETRYING",
+		4: "RECONCILIATION_CONDITION_STATUS_FAILED",
+	}
+	ReconciliationConditionStatus_value = map[string]int32{
+		"RECONCILIATION_CONDITION_STATUS_UNSPECIFIED": 0,
+		"RECONCILIATION_CONDITION_STATUS_PENDING":     1,
+		"RECONCILIATION_CONDITION_STATUS_CONVERGED":   2,
+		"RECONCILIATION_CONDITION_STATUS_RETRYING":    3,
+		"RECONCILIATION_CONDITION_STATUS_FAILED":      4,
+	}
+)
+
+func (x ReconciliationConditionStatus) Enum() *ReconciliationConditionStatus {
+	p := new(ReconciliationConditionStatus)
+	*p = x
+	return p
+}
+
+func (x ReconciliationConditionStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ReconciliationConditionStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_guardian_device_v1_channel_proto_enumTypes[0].Descriptor()
+}
+
+func (ReconciliationConditionStatus) Type() protoreflect.EnumType {
+	return &file_guardian_device_v1_channel_proto_enumTypes[0]
+}
+
+func (x ReconciliationConditionStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ReconciliationConditionStatus.Descriptor instead.
+func (ReconciliationConditionStatus) EnumDescriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{0}
+}
+
 type AcknowledgementKind int32
 
 const (
@@ -58,11 +113,11 @@ func (x AcknowledgementKind) String() string {
 }
 
 func (AcknowledgementKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_guardian_device_v1_channel_proto_enumTypes[0].Descriptor()
+	return file_guardian_device_v1_channel_proto_enumTypes[1].Descriptor()
 }
 
 func (AcknowledgementKind) Type() protoreflect.EnumType {
-	return &file_guardian_device_v1_channel_proto_enumTypes[0]
+	return &file_guardian_device_v1_channel_proto_enumTypes[1]
 }
 
 func (x AcknowledgementKind) Number() protoreflect.EnumNumber {
@@ -71,7 +126,7 @@ func (x AcknowledgementKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AcknowledgementKind.Descriptor instead.
 func (AcknowledgementKind) EnumDescriptor() ([]byte, []int) {
-	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{0}
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{1}
 }
 
 type ProtocolVersion struct {
@@ -282,19 +337,206 @@ func (x *Heartbeat) GetSentAt() *timestamppb.Timestamp {
 	return nil
 }
 
-// DesiredStateSnapshot is deliberately revision-only in P1-W5. P1-W6 owns
-// the typed desired objects and adds them atomically with every consumer.
-type DesiredStateSnapshot struct {
+// EdgeConfiguration binds a snapshot to the authenticated Edge and its
+// durable environment. It grants no runtime or privileged authority.
+type EdgeConfiguration struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	MessageId     string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
-	Revision      uint64                 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	DeviceId      string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	EnvironmentId string                 `protobuf:"bytes,2,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+func (x *EdgeConfiguration) Reset() {
+	*x = EdgeConfiguration{}
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EdgeConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EdgeConfiguration) ProtoMessage() {}
+
+func (x *EdgeConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EdgeConfiguration.ProtoReflect.Descriptor instead.
+func (*EdgeConfiguration) Descriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *EdgeConfiguration) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
+}
+
+func (x *EdgeConfiguration) GetEnvironmentId() string {
+	if x != nil {
+		return x.EnvironmentId
+	}
+	return ""
+}
+
+// NetworkZoneMetadata is descriptive environment data. Receiving it does not
+// trigger discovery, address, route, firewall, or namespace mutation.
+type NetworkZoneMetadata struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ZoneId         string                 `protobuf:"bytes,1,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
+	DisplayName    string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	Cidr           string                 `protobuf:"bytes,3,opt,name=cidr,proto3" json:"cidr,omitempty"`
+	SourceRevision uint64                 `protobuf:"varint,4,opt,name=source_revision,json=sourceRevision,proto3" json:"source_revision,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *NetworkZoneMetadata) Reset() {
+	*x = NetworkZoneMetadata{}
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkZoneMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkZoneMetadata) ProtoMessage() {}
+
+func (x *NetworkZoneMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkZoneMetadata.ProtoReflect.Descriptor instead.
+func (*NetworkZoneMetadata) Descriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *NetworkZoneMetadata) GetZoneId() string {
+	if x != nil {
+		return x.ZoneId
+	}
+	return ""
+}
+
+func (x *NetworkZoneMetadata) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *NetworkZoneMetadata) GetCidr() string {
+	if x != nil {
+		return x.Cidr
+	}
+	return ""
+}
+
+func (x *NetworkZoneMetadata) GetSourceRevision() uint64 {
+	if x != nil {
+		return x.SourceRevision
+	}
+	return 0
+}
+
+// PlaceholderDecoyDesiredObject proves typed evolution without introducing a
+// real decoy lifecycle. It has no enabled, runtime, artifact, or action field.
+type PlaceholderDecoyDesiredObject struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ObjectId      string                 `protobuf:"bytes,1,opt,name=object_id,json=objectId,proto3" json:"object_id,omitempty"`
+	ZoneId        string                 `protobuf:"bytes,2,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
+	DisplayName   string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlaceholderDecoyDesiredObject) Reset() {
+	*x = PlaceholderDecoyDesiredObject{}
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlaceholderDecoyDesiredObject) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlaceholderDecoyDesiredObject) ProtoMessage() {}
+
+func (x *PlaceholderDecoyDesiredObject) ProtoReflect() protoreflect.Message {
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlaceholderDecoyDesiredObject.ProtoReflect.Descriptor instead.
+func (*PlaceholderDecoyDesiredObject) Descriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *PlaceholderDecoyDesiredObject) GetObjectId() string {
+	if x != nil {
+		return x.ObjectId
+	}
+	return ""
+}
+
+func (x *PlaceholderDecoyDesiredObject) GetZoneId() string {
+	if x != nil {
+		return x.ZoneId
+	}
+	return ""
+}
+
+func (x *PlaceholderDecoyDesiredObject) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+type DesiredStateSnapshot struct {
+	state             protoimpl.MessageState           `protogen:"open.v1"`
+	MessageId         string                           `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	Revision          uint64                           `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	EdgeConfiguration *EdgeConfiguration               `protobuf:"bytes,3,opt,name=edge_configuration,json=edgeConfiguration,proto3" json:"edge_configuration,omitempty"`
+	Zones             []*NetworkZoneMetadata           `protobuf:"bytes,4,rep,name=zones,proto3" json:"zones,omitempty"`
+	PlaceholderDecoys []*PlaceholderDecoyDesiredObject `protobuf:"bytes,5,rep,name=placeholder_decoys,json=placeholderDecoys,proto3" json:"placeholder_decoys,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
 func (x *DesiredStateSnapshot) Reset() {
 	*x = DesiredStateSnapshot{}
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[4]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -306,7 +548,7 @@ func (x *DesiredStateSnapshot) String() string {
 func (*DesiredStateSnapshot) ProtoMessage() {}
 
 func (x *DesiredStateSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[4]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -319,7 +561,7 @@ func (x *DesiredStateSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DesiredStateSnapshot.ProtoReflect.Descriptor instead.
 func (*DesiredStateSnapshot) Descriptor() ([]byte, []int) {
-	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{4}
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *DesiredStateSnapshot) GetMessageId() string {
@@ -336,20 +578,119 @@ func (x *DesiredStateSnapshot) GetRevision() uint64 {
 	return 0
 }
 
-// ObservedState is the transport acknowledgement boundary. Durable reconcile
-// attempts and typed conditions remain owned by P1-W6.
+func (x *DesiredStateSnapshot) GetEdgeConfiguration() *EdgeConfiguration {
+	if x != nil {
+		return x.EdgeConfiguration
+	}
+	return nil
+}
+
+func (x *DesiredStateSnapshot) GetZones() []*NetworkZoneMetadata {
+	if x != nil {
+		return x.Zones
+	}
+	return nil
+}
+
+func (x *DesiredStateSnapshot) GetPlaceholderDecoys() []*PlaceholderDecoyDesiredObject {
+	if x != nil {
+		return x.PlaceholderDecoys
+	}
+	return nil
+}
+
+// ReconciliationCondition exposes bounded, redaction-safe reconciliation
+// truth. reason_code is a stable identifier, never a raw remote error.
+type ReconciliationCondition struct {
+	state              protoimpl.MessageState        `protogen:"open.v1"`
+	Status             ReconciliationConditionStatus `protobuf:"varint,1,opt,name=status,proto3,enum=guardian.device.v1.ReconciliationConditionStatus" json:"status,omitempty"`
+	ReasonCode         string                        `protobuf:"bytes,2,opt,name=reason_code,json=reasonCode,proto3" json:"reason_code,omitempty"`
+	AttemptCount       uint32                        `protobuf:"varint,3,opt,name=attempt_count,json=attemptCount,proto3" json:"attempt_count,omitempty"`
+	RetryAt            *timestamppb.Timestamp        `protobuf:"bytes,4,opt,name=retry_at,json=retryAt,proto3" json:"retry_at,omitempty"`
+	LastTransitionTime *timestamppb.Timestamp        `protobuf:"bytes,5,opt,name=last_transition_time,json=lastTransitionTime,proto3" json:"last_transition_time,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *ReconciliationCondition) Reset() {
+	*x = ReconciliationCondition{}
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReconciliationCondition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReconciliationCondition) ProtoMessage() {}
+
+func (x *ReconciliationCondition) ProtoReflect() protoreflect.Message {
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReconciliationCondition.ProtoReflect.Descriptor instead.
+func (*ReconciliationCondition) Descriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ReconciliationCondition) GetStatus() ReconciliationConditionStatus {
+	if x != nil {
+		return x.Status
+	}
+	return ReconciliationConditionStatus_RECONCILIATION_CONDITION_STATUS_UNSPECIFIED
+}
+
+func (x *ReconciliationCondition) GetReasonCode() string {
+	if x != nil {
+		return x.ReasonCode
+	}
+	return ""
+}
+
+func (x *ReconciliationCondition) GetAttemptCount() uint32 {
+	if x != nil {
+		return x.AttemptCount
+	}
+	return 0
+}
+
+func (x *ReconciliationCondition) GetRetryAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RetryAt
+	}
+	return nil
+}
+
+func (x *ReconciliationCondition) GetLastTransitionTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastTransitionTime
+	}
+	return nil
+}
+
 type ObservedState struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	MessageId        string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
-	DesiredRevision  uint64                 `protobuf:"varint,2,opt,name=desired_revision,json=desiredRevision,proto3" json:"desired_revision,omitempty"`
-	ObservedRevision uint64                 `protobuf:"varint,3,opt,name=observed_revision,json=observedRevision,proto3" json:"observed_revision,omitempty"`
+	state            protoimpl.MessageState   `protogen:"open.v1"`
+	MessageId        string                   `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	DesiredRevision  uint64                   `protobuf:"varint,2,opt,name=desired_revision,json=desiredRevision,proto3" json:"desired_revision,omitempty"`
+	ObservedRevision uint64                   `protobuf:"varint,3,opt,name=observed_revision,json=observedRevision,proto3" json:"observed_revision,omitempty"`
+	LastGoodRevision uint64                   `protobuf:"varint,4,opt,name=last_good_revision,json=lastGoodRevision,proto3" json:"last_good_revision,omitempty"`
+	Condition        *ReconciliationCondition `protobuf:"bytes,5,opt,name=condition,proto3" json:"condition,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ObservedState) Reset() {
 	*x = ObservedState{}
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[5]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -361,7 +702,7 @@ func (x *ObservedState) String() string {
 func (*ObservedState) ProtoMessage() {}
 
 func (x *ObservedState) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[5]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -374,7 +715,7 @@ func (x *ObservedState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ObservedState.ProtoReflect.Descriptor instead.
 func (*ObservedState) Descriptor() ([]byte, []int) {
-	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{5}
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ObservedState) GetMessageId() string {
@@ -398,6 +739,20 @@ func (x *ObservedState) GetObservedRevision() uint64 {
 	return 0
 }
 
+func (x *ObservedState) GetLastGoodRevision() uint64 {
+	if x != nil {
+		return x.LastGoodRevision
+	}
+	return 0
+}
+
+func (x *ObservedState) GetCondition() *ReconciliationCondition {
+	if x != nil {
+		return x.Condition
+	}
+	return nil
+}
+
 type Acknowledgement struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MessageId     string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
@@ -409,7 +764,7 @@ type Acknowledgement struct {
 
 func (x *Acknowledgement) Reset() {
 	*x = Acknowledgement{}
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[6]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -421,7 +776,7 @@ func (x *Acknowledgement) String() string {
 func (*Acknowledgement) ProtoMessage() {}
 
 func (x *Acknowledgement) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[6]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -434,7 +789,7 @@ func (x *Acknowledgement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Acknowledgement.ProtoReflect.Descriptor instead.
 func (*Acknowledgement) Descriptor() ([]byte, []int) {
-	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{6}
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Acknowledgement) GetMessageId() string {
@@ -474,7 +829,7 @@ type ConnectRequest struct {
 
 func (x *ConnectRequest) Reset() {
 	*x = ConnectRequest{}
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[7]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -486,7 +841,7 @@ func (x *ConnectRequest) String() string {
 func (*ConnectRequest) ProtoMessage() {}
 
 func (x *ConnectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[7]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -499,7 +854,7 @@ func (x *ConnectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectRequest.ProtoReflect.Descriptor instead.
 func (*ConnectRequest) Descriptor() ([]byte, []int) {
-	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{7}
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ConnectRequest) GetPayload() isConnectRequest_Payload {
@@ -602,7 +957,7 @@ type ConnectResponse struct {
 
 func (x *ConnectResponse) Reset() {
 	*x = ConnectResponse{}
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[8]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -614,7 +969,7 @@ func (x *ConnectResponse) String() string {
 func (*ConnectResponse) ProtoMessage() {}
 
 func (x *ConnectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[8]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -627,7 +982,7 @@ func (x *ConnectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectResponse.ProtoReflect.Descriptor instead.
 func (*ConnectResponse) Descriptor() ([]byte, []int) {
-	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{8}
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ConnectResponse) GetPayload() isConnectResponse_Payload {
@@ -702,16 +1057,40 @@ const file_guardian_device_v1_channel_proto_rawDesc = "" +
 	"\baccepted\x18\x02 \x01(\bR\baccepted\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\"@\n" +
 	"\tHeartbeat\x123\n" +
-	"\asent_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x06sentAt\"Q\n" +
+	"\asent_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x06sentAt\"W\n" +
+	"\x11EdgeConfiguration\x12\x1b\n" +
+	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12%\n" +
+	"\x0eenvironment_id\x18\x02 \x01(\tR\renvironmentId\"\x8e\x01\n" +
+	"\x13NetworkZoneMetadata\x12\x17\n" +
+	"\azone_id\x18\x01 \x01(\tR\x06zoneId\x12!\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x12\n" +
+	"\x04cidr\x18\x03 \x01(\tR\x04cidr\x12'\n" +
+	"\x0fsource_revision\x18\x04 \x01(\x04R\x0esourceRevision\"x\n" +
+	"\x1dPlaceholderDecoyDesiredObject\x12\x1b\n" +
+	"\tobject_id\x18\x01 \x01(\tR\bobjectId\x12\x17\n" +
+	"\azone_id\x18\x02 \x01(\tR\x06zoneId\x12!\n" +
+	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\"\xc8\x02\n" +
 	"\x14DesiredStateSnapshot\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x1a\n" +
-	"\brevision\x18\x02 \x01(\x04R\brevision\"\x86\x01\n" +
+	"\brevision\x18\x02 \x01(\x04R\brevision\x12T\n" +
+	"\x12edge_configuration\x18\x03 \x01(\v2%.guardian.device.v1.EdgeConfigurationR\x11edgeConfiguration\x12=\n" +
+	"\x05zones\x18\x04 \x03(\v2'.guardian.device.v1.NetworkZoneMetadataR\x05zones\x12`\n" +
+	"\x12placeholder_decoys\x18\x05 \x03(\v21.guardian.device.v1.PlaceholderDecoyDesiredObjectR\x11placeholderDecoys\"\xaf\x02\n" +
+	"\x17ReconciliationCondition\x12I\n" +
+	"\x06status\x18\x01 \x01(\x0e21.guardian.device.v1.ReconciliationConditionStatusR\x06status\x12\x1f\n" +
+	"\vreason_code\x18\x02 \x01(\tR\n" +
+	"reasonCode\x12#\n" +
+	"\rattempt_count\x18\x03 \x01(\rR\fattemptCount\x125\n" +
+	"\bretry_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\aretryAt\x12L\n" +
+	"\x14last_transition_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x12lastTransitionTime\"\xff\x01\n" +
 	"\rObservedState\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12)\n" +
 	"\x10desired_revision\x18\x02 \x01(\x04R\x0fdesiredRevision\x12+\n" +
-	"\x11observed_revision\x18\x03 \x01(\x04R\x10observedRevision\"\x89\x01\n" +
+	"\x11observed_revision\x18\x03 \x01(\x04R\x10observedRevision\x12,\n" +
+	"\x12last_good_revision\x18\x04 \x01(\x04R\x10lastGoodRevision\x12I\n" +
+	"\tcondition\x18\x05 \x01(\v2+.guardian.device.v1.ReconciliationConditionR\tcondition\"\x89\x01\n" +
 	"\x0fAcknowledgement\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12;\n" +
@@ -728,7 +1107,13 @@ const file_guardian_device_v1_channel_proto_rawDesc = "" +
 	"\x12protocol_selection\x18\x01 \x01(\v2%.guardian.device.v1.ProtocolSelectionH\x00R\x11protocolSelection\x12O\n" +
 	"\rdesired_state\x18\x02 \x01(\v2(.guardian.device.v1.DesiredStateSnapshotH\x00R\fdesiredState\x12O\n" +
 	"\x0facknowledgement\x18\x03 \x01(\v2#.guardian.device.v1.AcknowledgementH\x00R\x0facknowledgementB\t\n" +
-	"\apayload*\xb4\x01\n" +
+	"\apayload*\x86\x02\n" +
+	"\x1dReconciliationConditionStatus\x12/\n" +
+	"+RECONCILIATION_CONDITION_STATUS_UNSPECIFIED\x10\x00\x12+\n" +
+	"'RECONCILIATION_CONDITION_STATUS_PENDING\x10\x01\x12-\n" +
+	")RECONCILIATION_CONDITION_STATUS_CONVERGED\x10\x02\x12,\n" +
+	"(RECONCILIATION_CONDITION_STATUS_RETRYING\x10\x03\x12*\n" +
+	"&RECONCILIATION_CONDITION_STATUS_FAILED\x10\x04*\xb4\x01\n" +
 	"\x13AcknowledgementKind\x12$\n" +
 	" ACKNOWLEDGEMENT_KIND_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"ACKNOWLEDGEMENT_KIND_DESIRED_STATE\x10\x01\x12'\n" +
@@ -749,42 +1134,54 @@ func file_guardian_device_v1_channel_proto_rawDescGZIP() []byte {
 	return file_guardian_device_v1_channel_proto_rawDescData
 }
 
-var file_guardian_device_v1_channel_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_guardian_device_v1_channel_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_guardian_device_v1_channel_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_guardian_device_v1_channel_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_guardian_device_v1_channel_proto_goTypes = []any{
-	(AcknowledgementKind)(0),      // 0: guardian.device.v1.AcknowledgementKind
-	(*ProtocolVersion)(nil),       // 1: guardian.device.v1.ProtocolVersion
-	(*EdgeHello)(nil),             // 2: guardian.device.v1.EdgeHello
-	(*ProtocolSelection)(nil),     // 3: guardian.device.v1.ProtocolSelection
-	(*Heartbeat)(nil),             // 4: guardian.device.v1.Heartbeat
-	(*DesiredStateSnapshot)(nil),  // 5: guardian.device.v1.DesiredStateSnapshot
-	(*ObservedState)(nil),         // 6: guardian.device.v1.ObservedState
-	(*Acknowledgement)(nil),       // 7: guardian.device.v1.Acknowledgement
-	(*ConnectRequest)(nil),        // 8: guardian.device.v1.ConnectRequest
-	(*ConnectResponse)(nil),       // 9: guardian.device.v1.ConnectResponse
-	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
-	(*HealthReport)(nil),          // 11: guardian.device.v1.HealthReport
+	(ReconciliationConditionStatus)(0),    // 0: guardian.device.v1.ReconciliationConditionStatus
+	(AcknowledgementKind)(0),              // 1: guardian.device.v1.AcknowledgementKind
+	(*ProtocolVersion)(nil),               // 2: guardian.device.v1.ProtocolVersion
+	(*EdgeHello)(nil),                     // 3: guardian.device.v1.EdgeHello
+	(*ProtocolSelection)(nil),             // 4: guardian.device.v1.ProtocolSelection
+	(*Heartbeat)(nil),                     // 5: guardian.device.v1.Heartbeat
+	(*EdgeConfiguration)(nil),             // 6: guardian.device.v1.EdgeConfiguration
+	(*NetworkZoneMetadata)(nil),           // 7: guardian.device.v1.NetworkZoneMetadata
+	(*PlaceholderDecoyDesiredObject)(nil), // 8: guardian.device.v1.PlaceholderDecoyDesiredObject
+	(*DesiredStateSnapshot)(nil),          // 9: guardian.device.v1.DesiredStateSnapshot
+	(*ReconciliationCondition)(nil),       // 10: guardian.device.v1.ReconciliationCondition
+	(*ObservedState)(nil),                 // 11: guardian.device.v1.ObservedState
+	(*Acknowledgement)(nil),               // 12: guardian.device.v1.Acknowledgement
+	(*ConnectRequest)(nil),                // 13: guardian.device.v1.ConnectRequest
+	(*ConnectResponse)(nil),               // 14: guardian.device.v1.ConnectResponse
+	(*timestamppb.Timestamp)(nil),         // 15: google.protobuf.Timestamp
+	(*HealthReport)(nil),                  // 16: guardian.device.v1.HealthReport
 }
 var file_guardian_device_v1_channel_proto_depIdxs = []int32{
-	1,  // 0: guardian.device.v1.EdgeHello.protocol:type_name -> guardian.device.v1.ProtocolVersion
-	1,  // 1: guardian.device.v1.ProtocolSelection.selected:type_name -> guardian.device.v1.ProtocolVersion
-	10, // 2: guardian.device.v1.Heartbeat.sent_at:type_name -> google.protobuf.Timestamp
-	0,  // 3: guardian.device.v1.Acknowledgement.kind:type_name -> guardian.device.v1.AcknowledgementKind
-	2,  // 4: guardian.device.v1.ConnectRequest.hello:type_name -> guardian.device.v1.EdgeHello
-	4,  // 5: guardian.device.v1.ConnectRequest.heartbeat:type_name -> guardian.device.v1.Heartbeat
-	6,  // 6: guardian.device.v1.ConnectRequest.observed_state:type_name -> guardian.device.v1.ObservedState
-	11, // 7: guardian.device.v1.ConnectRequest.health_report:type_name -> guardian.device.v1.HealthReport
-	7,  // 8: guardian.device.v1.ConnectRequest.acknowledgement:type_name -> guardian.device.v1.Acknowledgement
-	3,  // 9: guardian.device.v1.ConnectResponse.protocol_selection:type_name -> guardian.device.v1.ProtocolSelection
-	5,  // 10: guardian.device.v1.ConnectResponse.desired_state:type_name -> guardian.device.v1.DesiredStateSnapshot
-	7,  // 11: guardian.device.v1.ConnectResponse.acknowledgement:type_name -> guardian.device.v1.Acknowledgement
-	8,  // 12: guardian.device.v1.DeviceChannelService.Connect:input_type -> guardian.device.v1.ConnectRequest
-	9,  // 13: guardian.device.v1.DeviceChannelService.Connect:output_type -> guardian.device.v1.ConnectResponse
-	13, // [13:14] is the sub-list for method output_type
-	12, // [12:13] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	2,  // 0: guardian.device.v1.EdgeHello.protocol:type_name -> guardian.device.v1.ProtocolVersion
+	2,  // 1: guardian.device.v1.ProtocolSelection.selected:type_name -> guardian.device.v1.ProtocolVersion
+	15, // 2: guardian.device.v1.Heartbeat.sent_at:type_name -> google.protobuf.Timestamp
+	6,  // 3: guardian.device.v1.DesiredStateSnapshot.edge_configuration:type_name -> guardian.device.v1.EdgeConfiguration
+	7,  // 4: guardian.device.v1.DesiredStateSnapshot.zones:type_name -> guardian.device.v1.NetworkZoneMetadata
+	8,  // 5: guardian.device.v1.DesiredStateSnapshot.placeholder_decoys:type_name -> guardian.device.v1.PlaceholderDecoyDesiredObject
+	0,  // 6: guardian.device.v1.ReconciliationCondition.status:type_name -> guardian.device.v1.ReconciliationConditionStatus
+	15, // 7: guardian.device.v1.ReconciliationCondition.retry_at:type_name -> google.protobuf.Timestamp
+	15, // 8: guardian.device.v1.ReconciliationCondition.last_transition_time:type_name -> google.protobuf.Timestamp
+	10, // 9: guardian.device.v1.ObservedState.condition:type_name -> guardian.device.v1.ReconciliationCondition
+	1,  // 10: guardian.device.v1.Acknowledgement.kind:type_name -> guardian.device.v1.AcknowledgementKind
+	3,  // 11: guardian.device.v1.ConnectRequest.hello:type_name -> guardian.device.v1.EdgeHello
+	5,  // 12: guardian.device.v1.ConnectRequest.heartbeat:type_name -> guardian.device.v1.Heartbeat
+	11, // 13: guardian.device.v1.ConnectRequest.observed_state:type_name -> guardian.device.v1.ObservedState
+	16, // 14: guardian.device.v1.ConnectRequest.health_report:type_name -> guardian.device.v1.HealthReport
+	12, // 15: guardian.device.v1.ConnectRequest.acknowledgement:type_name -> guardian.device.v1.Acknowledgement
+	4,  // 16: guardian.device.v1.ConnectResponse.protocol_selection:type_name -> guardian.device.v1.ProtocolSelection
+	9,  // 17: guardian.device.v1.ConnectResponse.desired_state:type_name -> guardian.device.v1.DesiredStateSnapshot
+	12, // 18: guardian.device.v1.ConnectResponse.acknowledgement:type_name -> guardian.device.v1.Acknowledgement
+	13, // 19: guardian.device.v1.DeviceChannelService.Connect:input_type -> guardian.device.v1.ConnectRequest
+	14, // 20: guardian.device.v1.DeviceChannelService.Connect:output_type -> guardian.device.v1.ConnectResponse
+	20, // [20:21] is the sub-list for method output_type
+	19, // [19:20] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_guardian_device_v1_channel_proto_init() }
@@ -793,14 +1190,14 @@ func file_guardian_device_v1_channel_proto_init() {
 		return
 	}
 	file_guardian_device_v1_device_proto_init()
-	file_guardian_device_v1_channel_proto_msgTypes[7].OneofWrappers = []any{
+	file_guardian_device_v1_channel_proto_msgTypes[11].OneofWrappers = []any{
 		(*ConnectRequest_Hello)(nil),
 		(*ConnectRequest_Heartbeat)(nil),
 		(*ConnectRequest_ObservedState)(nil),
 		(*ConnectRequest_HealthReport)(nil),
 		(*ConnectRequest_Acknowledgement)(nil),
 	}
-	file_guardian_device_v1_channel_proto_msgTypes[8].OneofWrappers = []any{
+	file_guardian_device_v1_channel_proto_msgTypes[12].OneofWrappers = []any{
 		(*ConnectResponse_ProtocolSelection)(nil),
 		(*ConnectResponse_DesiredState)(nil),
 		(*ConnectResponse_Acknowledgement)(nil),
@@ -810,8 +1207,8 @@ func file_guardian_device_v1_channel_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_guardian_device_v1_channel_proto_rawDesc), len(file_guardian_device_v1_channel_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   9,
+			NumEnums:      2,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

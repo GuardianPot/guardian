@@ -24,6 +24,7 @@ var domainPackageRoots = []string{
 	"environment",
 	"health",
 	"jobs",
+	"reconciliation",
 }
 
 var forbiddenDataImports = []string{

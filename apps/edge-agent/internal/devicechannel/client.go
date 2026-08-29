@@ -41,7 +41,7 @@ type DesiredHandler interface {
 	DesiredState(context.Context, *devicev1.DesiredStateSnapshot) error
 }
 
-type AcknowledgementHandler interface {
+type ObservedAcknowledgementHandler interface {
 	Acknowledgement(context.Context, *devicev1.Acknowledgement) error
 }
 
@@ -56,30 +56,32 @@ func (function StateRecorderFunc) SetChannelState(ctx context.Context, state, re
 }
 
 type Config struct {
-	Endpoint               string
-	AgentVersion           string
-	Credentials            identity.Credentials
-	RootCAs                *x509.CertPool
-	Logger                 *slog.Logger
-	DesiredHandler         DesiredHandler
-	AcknowledgementHandler AcknowledgementHandler
-	StateRecorder          StateRecorder
+	Endpoint                       string
+	AgentVersion                   string
+	Credentials                    identity.Credentials
+	RootCAs                        *x509.CertPool
+	Logger                         *slog.Logger
+	DesiredHandler                 DesiredHandler
+	ObservedAcknowledgementHandler ObservedAcknowledgementHandler
+	HealthAcknowledgementHandler   ObservedAcknowledgementHandler
+	StateRecorder                  StateRecorder
 }
 
 type Client struct {
-	endpoint               string
-	agentVersion           string
-	credentials            identity.Credentials
-	rootCAs                *x509.CertPool
-	logger                 *slog.Logger
-	desiredHandler         DesiredHandler
-	acknowledgementHandler AcknowledgementHandler
-	stateRecorder          StateRecorder
-	outgoing               *requestQueue
-	heartbeatInterval      time.Duration
-	stableAfter            time.Duration
-	helloTimeout           time.Duration
-	jitter                 func(time.Duration) time.Duration
+	endpoint                       string
+	agentVersion                   string
+	credentials                    identity.Credentials
+	rootCAs                        *x509.CertPool
+	logger                         *slog.Logger
+	desiredHandler                 DesiredHandler
+	observedAcknowledgementHandler ObservedAcknowledgementHandler
+	healthAcknowledgementHandler   ObservedAcknowledgementHandler
+	stateRecorder                  StateRecorder
+	outgoing                       *requestQueue
+	heartbeatInterval              time.Duration
+	stableAfter                    time.Duration
+	helloTimeout                   time.Duration
+	jitter                         func(time.Duration) time.Duration
 
 	mu      sync.RWMutex
 	state   string
@@ -100,7 +102,8 @@ func NewClient(config Config) (*Client, error) {
 	return &Client{
 		endpoint: config.Endpoint, agentVersion: config.AgentVersion, credentials: config.Credentials,
 		rootCAs: config.RootCAs, logger: config.Logger, desiredHandler: config.DesiredHandler,
-		acknowledgementHandler: config.AcknowledgementHandler, stateRecorder: config.StateRecorder,
+		observedAcknowledgementHandler: config.ObservedAcknowledgementHandler,
+		healthAcknowledgementHandler:   config.HealthAcknowledgementHandler, stateRecorder: config.StateRecorder,
 		outgoing: newRequestQueue(), heartbeatInterval: HeartbeatInterval, stableAfter: StaleAfter,
 		helloTimeout: HelloTimeout, jitter: fullJitter, state: "disconnected", reason: "not_started",
 	}, nil
@@ -160,14 +163,11 @@ func (c *Client) ConnectionState() string {
 	return c.state
 }
 
-func (c *Client) EnqueueObserved(messageID string, desiredRevision, observedRevision uint64) error {
-	frame := &devicev1.ConnectRequest{Payload: &devicev1.ConnectRequest_ObservedState{ObservedState: &devicev1.ObservedState{
-		MessageId: messageID, DesiredRevision: desiredRevision, ObservedRevision: observedRevision,
-	}}}
-	if err := validateObserved(frame.GetObservedState()); err != nil {
+func (c *Client) EnqueueObserved(observed *devicev1.ObservedState) error {
+	if err := validateObserved(observed); err != nil {
 		return err
 	}
-	return c.outgoing.enqueue(frame)
+	return c.outgoing.enqueue(&devicev1.ConnectRequest{Payload: &devicev1.ConnectRequest_ObservedState{ObservedState: observed}})
 }
 
 func (c *Client) EnqueueHealth(report health.Report) error {
@@ -300,7 +300,7 @@ func (c *Client) receiveLoop(ctx context.Context, stream grpc.BidiStreamingClien
 		}
 		switch payload := response.Payload.(type) {
 		case *devicev1.ConnectResponse_DesiredState:
-			if err := validateDesiredState(payload.DesiredState); err != nil {
+			if err := validateDesiredEnvelope(payload.DesiredState); err != nil {
 				return status.Error(codes.InvalidArgument, "desired state is invalid")
 			}
 			if _, seen := duplicates[payload.DesiredState.MessageId]; !seen {
@@ -326,11 +326,23 @@ func (c *Client) receiveLoop(ctx context.Context, stream grpc.BidiStreamingClien
 			if err := validateAcknowledgement(payload.Acknowledgement); err != nil {
 				return status.Error(codes.InvalidArgument, "acknowledgement is invalid")
 			}
-			if c.acknowledgementHandler == nil {
-				return status.Error(codes.Unimplemented, "acknowledgement handler is unavailable")
-			}
-			if err := c.acknowledgementHandler.Acknowledgement(ctx, payload.Acknowledgement); err != nil {
-				return status.Error(codes.Internal, "acknowledgement handling failed")
+			switch payload.Acknowledgement.Kind {
+			case devicev1.AcknowledgementKind_ACKNOWLEDGEMENT_KIND_OBSERVED_STATE:
+				if c.observedAcknowledgementHandler == nil {
+					return status.Error(codes.Unimplemented, "observed acknowledgement handler is unavailable")
+				}
+				if err := c.observedAcknowledgementHandler.Acknowledgement(ctx, payload.Acknowledgement); err != nil {
+					return status.Error(codes.Internal, "observed acknowledgement handling failed")
+				}
+			case devicev1.AcknowledgementKind_ACKNOWLEDGEMENT_KIND_HEALTH_REPORT:
+				if c.healthAcknowledgementHandler == nil {
+					return status.Error(codes.Unimplemented, "health acknowledgement handler is unavailable")
+				}
+				if err := c.healthAcknowledgementHandler.Acknowledgement(ctx, payload.Acknowledgement); err != nil {
+					return status.Error(codes.Internal, "health acknowledgement handling failed")
+				}
+			default:
+				return status.Error(codes.InvalidArgument, "acknowledgement kind is invalid")
 			}
 		default:
 			return status.Error(codes.InvalidArgument, "unexpected control channel frame")
@@ -370,8 +382,14 @@ func receiveSelection(ctx context.Context, cancel context.CancelFunc, stream grp
 }
 
 func validateObserved(observed *devicev1.ObservedState) error {
-	if observed == nil || !validUUIDv7(observed.MessageId) || observed.ObservedRevision > observed.DesiredRevision {
+	if observed == nil || !validUUIDv7(observed.MessageId) || observed.DesiredRevision == 0 ||
+		observed.ObservedRevision > observed.DesiredRevision || observed.LastGoodRevision > observed.ObservedRevision ||
+		!validObservedCondition(observed.Condition) {
 		return errors.New("observed state is invalid")
+	}
+	if observed.Condition.Status == devicev1.ReconciliationConditionStatus_RECONCILIATION_CONDITION_STATUS_CONVERGED &&
+		(observed.ObservedRevision != observed.DesiredRevision || observed.LastGoodRevision != observed.ObservedRevision) {
+		return errors.New("converged observed state is inconsistent")
 	}
 	return nil
 }

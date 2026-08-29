@@ -41,6 +41,37 @@ CREATE TABLE health_conditions (
     updated_at INTEGER NOT NULL
 );
 
+CREATE TABLE reconciliation_state (
+    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+    desired_message_id TEXT NOT NULL CHECK (length(desired_message_id) = 36),
+    desired_revision INTEGER NOT NULL CHECK (desired_revision > 0),
+    observed_revision INTEGER NOT NULL CHECK (observed_revision >= 0),
+    last_good_revision INTEGER NOT NULL CHECK (last_good_revision >= 0),
+    desired_digest BLOB NOT NULL CHECK (length(desired_digest) = 32),
+    desired_payload BLOB NOT NULL CHECK (length(desired_payload) BETWEEN 1 AND 1048576),
+    last_good_digest BLOB,
+    last_good_payload BLOB,
+    condition_status TEXT NOT NULL CHECK (condition_status IN ('pending', 'converged', 'retrying', 'failed')),
+    reason_code TEXT NOT NULL CHECK (length(reason_code) BETWEEN 1 AND 64),
+    attempt_count INTEGER NOT NULL CHECK (attempt_count BETWEEN 0 AND 6),
+    retry_at INTEGER,
+    observed_message_id TEXT NOT NULL CHECK (length(observed_message_id) = 36),
+    observed_pending INTEGER NOT NULL CHECK (observed_pending IN (0, 1)),
+    last_transition_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    CHECK (observed_revision <= desired_revision),
+    CHECK (last_good_revision <= observed_revision),
+    CHECK (
+        (last_good_revision = 0 AND last_good_digest IS NULL AND last_good_payload IS NULL)
+        OR
+        (last_good_revision > 0 AND length(last_good_digest) = 32 AND length(last_good_payload) BETWEEN 1 AND 1048576)
+    ),
+    CHECK ((condition_status = 'retrying') = (retry_at IS NOT NULL)),
+    CHECK (condition_status <> 'converged' OR (
+        observed_revision = desired_revision AND last_good_revision = observed_revision
+    ))
+);
+
 CREATE TABLE spool_objects (
     digest TEXT PRIMARY KEY CHECK (length(digest) = 64),
     relative_path TEXT NOT NULL UNIQUE,
@@ -137,12 +168,13 @@ WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`).Scan(&count); err != nil {
 
 func verifyRequiredTables(ctx context.Context, db *sql.DB) error {
 	required := map[string][]string{
-		"identity_metadata": {"singleton", "certificate_sha256", "certificate_not_before", "certificate_not_after", "enrollment_status", "updated_at"},
-		"state_revisions":   {"object_kind", "desired_revision", "observed_revision", "last_good_revision", "condition_code", "updated_at"},
-		"retry_metadata":    {"operation_id", "attempts", "next_attempt_at", "last_error_code", "updated_at"},
-		"health_conditions": {"name", "status", "reason_code", "updated_at"},
-		"spool_objects":     {"digest", "relative_path", "size_bytes", "state", "created_at"},
-		"durable_events":    {"sequence", "event_id", "payload_digest", "payload_size", "state", "attempts", "available_at", "lease_until", "created_at", "updated_at", "delivered_at"},
+		"identity_metadata":    {"singleton", "certificate_sha256", "certificate_not_before", "certificate_not_after", "enrollment_status", "updated_at"},
+		"state_revisions":      {"object_kind", "desired_revision", "observed_revision", "last_good_revision", "condition_code", "updated_at"},
+		"retry_metadata":       {"operation_id", "attempts", "next_attempt_at", "last_error_code", "updated_at"},
+		"health_conditions":    {"name", "status", "reason_code", "updated_at"},
+		"reconciliation_state": {"singleton", "desired_message_id", "desired_revision", "observed_revision", "last_good_revision", "desired_digest", "desired_payload", "last_good_digest", "last_good_payload", "condition_status", "reason_code", "attempt_count", "retry_at", "observed_message_id", "observed_pending", "last_transition_at", "updated_at"},
+		"spool_objects":        {"digest", "relative_path", "size_bytes", "state", "created_at"},
+		"durable_events":       {"sequence", "event_id", "payload_digest", "payload_size", "state", "attempts", "available_at", "lease_until", "created_at", "updated_at", "delivered_at"},
 	}
 	for table, expectedColumns := range required {
 		rows, err := db.QueryContext(ctx, "PRAGMA table_info("+table+")")
