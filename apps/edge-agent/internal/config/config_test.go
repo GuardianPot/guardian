@@ -61,6 +61,7 @@ func TestLoadStrictConfigurationAndDefaults(t *testing.T) {
   "device_channel_endpoint": "devices.guardian.example:443",
   "database_path": "`+filepath.Join(root, "edge.db")+`",
   "spool_directory": "`+filepath.Join(root, "spool")+`",
+  "spool_capacity_bytes": 1073741824,
   "identity_certificate_path": "`+filepath.Join(root, "identity.crt")+`",
   "identity_private_key_path": "`+filepath.Join(root, "identity.key")+`"
 }`)
@@ -121,6 +122,7 @@ func TestValidateRejectsUnsafeConfiguration(t *testing.T) {
 		DeviceChannelEndpoint: "devices.guardian.example:443",
 		DatabasePath:          filepath.Join(root, "edge.db"),
 		SpoolDirectory:        filepath.Join(root, "spool"),
+		SpoolCapacityBytes:    1 << 30,
 		IdentityCertPath:      filepath.Join(root, "device.crt"),
 		IdentityKeyPath:       filepath.Join(root, "device.key"),
 		ShutdownSeconds:       15,
@@ -134,6 +136,8 @@ func TestValidateRejectsUnsafeConfiguration(t *testing.T) {
 		func() Config { c := valid; c.ControlPlaneEndpoint = "http://guardian"; return c }(),
 		func() Config { c := valid; c.DeviceChannelEndpoint = "https://guardian"; return c }(),
 		func() Config { c := valid; c.DatabasePath = "edge.db"; return c }(),
+		func() Config { c := valid; c.SpoolCapacityBytes = MinimumSpoolCapacity - 1; return c }(),
+		func() Config { c := valid; c.SpoolCapacityBytes = MaximumSpoolCapacity + 1; return c }(),
 		func() Config { c := valid; c.IdentityKeyPath = c.IdentityCertPath; return c }(),
 		func() Config { c := valid; c.ShutdownSeconds = 121; return c }(),
 		func() Config { c := valid; c.LogLevel = "trace"; return c }(),

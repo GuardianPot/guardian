@@ -1,7 +1,7 @@
 [Unit]
 Description=Guardian Edge Privileged Helper
 Documentation=file:/usr/share/doc/guardian-edge/privileged-helper.md
-After=local-fs.target
+After=local-fs.target containerd.service
 Before=guardian-edge.service
 StartLimitIntervalSec=5min
 StartLimitBurst=5
@@ -36,6 +36,7 @@ ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectKernelLogs=yes
 ProtectControlGroups=yes
+ReadOnlyPaths=-/run/containerd/containerd.sock
 RestrictNamespaces=yes
 RestrictRealtime=yes
 RestrictSUIDSGID=yes

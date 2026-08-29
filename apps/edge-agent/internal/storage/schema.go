@@ -34,10 +34,45 @@ CREATE TABLE retry_metadata (
     updated_at INTEGER NOT NULL
 );
 
-CREATE TABLE health_conditions (
+CREATE TABLE component_health (
     name TEXT PRIMARY KEY,
     status TEXT NOT NULL CHECK (status IN ('healthy', 'degraded', 'failed', 'stopped', 'unknown')),
     reason_code TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE health_report_state (
+    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+    next_sequence TEXT NOT NULL CHECK (length(next_sequence) BETWEEN 1 AND 20),
+    pending_report_id TEXT CHECK (pending_report_id IS NULL OR length(pending_report_id) = 36),
+    pending_sequence TEXT CHECK (pending_sequence IS NULL OR length(pending_sequence) BETWEEN 1 AND 20),
+    pending_payload BLOB CHECK (pending_payload IS NULL OR length(pending_payload) BETWEEN 1 AND 16384),
+    pending_created_at INTEGER,
+    acknowledged_report_id TEXT CHECK (acknowledged_report_id IS NULL OR length(acknowledged_report_id) = 36),
+    acknowledged_sequence TEXT CHECK (acknowledged_sequence IS NULL OR length(acknowledged_sequence) BETWEEN 1 AND 20),
+    acknowledged_at INTEGER,
+    updated_at INTEGER NOT NULL,
+    CHECK ((pending_report_id IS NULL) = (pending_sequence IS NULL)),
+    CHECK ((pending_report_id IS NULL) = (pending_payload IS NULL)),
+    CHECK ((pending_report_id IS NULL) = (pending_created_at IS NULL)),
+    CHECK ((acknowledged_report_id IS NULL) = (acknowledged_sequence IS NULL)),
+    CHECK ((acknowledged_report_id IS NULL) = (acknowledged_at IS NULL))
+);
+
+INSERT INTO health_report_state (singleton, next_sequence, updated_at)
+VALUES (1, '1', 0);
+
+CREATE TABLE canonical_health_conditions (
+    condition_type TEXT PRIMARY KEY CHECK (condition_type IN (
+        'edge_connected', 'device_certificate_ready', 'config_converged',
+        'local_database_healthy', 'spool_healthy', 'clock_quality',
+        'container_runtime_reachable', 'privileged_helper_reachable'
+    )),
+    status TEXT NOT NULL CHECK (status IN ('True', 'False', 'Unknown')),
+    reason_code TEXT NOT NULL CHECK (length(reason_code) BETWEEN 1 AND 64),
+    message TEXT NOT NULL CHECK (length(CAST(message AS BLOB)) <= 512),
+    observed_revision TEXT CHECK (observed_revision IS NULL OR length(observed_revision) BETWEEN 1 AND 20),
+    last_transition_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
 );
 
@@ -168,13 +203,15 @@ WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`).Scan(&count); err != nil {
 
 func verifyRequiredTables(ctx context.Context, db *sql.DB) error {
 	required := map[string][]string{
-		"identity_metadata":    {"singleton", "certificate_sha256", "certificate_not_before", "certificate_not_after", "enrollment_status", "updated_at"},
-		"state_revisions":      {"object_kind", "desired_revision", "observed_revision", "last_good_revision", "condition_code", "updated_at"},
-		"retry_metadata":       {"operation_id", "attempts", "next_attempt_at", "last_error_code", "updated_at"},
-		"health_conditions":    {"name", "status", "reason_code", "updated_at"},
-		"reconciliation_state": {"singleton", "desired_message_id", "desired_revision", "observed_revision", "last_good_revision", "desired_digest", "desired_payload", "last_good_digest", "last_good_payload", "condition_status", "reason_code", "attempt_count", "retry_at", "observed_message_id", "observed_pending", "last_transition_at", "updated_at"},
-		"spool_objects":        {"digest", "relative_path", "size_bytes", "state", "created_at"},
-		"durable_events":       {"sequence", "event_id", "payload_digest", "payload_size", "state", "attempts", "available_at", "lease_until", "created_at", "updated_at", "delivered_at"},
+		"identity_metadata":           {"singleton", "certificate_sha256", "certificate_not_before", "certificate_not_after", "enrollment_status", "updated_at"},
+		"state_revisions":             {"object_kind", "desired_revision", "observed_revision", "last_good_revision", "condition_code", "updated_at"},
+		"retry_metadata":              {"operation_id", "attempts", "next_attempt_at", "last_error_code", "updated_at"},
+		"component_health":            {"name", "status", "reason_code", "updated_at"},
+		"health_report_state":         {"singleton", "next_sequence", "pending_report_id", "pending_sequence", "pending_payload", "pending_created_at", "acknowledged_report_id", "acknowledged_sequence", "acknowledged_at", "updated_at"},
+		"canonical_health_conditions": {"condition_type", "status", "reason_code", "message", "observed_revision", "last_transition_at", "updated_at"},
+		"reconciliation_state":        {"singleton", "desired_message_id", "desired_revision", "observed_revision", "last_good_revision", "desired_digest", "desired_payload", "last_good_digest", "last_good_payload", "condition_status", "reason_code", "attempt_count", "retry_at", "observed_message_id", "observed_pending", "last_transition_at", "updated_at"},
+		"spool_objects":               {"digest", "relative_path", "size_bytes", "state", "created_at"},
+		"durable_events":              {"sequence", "event_id", "payload_digest", "payload_size", "state", "attempts", "available_at", "lease_until", "created_at", "updated_at", "delivered_at"},
 	}
 	for table, expectedColumns := range required {
 		rows, err := db.QueryContext(ctx, "PRAGMA table_info("+table+")")

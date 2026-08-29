@@ -37,6 +37,7 @@ ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectKernelLogs=yes
 ProtectControlGroups=yes
+InaccessiblePaths=-/run/containerd
 ProtectProc=invisible
 ProcSubset=pid
 RestrictNamespaces=yes

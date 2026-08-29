@@ -324,6 +324,55 @@ func (OperationOutcome) EnumDescriptor() ([]byte, []int) {
 	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{5}
 }
 
+type RuntimeReachability int32
+
+const (
+	RuntimeReachability_RUNTIME_REACHABILITY_UNSPECIFIED RuntimeReachability = 0
+	RuntimeReachability_RUNTIME_REACHABILITY_REACHABLE   RuntimeReachability = 1
+	RuntimeReachability_RUNTIME_REACHABILITY_UNREACHABLE RuntimeReachability = 2
+)
+
+// Enum value maps for RuntimeReachability.
+var (
+	RuntimeReachability_name = map[int32]string{
+		0: "RUNTIME_REACHABILITY_UNSPECIFIED",
+		1: "RUNTIME_REACHABILITY_REACHABLE",
+		2: "RUNTIME_REACHABILITY_UNREACHABLE",
+	}
+	RuntimeReachability_value = map[string]int32{
+		"RUNTIME_REACHABILITY_UNSPECIFIED": 0,
+		"RUNTIME_REACHABILITY_REACHABLE":   1,
+		"RUNTIME_REACHABILITY_UNREACHABLE": 2,
+	}
+)
+
+func (x RuntimeReachability) Enum() *RuntimeReachability {
+	p := new(RuntimeReachability)
+	*p = x
+	return p
+}
+
+func (x RuntimeReachability) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RuntimeReachability) Descriptor() protoreflect.EnumDescriptor {
+	return file_guardian_privileged_v1_privileged_proto_enumTypes[6].Descriptor()
+}
+
+func (RuntimeReachability) Type() protoreflect.EnumType {
+	return &file_guardian_privileged_v1_privileged_proto_enumTypes[6]
+}
+
+func (x RuntimeReachability) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RuntimeReachability.Descriptor instead.
+func (RuntimeReachability) EnumDescriptor() ([]byte, []int) {
+	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{6}
+}
+
 type GetStatusRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -472,6 +521,94 @@ func (x *GetStatusResponse) GetCapabilities() []*Capability {
 	return nil
 }
 
+type GetRuntimeStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRuntimeStatusRequest) Reset() {
+	*x = GetRuntimeStatusRequest{}
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRuntimeStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRuntimeStatusRequest) ProtoMessage() {}
+
+func (x *GetRuntimeStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRuntimeStatusRequest.ProtoReflect.Descriptor instead.
+func (*GetRuntimeStatusRequest) Descriptor() ([]byte, []int) {
+	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{3}
+}
+
+type GetRuntimeStatusResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reachability  RuntimeReachability    `protobuf:"varint,1,opt,name=reachability,proto3,enum=guardian.privileged.v1.RuntimeReachability" json:"reachability,omitempty"`
+	ReasonCode    string                 `protobuf:"bytes,2,opt,name=reason_code,json=reasonCode,proto3" json:"reason_code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRuntimeStatusResponse) Reset() {
+	*x = GetRuntimeStatusResponse{}
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRuntimeStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRuntimeStatusResponse) ProtoMessage() {}
+
+func (x *GetRuntimeStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRuntimeStatusResponse.ProtoReflect.Descriptor instead.
+func (*GetRuntimeStatusResponse) Descriptor() ([]byte, []int) {
+	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GetRuntimeStatusResponse) GetReachability() RuntimeReachability {
+	if x != nil {
+		return x.Reachability
+	}
+	return RuntimeReachability_RUNTIME_REACHABILITY_UNSPECIFIED
+}
+
+func (x *GetRuntimeStatusResponse) GetReasonCode() string {
+	if x != nil {
+		return x.ReasonCode
+	}
+	return ""
+}
+
 type EnsureAddressRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
@@ -484,7 +621,7 @@ type EnsureAddressRequest struct {
 
 func (x *EnsureAddressRequest) Reset() {
 	*x = EnsureAddressRequest{}
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[3]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -496,7 +633,7 @@ func (x *EnsureAddressRequest) String() string {
 func (*EnsureAddressRequest) ProtoMessage() {}
 
 func (x *EnsureAddressRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[3]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -509,7 +646,7 @@ func (x *EnsureAddressRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnsureAddressRequest.ProtoReflect.Descriptor instead.
 func (*EnsureAddressRequest) Descriptor() ([]byte, []int) {
-	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{3}
+	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *EnsureAddressRequest) GetRequestId() string {
@@ -549,7 +686,7 @@ type EnsureAddressResponse struct {
 
 func (x *EnsureAddressResponse) Reset() {
 	*x = EnsureAddressResponse{}
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[4]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -561,7 +698,7 @@ func (x *EnsureAddressResponse) String() string {
 func (*EnsureAddressResponse) ProtoMessage() {}
 
 func (x *EnsureAddressResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[4]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -574,7 +711,7 @@ func (x *EnsureAddressResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnsureAddressResponse.ProtoReflect.Descriptor instead.
 func (*EnsureAddressResponse) Descriptor() ([]byte, []int) {
-	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{4}
+	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *EnsureAddressResponse) GetResult() *OperationResult {
@@ -595,7 +732,7 @@ type ApplyNftablesPolicyRequest struct {
 
 func (x *ApplyNftablesPolicyRequest) Reset() {
 	*x = ApplyNftablesPolicyRequest{}
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[5]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -607,7 +744,7 @@ func (x *ApplyNftablesPolicyRequest) String() string {
 func (*ApplyNftablesPolicyRequest) ProtoMessage() {}
 
 func (x *ApplyNftablesPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[5]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -620,7 +757,7 @@ func (x *ApplyNftablesPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyNftablesPolicyRequest.ProtoReflect.Descriptor instead.
 func (*ApplyNftablesPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{5}
+	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ApplyNftablesPolicyRequest) GetRequestId() string {
@@ -653,7 +790,7 @@ type ApplyNftablesPolicyResponse struct {
 
 func (x *ApplyNftablesPolicyResponse) Reset() {
 	*x = ApplyNftablesPolicyResponse{}
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[6]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -665,7 +802,7 @@ func (x *ApplyNftablesPolicyResponse) String() string {
 func (*ApplyNftablesPolicyResponse) ProtoMessage() {}
 
 func (x *ApplyNftablesPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[6]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -678,7 +815,7 @@ func (x *ApplyNftablesPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyNftablesPolicyResponse.ProtoReflect.Descriptor instead.
 func (*ApplyNftablesPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{6}
+	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ApplyNftablesPolicyResponse) GetResult() *OperationResult {
@@ -699,7 +836,7 @@ type ReconcileContainerRequest struct {
 
 func (x *ReconcileContainerRequest) Reset() {
 	*x = ReconcileContainerRequest{}
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[7]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -711,7 +848,7 @@ func (x *ReconcileContainerRequest) String() string {
 func (*ReconcileContainerRequest) ProtoMessage() {}
 
 func (x *ReconcileContainerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[7]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -724,7 +861,7 @@ func (x *ReconcileContainerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReconcileContainerRequest.ProtoReflect.Descriptor instead.
 func (*ReconcileContainerRequest) Descriptor() ([]byte, []int) {
-	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{7}
+	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ReconcileContainerRequest) GetRequestId() string {
@@ -757,7 +894,7 @@ type ReconcileContainerResponse struct {
 
 func (x *ReconcileContainerResponse) Reset() {
 	*x = ReconcileContainerResponse{}
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[8]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -769,7 +906,7 @@ func (x *ReconcileContainerResponse) String() string {
 func (*ReconcileContainerResponse) ProtoMessage() {}
 
 func (x *ReconcileContainerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[8]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -782,7 +919,7 @@ func (x *ReconcileContainerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReconcileContainerResponse.ProtoReflect.Descriptor instead.
 func (*ReconcileContainerResponse) Descriptor() ([]byte, []int) {
-	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{8}
+	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ReconcileContainerResponse) GetResult() *OperationResult {
@@ -803,7 +940,7 @@ type EnsureNetworkNamespaceRequest struct {
 
 func (x *EnsureNetworkNamespaceRequest) Reset() {
 	*x = EnsureNetworkNamespaceRequest{}
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[9]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -815,7 +952,7 @@ func (x *EnsureNetworkNamespaceRequest) String() string {
 func (*EnsureNetworkNamespaceRequest) ProtoMessage() {}
 
 func (x *EnsureNetworkNamespaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[9]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -828,7 +965,7 @@ func (x *EnsureNetworkNamespaceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnsureNetworkNamespaceRequest.ProtoReflect.Descriptor instead.
 func (*EnsureNetworkNamespaceRequest) Descriptor() ([]byte, []int) {
-	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{9}
+	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *EnsureNetworkNamespaceRequest) GetRequestId() string {
@@ -861,7 +998,7 @@ type EnsureNetworkNamespaceResponse struct {
 
 func (x *EnsureNetworkNamespaceResponse) Reset() {
 	*x = EnsureNetworkNamespaceResponse{}
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[10]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -873,7 +1010,7 @@ func (x *EnsureNetworkNamespaceResponse) String() string {
 func (*EnsureNetworkNamespaceResponse) ProtoMessage() {}
 
 func (x *EnsureNetworkNamespaceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[10]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -886,7 +1023,7 @@ func (x *EnsureNetworkNamespaceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnsureNetworkNamespaceResponse.ProtoReflect.Descriptor instead.
 func (*EnsureNetworkNamespaceResponse) Descriptor() ([]byte, []int) {
-	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{10}
+	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *EnsureNetworkNamespaceResponse) GetResult() *OperationResult {
@@ -907,7 +1044,7 @@ type OperationResult struct {
 
 func (x *OperationResult) Reset() {
 	*x = OperationResult{}
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[11]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -919,7 +1056,7 @@ func (x *OperationResult) String() string {
 func (*OperationResult) ProtoMessage() {}
 
 func (x *OperationResult) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[11]
+	mi := &file_guardian_privileged_v1_privileged_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -932,7 +1069,7 @@ func (x *OperationResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperationResult.ProtoReflect.Descriptor instead.
 func (*OperationResult) Descriptor() ([]byte, []int) {
-	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{11}
+	return file_guardian_privileged_v1_privileged_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *OperationResult) GetRequestId() string {
@@ -971,7 +1108,12 @@ const file_guardian_privileged_v1_privileged_proto_rawDesc = "" +
 	"\x11GetStatusResponse\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12F\n" +
-	"\fcapabilities\x18\x02 \x03(\v2\".guardian.privileged.v1.CapabilityR\fcapabilities\"\xcf\x01\n" +
+	"\fcapabilities\x18\x02 \x03(\v2\".guardian.privileged.v1.CapabilityR\fcapabilities\"\x19\n" +
+	"\x17GetRuntimeStatusRequest\"\x8c\x01\n" +
+	"\x18GetRuntimeStatusResponse\x12O\n" +
+	"\freachability\x18\x01 \x01(\x0e2+.guardian.privileged.v1.RuntimeReachabilityR\freachability\x12\x1f\n" +
+	"\vreason_code\x18\x02 \x01(\tR\n" +
+	"reasonCode\"\xcf\x01\n" +
 	"\x14EnsureAddressRequest\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12%\n" +
@@ -1034,9 +1176,14 @@ const file_guardian_privileged_v1_privileged_proto_rawDesc = "" +
 	"\x1dOPERATION_OUTCOME_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19OPERATION_OUTCOME_APPLIED\x10\x01\x12\x1f\n" +
 	"\x1bOPERATION_OUTCOME_UNCHANGED\x10\x02\x12!\n" +
-	"\x1dOPERATION_OUTCOME_UNSUPPORTED\x10\x032\xf0\x04\n" +
+	"\x1dOPERATION_OUTCOME_UNSUPPORTED\x10\x03*\x85\x01\n" +
+	"\x13RuntimeReachability\x12$\n" +
+	" RUNTIME_REACHABILITY_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1eRUNTIME_REACHABILITY_REACHABLE\x10\x01\x12$\n" +
+	" RUNTIME_REACHABILITY_UNREACHABLE\x10\x022\xe7\x05\n" +
 	"\x17PrivilegedHelperService\x12`\n" +
-	"\tGetStatus\x12(.guardian.privileged.v1.GetStatusRequest\x1a).guardian.privileged.v1.GetStatusResponse\x12l\n" +
+	"\tGetStatus\x12(.guardian.privileged.v1.GetStatusRequest\x1a).guardian.privileged.v1.GetStatusResponse\x12u\n" +
+	"\x10GetRuntimeStatus\x12/.guardian.privileged.v1.GetRuntimeStatusRequest\x1a0.guardian.privileged.v1.GetRuntimeStatusResponse\x12l\n" +
 	"\rEnsureAddress\x12,.guardian.privileged.v1.EnsureAddressRequest\x1a-.guardian.privileged.v1.EnsureAddressResponse\x12~\n" +
 	"\x13ApplyNftablesPolicy\x122.guardian.privileged.v1.ApplyNftablesPolicyRequest\x1a3.guardian.privileged.v1.ApplyNftablesPolicyResponse\x12{\n" +
 	"\x12ReconcileContainer\x121.guardian.privileged.v1.ReconcileContainerRequest\x1a2.guardian.privileged.v1.ReconcileContainerResponse\x12\x87\x01\n" +
@@ -1054,8 +1201,8 @@ func file_guardian_privileged_v1_privileged_proto_rawDescGZIP() []byte {
 	return file_guardian_privileged_v1_privileged_proto_rawDescData
 }
 
-var file_guardian_privileged_v1_privileged_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_guardian_privileged_v1_privileged_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_guardian_privileged_v1_privileged_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
+var file_guardian_privileged_v1_privileged_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_guardian_privileged_v1_privileged_proto_goTypes = []any{
 	(PrivilegedOperation)(0),               // 0: guardian.privileged.v1.PrivilegedOperation
 	(CapabilityState)(0),                   // 1: guardian.privileged.v1.CapabilityState
@@ -1063,47 +1210,53 @@ var file_guardian_privileged_v1_privileged_proto_goTypes = []any{
 	(ContainerState)(0),                    // 3: guardian.privileged.v1.ContainerState
 	(NftablesProfile)(0),                   // 4: guardian.privileged.v1.NftablesProfile
 	(OperationOutcome)(0),                  // 5: guardian.privileged.v1.OperationOutcome
-	(*GetStatusRequest)(nil),               // 6: guardian.privileged.v1.GetStatusRequest
-	(*Capability)(nil),                     // 7: guardian.privileged.v1.Capability
-	(*GetStatusResponse)(nil),              // 8: guardian.privileged.v1.GetStatusResponse
-	(*EnsureAddressRequest)(nil),           // 9: guardian.privileged.v1.EnsureAddressRequest
-	(*EnsureAddressResponse)(nil),          // 10: guardian.privileged.v1.EnsureAddressResponse
-	(*ApplyNftablesPolicyRequest)(nil),     // 11: guardian.privileged.v1.ApplyNftablesPolicyRequest
-	(*ApplyNftablesPolicyResponse)(nil),    // 12: guardian.privileged.v1.ApplyNftablesPolicyResponse
-	(*ReconcileContainerRequest)(nil),      // 13: guardian.privileged.v1.ReconcileContainerRequest
-	(*ReconcileContainerResponse)(nil),     // 14: guardian.privileged.v1.ReconcileContainerResponse
-	(*EnsureNetworkNamespaceRequest)(nil),  // 15: guardian.privileged.v1.EnsureNetworkNamespaceRequest
-	(*EnsureNetworkNamespaceResponse)(nil), // 16: guardian.privileged.v1.EnsureNetworkNamespaceResponse
-	(*OperationResult)(nil),                // 17: guardian.privileged.v1.OperationResult
+	(RuntimeReachability)(0),               // 6: guardian.privileged.v1.RuntimeReachability
+	(*GetStatusRequest)(nil),               // 7: guardian.privileged.v1.GetStatusRequest
+	(*Capability)(nil),                     // 8: guardian.privileged.v1.Capability
+	(*GetStatusResponse)(nil),              // 9: guardian.privileged.v1.GetStatusResponse
+	(*GetRuntimeStatusRequest)(nil),        // 10: guardian.privileged.v1.GetRuntimeStatusRequest
+	(*GetRuntimeStatusResponse)(nil),       // 11: guardian.privileged.v1.GetRuntimeStatusResponse
+	(*EnsureAddressRequest)(nil),           // 12: guardian.privileged.v1.EnsureAddressRequest
+	(*EnsureAddressResponse)(nil),          // 13: guardian.privileged.v1.EnsureAddressResponse
+	(*ApplyNftablesPolicyRequest)(nil),     // 14: guardian.privileged.v1.ApplyNftablesPolicyRequest
+	(*ApplyNftablesPolicyResponse)(nil),    // 15: guardian.privileged.v1.ApplyNftablesPolicyResponse
+	(*ReconcileContainerRequest)(nil),      // 16: guardian.privileged.v1.ReconcileContainerRequest
+	(*ReconcileContainerResponse)(nil),     // 17: guardian.privileged.v1.ReconcileContainerResponse
+	(*EnsureNetworkNamespaceRequest)(nil),  // 18: guardian.privileged.v1.EnsureNetworkNamespaceRequest
+	(*EnsureNetworkNamespaceResponse)(nil), // 19: guardian.privileged.v1.EnsureNetworkNamespaceResponse
+	(*OperationResult)(nil),                // 20: guardian.privileged.v1.OperationResult
 }
 var file_guardian_privileged_v1_privileged_proto_depIdxs = []int32{
 	0,  // 0: guardian.privileged.v1.Capability.operation:type_name -> guardian.privileged.v1.PrivilegedOperation
 	1,  // 1: guardian.privileged.v1.Capability.state:type_name -> guardian.privileged.v1.CapabilityState
-	7,  // 2: guardian.privileged.v1.GetStatusResponse.capabilities:type_name -> guardian.privileged.v1.Capability
-	2,  // 3: guardian.privileged.v1.EnsureAddressRequest.desired_state:type_name -> guardian.privileged.v1.PresenceState
-	17, // 4: guardian.privileged.v1.EnsureAddressResponse.result:type_name -> guardian.privileged.v1.OperationResult
-	4,  // 5: guardian.privileged.v1.ApplyNftablesPolicyRequest.profile:type_name -> guardian.privileged.v1.NftablesProfile
-	17, // 6: guardian.privileged.v1.ApplyNftablesPolicyResponse.result:type_name -> guardian.privileged.v1.OperationResult
-	3,  // 7: guardian.privileged.v1.ReconcileContainerRequest.desired_state:type_name -> guardian.privileged.v1.ContainerState
-	17, // 8: guardian.privileged.v1.ReconcileContainerResponse.result:type_name -> guardian.privileged.v1.OperationResult
-	2,  // 9: guardian.privileged.v1.EnsureNetworkNamespaceRequest.desired_state:type_name -> guardian.privileged.v1.PresenceState
-	17, // 10: guardian.privileged.v1.EnsureNetworkNamespaceResponse.result:type_name -> guardian.privileged.v1.OperationResult
-	5,  // 11: guardian.privileged.v1.OperationResult.outcome:type_name -> guardian.privileged.v1.OperationOutcome
-	6,  // 12: guardian.privileged.v1.PrivilegedHelperService.GetStatus:input_type -> guardian.privileged.v1.GetStatusRequest
-	9,  // 13: guardian.privileged.v1.PrivilegedHelperService.EnsureAddress:input_type -> guardian.privileged.v1.EnsureAddressRequest
-	11, // 14: guardian.privileged.v1.PrivilegedHelperService.ApplyNftablesPolicy:input_type -> guardian.privileged.v1.ApplyNftablesPolicyRequest
-	13, // 15: guardian.privileged.v1.PrivilegedHelperService.ReconcileContainer:input_type -> guardian.privileged.v1.ReconcileContainerRequest
-	15, // 16: guardian.privileged.v1.PrivilegedHelperService.EnsureNetworkNamespace:input_type -> guardian.privileged.v1.EnsureNetworkNamespaceRequest
-	8,  // 17: guardian.privileged.v1.PrivilegedHelperService.GetStatus:output_type -> guardian.privileged.v1.GetStatusResponse
-	10, // 18: guardian.privileged.v1.PrivilegedHelperService.EnsureAddress:output_type -> guardian.privileged.v1.EnsureAddressResponse
-	12, // 19: guardian.privileged.v1.PrivilegedHelperService.ApplyNftablesPolicy:output_type -> guardian.privileged.v1.ApplyNftablesPolicyResponse
-	14, // 20: guardian.privileged.v1.PrivilegedHelperService.ReconcileContainer:output_type -> guardian.privileged.v1.ReconcileContainerResponse
-	16, // 21: guardian.privileged.v1.PrivilegedHelperService.EnsureNetworkNamespace:output_type -> guardian.privileged.v1.EnsureNetworkNamespaceResponse
-	17, // [17:22] is the sub-list for method output_type
-	12, // [12:17] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	8,  // 2: guardian.privileged.v1.GetStatusResponse.capabilities:type_name -> guardian.privileged.v1.Capability
+	6,  // 3: guardian.privileged.v1.GetRuntimeStatusResponse.reachability:type_name -> guardian.privileged.v1.RuntimeReachability
+	2,  // 4: guardian.privileged.v1.EnsureAddressRequest.desired_state:type_name -> guardian.privileged.v1.PresenceState
+	20, // 5: guardian.privileged.v1.EnsureAddressResponse.result:type_name -> guardian.privileged.v1.OperationResult
+	4,  // 6: guardian.privileged.v1.ApplyNftablesPolicyRequest.profile:type_name -> guardian.privileged.v1.NftablesProfile
+	20, // 7: guardian.privileged.v1.ApplyNftablesPolicyResponse.result:type_name -> guardian.privileged.v1.OperationResult
+	3,  // 8: guardian.privileged.v1.ReconcileContainerRequest.desired_state:type_name -> guardian.privileged.v1.ContainerState
+	20, // 9: guardian.privileged.v1.ReconcileContainerResponse.result:type_name -> guardian.privileged.v1.OperationResult
+	2,  // 10: guardian.privileged.v1.EnsureNetworkNamespaceRequest.desired_state:type_name -> guardian.privileged.v1.PresenceState
+	20, // 11: guardian.privileged.v1.EnsureNetworkNamespaceResponse.result:type_name -> guardian.privileged.v1.OperationResult
+	5,  // 12: guardian.privileged.v1.OperationResult.outcome:type_name -> guardian.privileged.v1.OperationOutcome
+	7,  // 13: guardian.privileged.v1.PrivilegedHelperService.GetStatus:input_type -> guardian.privileged.v1.GetStatusRequest
+	10, // 14: guardian.privileged.v1.PrivilegedHelperService.GetRuntimeStatus:input_type -> guardian.privileged.v1.GetRuntimeStatusRequest
+	12, // 15: guardian.privileged.v1.PrivilegedHelperService.EnsureAddress:input_type -> guardian.privileged.v1.EnsureAddressRequest
+	14, // 16: guardian.privileged.v1.PrivilegedHelperService.ApplyNftablesPolicy:input_type -> guardian.privileged.v1.ApplyNftablesPolicyRequest
+	16, // 17: guardian.privileged.v1.PrivilegedHelperService.ReconcileContainer:input_type -> guardian.privileged.v1.ReconcileContainerRequest
+	18, // 18: guardian.privileged.v1.PrivilegedHelperService.EnsureNetworkNamespace:input_type -> guardian.privileged.v1.EnsureNetworkNamespaceRequest
+	9,  // 19: guardian.privileged.v1.PrivilegedHelperService.GetStatus:output_type -> guardian.privileged.v1.GetStatusResponse
+	11, // 20: guardian.privileged.v1.PrivilegedHelperService.GetRuntimeStatus:output_type -> guardian.privileged.v1.GetRuntimeStatusResponse
+	13, // 21: guardian.privileged.v1.PrivilegedHelperService.EnsureAddress:output_type -> guardian.privileged.v1.EnsureAddressResponse
+	15, // 22: guardian.privileged.v1.PrivilegedHelperService.ApplyNftablesPolicy:output_type -> guardian.privileged.v1.ApplyNftablesPolicyResponse
+	17, // 23: guardian.privileged.v1.PrivilegedHelperService.ReconcileContainer:output_type -> guardian.privileged.v1.ReconcileContainerResponse
+	19, // 24: guardian.privileged.v1.PrivilegedHelperService.EnsureNetworkNamespace:output_type -> guardian.privileged.v1.EnsureNetworkNamespaceResponse
+	19, // [19:25] is the sub-list for method output_type
+	13, // [13:19] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_guardian_privileged_v1_privileged_proto_init() }
@@ -1116,8 +1269,8 @@ func file_guardian_privileged_v1_privileged_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_guardian_privileged_v1_privileged_proto_rawDesc), len(file_guardian_privileged_v1_privileged_proto_rawDesc)),
-			NumEnums:      6,
-			NumMessages:   12,
+			NumEnums:      7,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

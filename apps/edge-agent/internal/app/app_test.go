@@ -81,14 +81,19 @@ func TestRunStartsAndStopsAllComponentsOnCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	snapshot, err := store.Snapshot(context.Background())
-	store.Close()
 	if err != nil {
+		store.Close()
 		t.Fatal(err)
+	}
+	healthState, healthErr := store.LoadHealthState(context.Background())
+	store.Close()
+	if healthErr != nil || healthState.PendingReport == nil || len(healthState.Conditions) != 8 {
+		t.Fatalf("durable health report state = (%+v, %v)", healthState, healthErr)
 	}
 	if !hasHealth(snapshot.Health, "process", "stopped") {
 		t.Fatalf("process did not persist stopped state: %+v", snapshot.Health)
 	}
-	for _, name := range []string{"enrollment", "telemetry-spool", "device-channel", "reconciler", "privileged-helper", "health-reporter"} {
+	for _, name := range []string{"enrollment", "telemetry-spool", "reconciler", "privileged-helper"} {
 		if !hasHealth(snapshot.Health, name, "stopped") {
 			t.Fatalf("component %s did not stop: %+v", name, snapshot.Health)
 		}
@@ -104,6 +109,7 @@ func testConfig(root string) config.Config {
 		DeviceChannelEndpoint: "127.0.0.1:7444",
 		DatabasePath:          filepath.Join(root, "state", "edge.db"),
 		SpoolDirectory:        filepath.Join(root, "spool"),
+		SpoolCapacityBytes:    1 << 30,
 		IdentityCertPath:      filepath.Join(root, "identity", "device.crt"),
 		IdentityKeyPath:       filepath.Join(root, "identity", "device.key"),
 		ShutdownSeconds:       1,

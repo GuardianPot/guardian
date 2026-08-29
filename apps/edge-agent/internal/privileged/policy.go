@@ -69,6 +69,7 @@ func CompileAllowlist(input AllowlistInput) (Allowlist, error) {
 		workloads:  make(map[string]struct{}, len(input.Workloads)),
 		allowedMethods: map[string]struct{}{
 			privilegedv1.PrivilegedHelperService_GetStatus_FullMethodName:              {},
+			privilegedv1.PrivilegedHelperService_GetRuntimeStatus_FullMethodName:       {},
 			privilegedv1.PrivilegedHelperService_EnsureAddress_FullMethodName:          {},
 			privilegedv1.PrivilegedHelperService_ApplyNftablesPolicy_FullMethodName:    {},
 			privilegedv1.PrivilegedHelperService_ReconcileContainer_FullMethodName:     {},

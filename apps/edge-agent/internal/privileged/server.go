@@ -36,6 +36,7 @@ type ServerConfig struct {
 	Allowlist  Allowlist
 	Adapter    Adapter
 	Audit      AuditRecorder
+	Runtime    RuntimeProber
 }
 
 // Server exposes only the generated privileged v1 service over an externally
@@ -47,6 +48,7 @@ type Server struct {
 	adapter    Adapter
 	audit      AuditRecorder
 	registry   *idempotencyRegistry
+	runtime    RuntimeProber
 }
 
 func NewServer(config ServerConfig) (*Server, error) {
@@ -56,11 +58,16 @@ func NewServer(config ServerConfig) (*Server, error) {
 	if config.Audit == nil {
 		return nil, errors.New("audit recorder is required")
 	}
+	runtime := config.Runtime
+	if runtime == nil {
+		runtime = NewContainerdRuntimeProber()
+	}
 	server := &Server{
 		allowlist: config.Allowlist,
 		adapter:   config.Adapter,
 		audit:     config.Audit,
 		registry:  newIdempotencyRegistry(idempotencyLimit, idempotencyTTL),
+		runtime:   runtime,
 	}
 	statsHandler := &auditStatsHandler{recorder: config.Audit}
 	server.grpcServer = grpc.NewServer(
@@ -116,6 +123,22 @@ func (s *Server) GetStatus(ctx context.Context, request *privilegedv1.GetStatusR
 		})
 	}
 	return &privilegedv1.GetStatusResponse{ApiVersion: APIVersion, Capabilities: capabilities}, nil
+}
+
+func (s *Server) GetRuntimeStatus(ctx context.Context, request *privilegedv1.GetRuntimeStatusRequest) (*privilegedv1.GetRuntimeStatusResponse, error) {
+	if request == nil || len(request.ProtoReflect().GetUnknown()) != 0 {
+		return nil, status.Error(codes.InvalidArgument, "invalid-runtime-status-request")
+	}
+	reachable, reason := s.runtime.ProbeRuntime(ctx)
+	if !reasonCodePattern.MatchString(reason) {
+		reachable, reason = false, "probe-failed"
+	}
+	reachability := privilegedv1.RuntimeReachability_RUNTIME_REACHABILITY_UNREACHABLE
+	if reachable {
+		reachability = privilegedv1.RuntimeReachability_RUNTIME_REACHABILITY_REACHABLE
+		reason = "reachable"
+	}
+	return &privilegedv1.GetRuntimeStatusResponse{Reachability: reachability, ReasonCode: reason}, nil
 }
 
 func (s *Server) EnsureAddress(ctx context.Context, request *privilegedv1.EnsureAddressRequest) (*privilegedv1.EnsureAddressResponse, error) {

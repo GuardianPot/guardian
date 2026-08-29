@@ -3,6 +3,7 @@
   "device_channel_endpoint": "devices.guardian.example:443",
   "database_path": "/var/lib/guardian-edge/edge.db",
   "spool_directory": "/var/lib/guardian-edge/spool",
+  "spool_capacity_bytes": 1073741824,
   "identity_certificate_path": "/var/lib/guardian-edge/identity/device.crt",
   "identity_private_key_path": "/var/lib/guardian-edge/identity/device.key",
   "shutdown_timeout_seconds": 15,

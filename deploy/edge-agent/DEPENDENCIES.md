@@ -1,6 +1,7 @@
 # Edge Agent dependency review
 
-Reviewed for P1-W7/P1-W8 on 2026-08-23 and P1-W5 on 2026-08-28.
+Reviewed for P1-W7/P1-W8 on 2026-08-23, P1-W5 on 2026-08-28, and the
+P1-W9 read-only runtime probe on 2026-08-29.
 
 | Dependency | Pinned version | Purpose | Security/license note |
 |---|---:|---|---|
@@ -12,6 +13,7 @@ Reviewed for P1-W7/P1-W8 on 2026-08-23 and P1-W5 on 2026-08-28.
 | google.golang.org/protobuf | v1.36.12 | Generated privileged-helper messages | Current module/tool release at review time; BSD-3-Clause. |
 | google.golang.org/grpc/cmd/protoc-gen-go-grpc | v1.6.2 | Pinned gRPC stub generator | Repository tool only; Apache-2.0. Declared with the Go `tool` directive. |
 | golang.org/x/sys | v0.47.0 | `SO_PEERCRED` and pidfd Linux primitives | Direct P1-W8 dependency; BSD-3-Clause. |
+| github.com/containerd/containerd/api | v1.11.1 | Version-only RPC contract used by the fixed privileged health probe | Apache-2.0. The helper uses only the parameterless Version RPC over `/run/containerd/containerd.sock`; no lifecycle client is linked. |
 | golang.org/x/net | v0.58.0 | gRPC transport support | Explicit secure transitive selection after vulnerability review; BSD-3-Clause. |
 | golang.org/x/text | v0.41.0 | gRPC HTTP/2 text support | Explicit secure transitive selection after vulnerability review; BSD-3-Clause. |
 | systemd | Debian 13 platform package | Service supervision and sandboxing | Host platform dependency; no runtime socket is exposed to the daemon. |
@@ -35,9 +37,11 @@ Verification results:
   `protoc-gen-go-grpc` through its generator module. `buf generate` invokes
   both with `go tool`; no unpinned binary from `PATH` generates committed code.
 - The privileged-helper service still exposes no reflection service, TCP
-  listener, arbitrary command/path, raw nftables ruleset, or container-runtime
-  socket. The separate P1-W5 TCP service is the authenticated product device
-  plane and cannot invoke privileged-helper methods.
+  listener, arbitrary command/path, raw nftables ruleset, or runtime lifecycle
+  authority. Its P1-W9 runtime operation is parameterless and reads only the
+  fixed containerd Version RPC. The separate P1-W5 TCP service is the
+  authenticated product device plane and cannot invoke privileged-helper
+  methods.
 
 The SQLite v1.57.0 module's resolved modernc transitive set is retained rather
 than overriding individual internals beyond the upstream-tested graph. This is

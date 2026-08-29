@@ -31,6 +31,8 @@ const (
 	defaultShutdownSeconds = 15
 	defaultLogLevel        = "info"
 	maxConfigBytes         = 64 << 10
+	MinimumSpoolCapacity   = int64(64 << 20)
+	MaximumSpoolCapacity   = int64(1 << 40)
 )
 
 // Invocation contains command-line choices. Secrets are deliberately absent.
@@ -48,6 +50,7 @@ type Config struct {
 	DeviceChannelEndpoint string `json:"device_channel_endpoint,omitempty"`
 	DatabasePath          string `json:"database_path"`
 	SpoolDirectory        string `json:"spool_directory"`
+	SpoolCapacityBytes    int64  `json:"spool_capacity_bytes"`
 	IdentityCertPath      string `json:"identity_certificate_path"`
 	IdentityKeyPath       string `json:"identity_private_key_path"`
 	ShutdownSeconds       int    `json:"shutdown_timeout_seconds,omitempty"`
@@ -208,6 +211,9 @@ func (c Config) Validate() error {
 	}
 	if c.SpoolDirectory == string(filepath.Separator) {
 		return errors.New("spool_directory must not be the filesystem root")
+	}
+	if c.SpoolCapacityBytes < MinimumSpoolCapacity || c.SpoolCapacityBytes > MaximumSpoolCapacity {
+		return errors.New("spool_capacity_bytes must be between 64 MiB and 1 TiB")
 	}
 	if c.ShutdownSeconds < 1 || c.ShutdownSeconds > 120 {
 		return errors.New("shutdown_timeout_seconds must be between 1 and 120")

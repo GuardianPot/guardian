@@ -4,9 +4,11 @@
 package health
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -158,6 +160,23 @@ func NewUnknownSet(at time.Time) (Set, error) {
 	return set, nil
 }
 
+func NewSet(conditions []Condition) (Set, error) {
+	if len(conditions) != conditionCount {
+		return Set{}, ErrInvalidReport
+	}
+	var set Set
+	for index, condition := range conditions {
+		if condition.Type != conditionTypeOrder[index] {
+			return Set{}, ErrInvalidReport
+		}
+		if err := condition.Validate(); err != nil {
+			return Set{}, err
+		}
+		set.conditions[index] = cloneCondition(condition)
+	}
+	return set, nil
+}
+
 func (set *Set) Observe(observation Observation, observedAt time.Time) error {
 	if err := ValidateTimestamp(observedAt); err != nil {
 		return err
@@ -249,6 +268,36 @@ func (report Report) Validate() error {
 		return ErrInvalidReport
 	}
 	return nil
+}
+
+func MarshalReport(report Report) ([]byte, error) {
+	if err := report.Validate(); err != nil {
+		return nil, err
+	}
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		return nil, fmt.Errorf("encode health report: %w", err)
+	}
+	return encoded, nil
+}
+
+func ParseReport(encoded []byte) (Report, error) {
+	if len(encoded) == 0 || len(encoded) > MaxReportBytes {
+		return Report{}, ErrInvalidReport
+	}
+	decoder := json.NewDecoder(bytes.NewReader(encoded))
+	decoder.DisallowUnknownFields()
+	var report Report
+	if err := decoder.Decode(&report); err != nil {
+		return Report{}, ErrInvalidReport
+	}
+	if err := decoder.Decode(new(any)); !errors.Is(err, io.EOF) {
+		return Report{}, ErrInvalidReport
+	}
+	if err := report.Validate(); err != nil {
+		return Report{}, err
+	}
+	return report, nil
 }
 
 func ValidateTimestamp(value time.Time) error {

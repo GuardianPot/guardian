@@ -8,10 +8,12 @@ import (
 	"os"
 	"os/user"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/health"
 	privileged "github.com/GuardianPot/guardian/apps/edge-agent/internal/privileged"
 	privilegedv1 "github.com/GuardianPot/guardian/apps/edge-agent/internal/privileged/gen/guardian/privileged/v1"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/storage"
@@ -39,12 +41,15 @@ type connectionFactory func() (*grpc.ClientConn, error)
 // Client is the unprivileged, typed helper boundary. Helper loss changes
 // health to degraded and is never returned as a component-start failure.
 type Client struct {
-	store     healthStore
-	verify    socketVerifier
-	connect   connectionFactory
-	interval  time.Duration
-	timeout   time.Duration
-	available atomic.Bool
+	store            healthStore
+	verify           socketVerifier
+	connect          connectionFactory
+	interval         time.Duration
+	timeout          time.Duration
+	available        atomic.Bool
+	runtimeObserved  atomic.Bool
+	runtimeAvailable atomic.Bool
+	runtimeTimedOut  atomic.Bool
 
 	mu         sync.Mutex
 	started    bool
@@ -68,6 +73,17 @@ func newClient(store healthStore, verify socketVerifier, connect connectionFacto
 func (*Client) Name() string { return componentName }
 
 func (c *Client) Available() bool { return c.available.Load() }
+
+func (c *Client) HealthSnapshot() health.HelperSnapshot {
+	c.mu.Lock()
+	reason := strings.ReplaceAll(c.lastReason, "-", "_")
+	c.mu.Unlock()
+	return health.HelperSnapshot{
+		Available: c.available.Load(), Reason: reason,
+		RuntimeObserved: c.runtimeObserved.Load(), RuntimeAvailable: c.runtimeAvailable.Load(),
+		RuntimeTimedOut: c.runtimeTimedOut.Load(),
+	}
+}
 
 func (c *Client) Start(ctx context.Context) error {
 	c.mu.Lock()
@@ -173,6 +189,9 @@ func (c *Client) monitor(ctx context.Context) {
 }
 
 func (c *Client) probe(ctx context.Context) (string, string) {
+	c.runtimeObserved.Store(false)
+	c.runtimeAvailable.Store(false)
+	c.runtimeTimedOut.Store(false)
 	if err := c.verify(); err != nil {
 		c.available.Store(false)
 		c.closeConnection()
@@ -207,6 +226,24 @@ func (c *Client) probe(ctx context.Context) (string, string) {
 		return "degraded", "api-version-mismatch"
 	}
 	c.available.Store(true)
+	runtimeCtx, runtimeCancel := context.WithTimeout(ctx, c.timeout)
+	defer runtimeCancel()
+	runtime, runtimeErr := service.GetRuntimeStatus(runtimeCtx, &privilegedv1.GetRuntimeStatusRequest{})
+	if runtimeErr != nil {
+		c.runtimeObserved.Store(true)
+		c.runtimeTimedOut.Store(status.Code(runtimeErr) == codes.DeadlineExceeded)
+		return "healthy", "reachable"
+	}
+	switch runtime.GetReachability() {
+	case privilegedv1.RuntimeReachability_RUNTIME_REACHABILITY_REACHABLE:
+		c.runtimeObserved.Store(true)
+		c.runtimeAvailable.Store(true)
+	case privilegedv1.RuntimeReachability_RUNTIME_REACHABILITY_UNREACHABLE:
+		c.runtimeObserved.Store(true)
+		c.runtimeTimedOut.Store(runtime.GetReasonCode() == "probe-timeout")
+	default:
+		c.runtimeObserved.Store(false)
+	}
 	return "healthy", "reachable"
 }
 

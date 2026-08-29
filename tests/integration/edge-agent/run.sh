@@ -49,6 +49,7 @@ cat >"$config_path" <<EOF
   "device_channel_endpoint": "127.0.0.1:7444",
   "database_path": "$database_path",
   "spool_directory": "$spool_path",
+  "spool_capacity_bytes": 1073741824,
   "identity_certificate_path": "$cert_path",
   "identity_private_key_path": "$key_path",
   "shutdown_timeout_seconds": 5,

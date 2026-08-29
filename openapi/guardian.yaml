@@ -1609,6 +1609,13 @@ components:
           type: string
           format: date-time
           description: Trusted Control Plane receipt time used for staleness.
+        device_id:
+          type: string
+          format: uuid
+          description: Present for a device health projection.
+        environment_id:
+          type: string
+          format: uuid
     HealthAggregate:
       type: object
       additionalProperties: false
@@ -1624,6 +1631,10 @@ components:
           minLength: 1
           maxLength: 64
           pattern: '^[a-z][a-z0-9_]{0,63}$'
+        blocking_device_id:
+          type: string
+          format: uuid
+          description: Lowest UUID responsible for the selected blocking state.
     HealthCondition:
       type: object
       additionalProperties: false
@@ -1653,6 +1664,10 @@ components:
           type: integer
           minimum: 0
           maximum: 18446744073709551615
+        source_device_id:
+          type: string
+          format: uuid
+          description: Device that supplied the selected condition truth.
         last_transition_time:
           type: string
           format: date-time
