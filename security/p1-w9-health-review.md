@@ -2,7 +2,7 @@
 
 - Review date: 2026-08-29
 - Work package: P1-W9
-- Decisions: EN-08, CP-06, OB-01, OB-02, SA-14, W9-C1-A through W9-C13-A
+- Decisions: EN-08, CP-06, OB-01, OB-02, SA-14, W9-C1-A through W9-C14-A
 - Scope: Edge evidence, durable report/ACK, authenticated ingest, projection,
   environment aggregate, read API, and fixed read-only runtime probe
 
@@ -70,6 +70,7 @@ authority.
 task health:contracts
 task privileged:generated
 task health:integration
+go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 task validate
 ```
 
@@ -91,5 +92,11 @@ the health boundary for credential-shaped material.
 - P1-W11 owns final browser route composition, hostile-message escaping, and
   screenshot evidence. Backend acceptance must not be presented as that UI
   evidence.
+- The pinned `govulncheck` scan found no called vulnerabilities in either Go
+  application. The unchanged Control Plane dependency graph retains one
+  module-only warning, `GO-2026-5932`, for the unmaintained
+  `golang.org/x/crypto/openpgp` package; Guardian neither imports nor calls that
+  package. The Edge dependency graph, including the new containerd API module,
+  reported no vulnerability.
 
 Product Owner application/security acceptance remains mandatory before merge.
