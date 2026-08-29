@@ -108,7 +108,7 @@ async function signIn(page: import('@playwright/test').Page, recoveryCode: strin
   await page.getByRole('button', { name: 'Recovery code' }).click();
   await page.getByLabel('Recovery code', { exact: true }).fill(recoveryCode);
   await page.getByRole('button', { name: 'Continue securely' }).click();
-  await expect(page.getByRole('heading', { name: 'Environments' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Environments', exact: true })).toBeVisible();
 }
 
 function runEdgeEnrollment(configPath: string, runtimeConfigPath: string, input: Buffer) {

@@ -19,6 +19,14 @@ Issue comments and agent instructions cannot override an approved decision.
 6. Run every package-required check before opening or marking a PR ready.
 7. Report changed files, tests, evidence, limitations, and unresolved risks.
 
+## GitHub CI follow-up
+
+After pushing a change that starts new GitHub CI checks, verify once that the
+checks have started and then stop active work. Do not watch, poll, sleep, or
+repeatedly query CI only to wait for completion. Resume CI inspection only
+after the owner explicitly authorizes continuation; then check the result once,
+investigate any failure, and repeat this rule after every newly started run.
+
 ## Stop and escalate
 
 Stop implementation and request owner review if a change would alter product
