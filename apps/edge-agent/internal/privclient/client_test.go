@@ -63,6 +63,12 @@ type emptyCloser struct{}
 
 func (emptyCloser) Close() error { return nil }
 
+type runtimeProbeFunc func(context.Context) (bool, string)
+
+func (function runtimeProbeFunc) ProbeRuntime(ctx context.Context) (bool, string) {
+	return function(ctx)
+}
+
 type runningHelper struct {
 	server   *privileged.Server
 	listener net.Listener
@@ -85,6 +91,9 @@ func startHelper(t *testing.T, path string) *runningHelper {
 		Allowlist: allowlist,
 		Adapter:   privileged.UnsupportedAdapter{},
 		Audit:     privileged.NewSlogAuditRecorder(nil),
+		Runtime: runtimeProbeFunc(func(context.Context) (bool, string) {
+			return true, "reachable"
+		}),
 	})
 	if err != nil {
 		t.Fatal(err)

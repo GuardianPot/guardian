@@ -7,6 +7,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/health"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/identity"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/lifecycle"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/privclient"
@@ -37,7 +38,6 @@ type Reconciler interface {
 // HealthReporter exposes the bounded local health snapshot.
 type HealthReporter interface {
 	lifecycle.Component
-	Snapshot(context.Context) (storage.Snapshot, error)
 }
 
 // TelemetrySpool exposes durable queue statistics without payload content.
@@ -51,6 +51,7 @@ type TelemetrySpool interface {
 type PrivilegedHelperClient interface {
 	lifecycle.Component
 	Available() bool
+	HealthSnapshot() health.HelperSnapshot
 	EnsureAddress(context.Context, *privilegedv1.EnsureAddressRequest) (*privilegedv1.EnsureAddressResponse, error)
 	ApplyNftablesPolicy(context.Context, *privilegedv1.ApplyNftablesPolicyRequest) (*privilegedv1.ApplyNftablesPolicyResponse, error)
 	ReconcileContainer(context.Context, *privilegedv1.ReconcileContainerRequest) (*privilegedv1.ReconcileContainerResponse, error)

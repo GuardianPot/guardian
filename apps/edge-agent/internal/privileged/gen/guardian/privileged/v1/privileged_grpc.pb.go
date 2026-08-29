@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	PrivilegedHelperService_GetStatus_FullMethodName              = "/guardian.privileged.v1.PrivilegedHelperService/GetStatus"
+	PrivilegedHelperService_GetRuntimeStatus_FullMethodName       = "/guardian.privileged.v1.PrivilegedHelperService/GetRuntimeStatus"
 	PrivilegedHelperService_EnsureAddress_FullMethodName          = "/guardian.privileged.v1.PrivilegedHelperService/EnsureAddress"
 	PrivilegedHelperService_ApplyNftablesPolicy_FullMethodName    = "/guardian.privileged.v1.PrivilegedHelperService/ApplyNftablesPolicy"
 	PrivilegedHelperService_ReconcileContainer_FullMethodName     = "/guardian.privileged.v1.PrivilegedHelperService/ReconcileContainer"
@@ -31,6 +32,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PrivilegedHelperServiceClient interface {
 	GetStatus(ctx context.Context, in *GetStatusRequest, opts ...grpc.CallOption) (*GetStatusResponse, error)
+	GetRuntimeStatus(ctx context.Context, in *GetRuntimeStatusRequest, opts ...grpc.CallOption) (*GetRuntimeStatusResponse, error)
 	EnsureAddress(ctx context.Context, in *EnsureAddressRequest, opts ...grpc.CallOption) (*EnsureAddressResponse, error)
 	ApplyNftablesPolicy(ctx context.Context, in *ApplyNftablesPolicyRequest, opts ...grpc.CallOption) (*ApplyNftablesPolicyResponse, error)
 	ReconcileContainer(ctx context.Context, in *ReconcileContainerRequest, opts ...grpc.CallOption) (*ReconcileContainerResponse, error)
@@ -49,6 +51,16 @@ func (c *privilegedHelperServiceClient) GetStatus(ctx context.Context, in *GetSt
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetStatusResponse)
 	err := c.cc.Invoke(ctx, PrivilegedHelperService_GetStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *privilegedHelperServiceClient) GetRuntimeStatus(ctx context.Context, in *GetRuntimeStatusRequest, opts ...grpc.CallOption) (*GetRuntimeStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRuntimeStatusResponse)
+	err := c.cc.Invoke(ctx, PrivilegedHelperService_GetRuntimeStatus_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -100,6 +112,7 @@ func (c *privilegedHelperServiceClient) EnsureNetworkNamespace(ctx context.Conte
 // for forward compatibility.
 type PrivilegedHelperServiceServer interface {
 	GetStatus(context.Context, *GetStatusRequest) (*GetStatusResponse, error)
+	GetRuntimeStatus(context.Context, *GetRuntimeStatusRequest) (*GetRuntimeStatusResponse, error)
 	EnsureAddress(context.Context, *EnsureAddressRequest) (*EnsureAddressResponse, error)
 	ApplyNftablesPolicy(context.Context, *ApplyNftablesPolicyRequest) (*ApplyNftablesPolicyResponse, error)
 	ReconcileContainer(context.Context, *ReconcileContainerRequest) (*ReconcileContainerResponse, error)
@@ -116,6 +129,9 @@ type UnimplementedPrivilegedHelperServiceServer struct{}
 
 func (UnimplementedPrivilegedHelperServiceServer) GetStatus(context.Context, *GetStatusRequest) (*GetStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetStatus not implemented")
+}
+func (UnimplementedPrivilegedHelperServiceServer) GetRuntimeStatus(context.Context, *GetRuntimeStatusRequest) (*GetRuntimeStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRuntimeStatus not implemented")
 }
 func (UnimplementedPrivilegedHelperServiceServer) EnsureAddress(context.Context, *EnsureAddressRequest) (*EnsureAddressResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EnsureAddress not implemented")
@@ -165,6 +181,24 @@ func _PrivilegedHelperService_GetStatus_Handler(srv interface{}, ctx context.Con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PrivilegedHelperServiceServer).GetStatus(ctx, req.(*GetStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PrivilegedHelperService_GetRuntimeStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRuntimeStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PrivilegedHelperServiceServer).GetRuntimeStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PrivilegedHelperService_GetRuntimeStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PrivilegedHelperServiceServer).GetRuntimeStatus(ctx, req.(*GetRuntimeStatusRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -251,6 +285,10 @@ var PrivilegedHelperService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetStatus",
 			Handler:    _PrivilegedHelperService_GetStatus_Handler,
+		},
+		{
+			MethodName: "GetRuntimeStatus",
+			Handler:    _PrivilegedHelperService_GetRuntimeStatus_Handler,
 		},
 		{
 			MethodName: "EnsureAddress",

@@ -73,6 +73,7 @@ func writeMainConfig(t *testing.T, root string) (config.Config, string) {
 		ControlPlaneEndpoint: "127.0.0.1:7443",
 		DatabasePath:         filepath.Join(root, "state", "edge.db"),
 		SpoolDirectory:       filepath.Join(root, "spool"),
+		SpoolCapacityBytes:   1 << 30,
 		IdentityCertPath:     filepath.Join(root, "identity", "device.crt"),
 		IdentityKeyPath:      filepath.Join(root, "identity", "device.key"),
 		ShutdownSeconds:      1,

@@ -41,6 +41,12 @@ type testAdapter struct {
 	address      func(context.Context, AddressOperation) (AdapterResult, error)
 }
 
+type runtimeProberFunc func(context.Context) (bool, string)
+
+func (function runtimeProberFunc) ProbeRuntime(ctx context.Context) (bool, string) {
+	return function(ctx)
+}
+
 func (*testAdapter) Capabilities() map[privilegedv1.PrivilegedOperation]privilegedv1.CapabilityState {
 	return map[privilegedv1.PrivilegedOperation]privilegedv1.CapabilityState{
 		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_ADDRESS:             privilegedv1.CapabilityState_CAPABILITY_STATE_AVAILABLE,
@@ -101,6 +107,9 @@ func startTestRPCServer(t *testing.T, adapter Adapter) *testRPCServer {
 		Allowlist: allowlist,
 		Adapter:   adapter,
 		Audit:     audit,
+		Runtime: runtimeProberFunc(func(context.Context) (bool, string) {
+			return true, "reachable"
+		}),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -153,6 +162,10 @@ func TestServerTypedAllowlistIdempotencyAndAudit(t *testing.T) {
 	statusResponse, err := fixture.client.GetStatus(ctx, &privilegedv1.GetStatusRequest{})
 	if err != nil {
 		t.Fatal(err)
+	}
+	runtimeResponse, err := fixture.client.GetRuntimeStatus(ctx, &privilegedv1.GetRuntimeStatusRequest{})
+	if err != nil || runtimeResponse.GetReachability() != privilegedv1.RuntimeReachability_RUNTIME_REACHABILITY_REACHABLE || runtimeResponse.GetReasonCode() != "reachable" {
+		t.Fatalf("GetRuntimeStatus() = (%+v, %v)", runtimeResponse, err)
 	}
 	if statusResponse.GetApiVersion() != APIVersion || len(statusResponse.GetCapabilities()) != 4 {
 		t.Fatalf("status response = %+v", statusResponse)

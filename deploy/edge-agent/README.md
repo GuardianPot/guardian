@@ -7,8 +7,9 @@ It is not a complete production packaging matrix.
 
 - `guardian-edge.sysusers` creates a stable `guardian-edge` user/group with no
   login shell and `/nonexistent` as its declared home.
-- The main daemon has an empty capability bounding set. It does not run as root,
-  open the container runtime socket, alter networking, or execute shell strings.
+- The main daemon has an empty capability bounding set and an inaccessible
+  `/run/containerd` path. It does not run as root, open the container runtime
+  socket, alter networking, or execute shell strings.
 - `guardian-edge-privd.service` runs the narrow P1-W8 helper as root with the
   `guardian-edge` primary group. It listens only at
   `/run/guardian-edge-privd/guardian-edge-privd.sock`, owned
@@ -17,6 +18,9 @@ It is not a complete production packaging matrix.
   `pidfd_open`, and checks all `/proc/<pid>/status` credential slots before any
   RPC dispatch. The Edge unit only *wants* the helper; helper loss degrades the
   Edge health condition without terminating the main daemon.
+- Only the helper can issue the parameterless, two-second containerd Version
+  probe at the fixed `/run/containerd/containerd.sock` path. It returns a
+  bounded reachability state and never returns runtime metadata.
 - P1-W8 ships an unsupported production adapter and an empty capability
   bounding set. Typed address, nftables, container, and namespace adapters are
   activated only by later owner-reviewed packages.

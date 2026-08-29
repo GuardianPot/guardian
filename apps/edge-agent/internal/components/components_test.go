@@ -46,7 +46,7 @@ func TestFoundationHasExplicitOrderAndTruthfulSkeletonState(t *testing.T) {
 	if err := graph.Reconciler.Trigger(context.Background()); !errors.Is(err, ErrNotImplemented) {
 		t.Fatalf("Trigger() error = %v", err)
 	}
-	snapshot, err := graph.HealthReporter.Snapshot(context.Background())
+	snapshot, err := store.Snapshot(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestFoundationHasExplicitOrderAndTruthfulSkeletonState(t *testing.T) {
 	if err := revokedManager.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	revokedSnapshot, err := revoked.HealthReporter.Snapshot(context.Background())
+	revokedSnapshot, err := store.Snapshot(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

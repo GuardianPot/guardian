@@ -14,6 +14,7 @@ import (
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/devicechannel"
 	devicev1 "github.com/GuardianPot/guardian/apps/edge-agent/internal/devicechannel/gen/guardian/device/v1"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/enrollment"
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/health"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/identity"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/lifecycle"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/reconciliation"
@@ -78,25 +79,28 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) (runErr er
 	if err != nil {
 		return fmt.Errorf("build desired-state reconciler: %w", err)
 	}
+	collector, err := health.NewEvidenceCollector(store, graph.PrivilegedHelperClient, cfg.SpoolCapacityBytes)
+	if err != nil {
+		return fmt.Errorf("build health evidence collector: %w", err)
+	}
+	reporter, err := health.NewReporter(store, health.PublisherFunc(func(report health.Report) error {
+		return channel.EnqueueHealth(report)
+	}), collector)
+	if err != nil {
+		return fmt.Errorf("build health reporter: %w", err)
+	}
 	channel, err = devicechannel.NewClient(devicechannel.Config{
 		Endpoint: cfg.DeviceChannelEndpoint, AgentVersion: channelAgentVersion,
 		Credentials: credentials, Logger: logger,
 		DesiredHandler: reconciler, ObservedAcknowledgementHandler: reconciler,
-		StateRecorder: devicechannel.StateRecorderFunc(func(ctx context.Context, state, reason string) error {
-			status := "degraded"
-			if state == "connected" {
-				status = "healthy"
-			} else if state == "stopped" {
-				status = "stopped"
-			}
-			return store.SetHealth(ctx, storage.HealthCondition{Name: "device-channel", Status: status, ReasonCode: reason})
-		}),
+		HealthAcknowledgementHandler: reporter, StateRecorder: reporter,
 	})
 	if err != nil {
 		return fmt.Errorf("build device channel client: %w", err)
 	}
 	graph.Channel = channel
 	graph.Reconciler = reconciler
+	graph.HealthReporter = reporter
 	ordered := graph.Ordered()
 	ordered = append(ordered, enrollment.NewRotationManager(
 		cfg.ControlPlaneEndpoint,

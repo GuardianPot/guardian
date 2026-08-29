@@ -6,6 +6,7 @@ option go_package = "github.com/GuardianPot/guardian/apps/edge-agent/internal/pr
 
 service PrivilegedHelperService {
   rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  rpc GetRuntimeStatus(GetRuntimeStatusRequest) returns (GetRuntimeStatusResponse);
   rpc EnsureAddress(EnsureAddressRequest) returns (EnsureAddressResponse);
   rpc ApplyNftablesPolicy(ApplyNftablesPolicyRequest) returns (ApplyNftablesPolicyResponse);
   rpc ReconcileContainer(ReconcileContainerRequest) returns (ReconcileContainerResponse);
@@ -51,6 +52,12 @@ enum OperationOutcome {
   OPERATION_OUTCOME_UNSUPPORTED = 3;
 }
 
+enum RuntimeReachability {
+  RUNTIME_REACHABILITY_UNSPECIFIED = 0;
+  RUNTIME_REACHABILITY_REACHABLE = 1;
+  RUNTIME_REACHABILITY_UNREACHABLE = 2;
+}
+
 message GetStatusRequest {}
 
 message Capability {
@@ -62,6 +69,13 @@ message Capability {
 message GetStatusResponse {
   string api_version = 1;
   repeated Capability capabilities = 2;
+}
+
+message GetRuntimeStatusRequest {}
+
+message GetRuntimeStatusResponse {
+  RuntimeReachability reachability = 1;
+  string reason_code = 2;
 }
 
 message EnsureAddressRequest {

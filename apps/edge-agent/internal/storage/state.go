@@ -180,7 +180,7 @@ func (s *Store) SetHealth(ctx context.Context, condition HealthCondition) error 
 		now = condition.UpdatedAt.UTC()
 	}
 	_, err := s.db.ExecContext(ctx, `
-INSERT INTO health_conditions (name, status, reason_code, updated_at)
+INSERT INTO component_health (name, status, reason_code, updated_at)
 VALUES (?, ?, ?, ?)
 ON CONFLICT(name) DO UPDATE SET
     status = excluded.status,
@@ -292,7 +292,7 @@ FROM retry_metadata ORDER BY next_attempt_at, operation_id LIMIT ?`, maxSnapshot
 func (s *Store) readHealth(ctx context.Context) ([]HealthCondition, error) {
 	rows, err := s.db.QueryContext(ctx, `
 SELECT name, status, reason_code, updated_at
-FROM health_conditions ORDER BY name LIMIT ?`, maxSnapshotRows)
+FROM component_health ORDER BY name LIMIT ?`, maxSnapshotRows)
 	if err != nil {
 		return nil, classifyError("read edge health conditions", err)
 	}
