@@ -148,6 +148,27 @@ type GuardianEnvironmentZone struct {
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
+type GuardianHealthDeviceCondition struct {
+	DeviceID           pgtype.UUID        `json:"device_id"`
+	ConditionType      string             `json:"condition_type"`
+	Status             string             `json:"status"`
+	ReasonCode         string             `json:"reason_code"`
+	Message            string             `json:"message"`
+	ObservedRevision   pgtype.Numeric     `json:"observed_revision"`
+	LastTransitionTime pgtype.Timestamptz `json:"last_transition_time"`
+}
+
+type GuardianHealthDeviceProjection struct {
+	DeviceID       pgtype.UUID        `json:"device_id"`
+	EnvironmentID  pgtype.UUID        `json:"environment_id"`
+	ReportID       pgtype.UUID        `json:"report_id"`
+	Sequence       pgtype.Numeric     `json:"sequence"`
+	ObservedAt     pgtype.Timestamptz `json:"observed_at"`
+	ReceivedAt     pgtype.Timestamptz `json:"received_at"`
+	DisconnectedAt pgtype.Timestamptz `json:"disconnected_at"`
+	ReportPayload  []byte             `json:"report_payload"`
+}
+
 type GuardianJobsJob struct {
 	JobID       string             `json:"job_id"`
 	JobType     string             `json:"job_type"`
