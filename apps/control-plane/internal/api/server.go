@@ -24,25 +24,27 @@ type Readiness interface {
 
 // Server is a start-once HTTP lifecycle component.
 type Server struct {
-	address            string
-	readiness          Readiness
-	auditReader        audit.Reader
-	auditAuthorizer    AuditAuthorizer
-	deviceService      DeviceService
-	deviceAuthorizer   DeviceAdminAuthorizer
-	environmentService EnvironmentService
-	environmentAuth    EnvironmentAuthorizer
-	healthService      HealthService
-	authService        AuthService
-	logger             *slog.Logger
-	http               *http.Server
-	listener           net.Listener
-	errors             chan error
-	startOnce          sync.Once
-	startErr           error
-	tlsCertificateFile string
-	tlsPrivateKeyFile  string
-	deviceClientCAPEM  []byte
+	address                string
+	readiness              Readiness
+	auditReader            audit.Reader
+	auditAuthorizer        AuditAuthorizer
+	deviceService          DeviceService
+	deviceInventoryService DeviceInventoryService
+	deviceAuthorizer       DeviceAdminAuthorizer
+	environmentService     EnvironmentService
+	environmentAuth        EnvironmentAuthorizer
+	healthService          HealthService
+	authService            AuthService
+	logger                 *slog.Logger
+	http                   *http.Server
+	listener               net.Listener
+	errors                 chan error
+	startOnce              sync.Once
+	startErr               error
+	tlsCertificateFile     string
+	tlsPrivateKeyFile      string
+	deviceClientCAPEM      []byte
+	webConsoleDirectory    string
 }
 
 // NewServer creates an instrumented server without binding a socket.
@@ -116,18 +118,23 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /v1/environments/{environmentId}/enrollment-tokens", s.handleListEnrollmentTokens)
 	mux.HandleFunc("DELETE /v1/environments/{environmentId}/enrollment-tokens/{tokenId}", s.handleRevokeEnrollmentToken)
 	mux.HandleFunc("POST /v1/environments/{environmentId}/devices/{deviceId}/re-enrollment-token", s.handleCreateReenrollmentToken)
+	mux.HandleFunc("GET /v1/environments/{environmentId}/devices", s.handleListDevices)
+	mux.HandleFunc("GET /v1/environments/{environmentId}/devices/{deviceId}", s.handleGetDevice)
 	mux.HandleFunc("POST /v1/enrollments", s.handleEnrollDevice)
 	mux.HandleFunc("POST /v1/device-certificates:rotate", s.handleRotateDeviceCertificate)
 	mux.HandleFunc("POST /v1/environments/{environmentId}/devices/{deviceId}/disable", s.handleDisableDevice)
 	mux.HandleFunc("POST /v1/environments/{environmentId}/devices/{deviceId}/revoke", s.handleRevokeDevice)
 	mux.HandleFunc("GET /v1/environments/{environmentId}/health", s.handleEnvironmentHealth)
 	mux.HandleFunc("GET /v1/devices/{deviceId}/health", s.handleDeviceHealth)
+	if s.webConsoleDirectory != "" {
+		mux.HandleFunc("GET /", s.handleWebConsole)
+	}
 	return mux
 }
 
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		writer.Header().Set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+		writer.Header().Set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self'; script-src 'self'; style-src 'self'")
 		writer.Header().Set("Referrer-Policy", "no-referrer")
 		writer.Header().Set("X-Content-Type-Options", "nosniff")
 		next.ServeHTTP(writer, request)

@@ -24,6 +24,11 @@
     "node": ">=24"
   },
   "devDependencies": {
-    "@redocly/cli": "^2.47.0"
+    "@grpc/grpc-js": "1.14.4",
+    "@grpc/proto-loader": "0.8.1",
+    "@redocly/cli": "2.49.0"
+  },
+  "allowScripts": {
+    "protobufjs": false
   }
 }

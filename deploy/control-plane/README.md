@@ -27,7 +27,15 @@ The optional Compose `application` profile demonstrates the port boundary. It
 requires mounted development master-key and TLS files and an already migrated
 database; it never creates or commits those credentials.
 
-The Control Plane runtime image is a digest-pinned Distroless Debian 13 static
+The same image contains the production-built Web Console under
+`/usr/share/guardian/web-console`. The Control Plane serves those immutable
+assets and client-route fallbacks from the configured HTTPS origin; no Node.js
+process is present in the runtime image. `GUARDIAN_WEB_CONSOLE_DIR` may be left
+unset only for API-only development processes. Unknown `/v1` requests remain
+JSON 404 responses and never fall back to the SPA.
+
+The Node 24 build image and Control Plane runtime image are digest pinned. The
+runtime remains a Distroless Debian 13 static
 nonroot image. It contains no shell or package manager. Production diagnostics
 must use structured logs, health endpoints, and approved external or ephemeral
 debug tooling; a debug image must never replace the reviewed runtime artifact.

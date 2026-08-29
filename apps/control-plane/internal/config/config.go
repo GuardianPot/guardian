@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -46,6 +47,7 @@ type Config struct {
 	PublicOrigin         string
 	TLSCertificateFile   string
 	TLSPrivateKeyFile    string
+	WebConsoleDirectory  string
 }
 
 // LookupEnv matches os.LookupEnv and keeps parsing deterministic in tests.
@@ -82,6 +84,7 @@ func Load(args []string, lookup LookupEnv) (Command, Config, error) {
 		PublicOrigin:         envOr(lookup, "GUARDIAN_PUBLIC_ORIGIN", ""),
 		TLSCertificateFile:   envOr(lookup, "GUARDIAN_TLS_CERT_FILE", ""),
 		TLSPrivateKeyFile:    envOr(lookup, "GUARDIAN_TLS_KEY_FILE", ""),
+		WebConsoleDirectory:  envOr(lookup, "GUARDIAN_WEB_CONSOLE_DIR", ""),
 	}
 	if value, ok := lookup("GUARDIAN_SHUTDOWN_TIMEOUT"); ok && value != "" {
 		duration, err := time.ParseDuration(value)
@@ -149,6 +152,19 @@ func (c Config) Validate(command Command) error {
 	if command == CommandServe {
 		if !validPublicOrigin(c.PublicOrigin) {
 			return errors.New("GUARDIAN_PUBLIC_ORIGIN must be an HTTPS origin without a path, query, fragment, or trailing slash")
+		}
+		if c.WebConsoleDirectory != "" && (!filepath.IsAbs(c.WebConsoleDirectory) || filepath.Clean(c.WebConsoleDirectory) != c.WebConsoleDirectory) {
+			return errors.New("GUARDIAN_WEB_CONSOLE_DIR must be an absolute clean path")
+		}
+		if c.WebConsoleDirectory != "" {
+			info, err := os.Lstat(c.WebConsoleDirectory)
+			if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+				return errors.New("GUARDIAN_WEB_CONSOLE_DIR must be a readable non-symlink directory")
+			}
+			indexInfo, err := os.Lstat(filepath.Join(c.WebConsoleDirectory, "index.html"))
+			if err != nil || indexInfo.Mode()&os.ModeSymlink != 0 || !indexInfo.Mode().IsRegular() {
+				return errors.New("GUARDIAN_WEB_CONSOLE_DIR must contain a regular non-symlink index.html")
+			}
 		}
 		tlsConfigured := c.TLSCertificateFile != "" || c.TLSPrivateKeyFile != ""
 		if tlsConfigured && !c.EnrollmentEnabled() {
