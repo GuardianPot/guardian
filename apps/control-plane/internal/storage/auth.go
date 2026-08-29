@@ -352,7 +352,6 @@ WHERE user_id = $1 AND code_hash = $2 AND consumed_at IS NULL`,
 func (s *Store) AuthenticateSession(
 	ctx context.Context,
 	tokenHash [sha256.Size]byte,
-	now time.Time,
 	idleExpiry time.Duration,
 ) (auth.Session, error) {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
@@ -378,6 +377,13 @@ FOR UPDATE OF s`, tokenHash[:]).Scan(
 	}
 	if err != nil {
 		return auth.Session{}, fmt.Errorf("read auth session: %w", err)
+	}
+	// Sample the authoritative clock only after the row lock. Concurrent
+	// requests may reach this transaction in a different order than callers
+	// sampled their own clocks, which must never look like a clock rollback.
+	var now time.Time
+	if err := tx.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&now); err != nil {
+		return auth.Session{}, fmt.Errorf("read auth session authorization time: %w", err)
 	}
 	invalid := revokedAt != nil || status != string(auth.UserActive) || !now.Before(result.ExpiresAt) ||
 		now.Before(result.LastSeenAt) ||

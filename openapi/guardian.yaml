@@ -480,6 +480,66 @@ paths:
           description: The operator authorization boundary denied the request.
         '409':
           description: The token was not eligible for revocation.
+  /v1/environments/{environmentId}/devices:
+    get:
+      operationId: listEnvironmentDevices
+      summary: List the bounded non-secret device inventory for one environment
+      description: >-
+        Authorization and environment scope are evaluated before storage. The
+        result is ordered by device ID, capped at 200, and never includes
+        enrollment secrets, certificate identities, or health projections.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+      responses:
+        '200':
+          description: At most 200 devices in deterministic device-ID order.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceInventoryPage'
+        '400':
+          description: The environment identity is invalid.
+        '401':
+          description: The operator authorization boundary denied the request.
+        '404':
+          description: The requested environment does not exist.
+        '503':
+          description: Device inventory is unavailable.
+  /v1/environments/{environmentId}/devices/{deviceId}:
+    get:
+      operationId: getEnvironmentDevice
+      summary: Read one non-secret device inventory record
+      description: >-
+        Authorization and environment scope are evaluated before storage. The
+        response keeps inventory state separate from the P1-W9 health view.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: One device inventory record.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceInventoryResponse'
+        '400':
+          description: The environment or device identity is invalid.
+        '401':
+          description: The operator authorization boundary denied the request.
+        '404':
+          description: The device does not exist in the requested environment.
+        '503':
+          description: Device inventory is unavailable.
   /v1/environments/{environmentId}/devices/{deviceId}/re-enrollment-token:
     post:
       operationId: createDeviceReenrollmentToken
@@ -1369,6 +1429,59 @@ components:
           type: string
           format: date-time
         revoked_at:
+          type: string
+          format: date-time
+    DeviceInventoryPage:
+      type: object
+      additionalProperties: false
+      required:
+        - devices
+      properties:
+        devices:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/DeviceInventory'
+    DeviceInventoryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - device
+      properties:
+        device:
+          $ref: '#/components/schemas/DeviceInventory'
+    DeviceInventory:
+      type: object
+      additionalProperties: false
+      required:
+        - device_id
+        - environment_id
+        - display_name
+        - state
+        - created_at
+        - updated_at
+      properties:
+        device_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        environment_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        state:
+          type: string
+          enum: [pending, active, disabled, revoked]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        active_certificate_expires_at:
           type: string
           format: date-time
     DeviceCSRRequest:

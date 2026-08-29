@@ -216,7 +216,7 @@ func (s *Service) AuthorizeRead(ctx context.Context, sessionToken string) (Sessi
 	if err != nil {
 		return Session{}, ErrSessionInvalid
 	}
-	return s.repository.AuthenticateSession(ctx, hash, s.now().UTC(), SessionIdleExpiry)
+	return s.repository.AuthenticateSession(ctx, hash, SessionIdleExpiry)
 }
 
 func (s *Service) AuthorizeMutation(ctx context.Context, sessionToken, csrfToken, origin string) (Session, error) {

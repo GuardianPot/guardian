@@ -50,6 +50,20 @@ jobs:
         run: task control-plane:integration
       - name: Web checks
         run: task web:check
+      - name: Install browser engines
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Web Console real browser onboarding
+        env:
+          GUARDIAN_E2E_ARTIFACT_DIR: ${{ runner.temp }}/guardian-p1-w11-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+        run: task web:e2e
+      - name: Upload redacted Web Console evidence
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: p1-w11-browser-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/guardian-p1-w11-evidence-${{ github.run_id }}-${{ github.run_attempt }}/screenshots/*.png
+          if-no-files-found: error
+          retention-days: 7
       - name: Container smoke build
         run: task container:check
       - name: Cowrie adapter fixture

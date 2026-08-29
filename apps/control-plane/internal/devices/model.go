@@ -32,6 +32,7 @@ var (
 	ErrCertificateRevoked    = errors.New("device certificate is revoked")
 	ErrCertificateStale      = errors.New("device certificate is not active")
 	ErrEnrollmentRateLimited = errors.New("enrollment attempts are rate limited")
+	ErrNotFound              = errors.New("device was not found")
 )
 
 type DeviceState string
@@ -73,6 +74,52 @@ type TokenSummary struct {
 	ExpiresAt     time.Time  `json:"expires_at"`
 	ConsumedAt    *time.Time `json:"consumed_at,omitempty"`
 	RevokedAt     *time.Time `json:"revoked_at,omitempty"`
+}
+
+// InventoryDevice is the deliberately narrow, non-secret operator view of a
+// device. Enrollment material, certificate identities, health projections,
+// and internal reconciliation state are kept behind their own boundaries.
+type InventoryDevice struct {
+	DeviceID                   string      `json:"device_id"`
+	EnvironmentID              string      `json:"environment_id"`
+	DisplayName                string      `json:"display_name"`
+	State                      DeviceState `json:"state"`
+	CreatedAt                  time.Time   `json:"created_at"`
+	UpdatedAt                  time.Time   `json:"updated_at"`
+	ActiveCertificateExpiresAt *time.Time  `json:"active_certificate_expires_at,omitempty"`
+}
+
+// InventoryRepository owns the bounded read-only device inventory projection.
+type InventoryRepository interface {
+	ListInventoryDevices(context.Context, string, int32) ([]InventoryDevice, error)
+	InventoryDevice(context.Context, string, string) (InventoryDevice, error)
+}
+
+// InventoryService validates public identifiers and enforces the fixed list
+// bound before delegating to storage.
+type InventoryService struct {
+	repository InventoryRepository
+}
+
+func NewInventoryService(repository InventoryRepository) (*InventoryService, error) {
+	if repository == nil {
+		return nil, errors.New("device inventory repository is required")
+	}
+	return &InventoryService{repository: repository}, nil
+}
+
+func (s *InventoryService) ListDevices(ctx context.Context, environmentID string) ([]InventoryDevice, error) {
+	if !validUUID(environmentID) {
+		return nil, ErrInvalidInput
+	}
+	return s.repository.ListInventoryDevices(ctx, environmentID, 200)
+}
+
+func (s *InventoryService) Device(ctx context.Context, environmentID, deviceID string) (InventoryDevice, error) {
+	if !validUUID(environmentID) || !validUUIDv7(deviceID) {
+		return InventoryDevice{}, ErrInvalidInput
+	}
+	return s.repository.InventoryDevice(ctx, environmentID, deviceID)
 }
 
 type Certificate struct {

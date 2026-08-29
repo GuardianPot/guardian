@@ -53,10 +53,16 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("build health service: %w", err)
 	}
+	deviceInventoryService, err := devices.NewInventoryService(store)
+	if err != nil {
+		return fmt.Errorf("build device inventory service: %w", err)
+	}
 	serverOptions := []api.Option{
 		api.WithAuthService(authService),
 		api.WithEnvironmentService(environmentService),
 		api.WithHealthService(healthService),
+		api.WithDeviceInventoryService(deviceInventoryService),
+		api.WithWebConsoleDirectory(cfg.WebConsoleDirectory),
 		api.WithEnvironmentAuthorizer(api.EnvironmentAuthorizerFunc(func(
 			ctx context.Context, sessionToken, csrf, origin string, mutation bool,
 		) (string, error) {

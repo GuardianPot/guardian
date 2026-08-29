@@ -8,20 +8,33 @@
     "build": "tsc --noEmit -p tsconfig.app.json && vite build",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "lint": "eslint . --max-warnings=0",
-    "test": "node --test test/*.test.mjs"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bundle:check": "node test/check-bundle.mjs"
   },
   "dependencies": {
-    "react": "latest",
-    "react-dom": "latest"
+    "@radix-ui/react-dialog": "1.1.23",
+    "@radix-ui/react-label": "2.1.15",
+    "@tanstack/react-query": "5.102.8",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-router-dom": "7.18.3"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "@vitejs/plugin-react": "latest",
-    "eslint": "^10.9.0",
-    "typescript": "latest",
-    "typescript-eslint": "^8.67.0",
-    "vite": "latest"
+    "@axe-core/playwright": "4.13.0",
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.62.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.6",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "@vitejs/plugin-react": "6.1.1",
+    "eslint": "10.9.1",
+    "jsdom": "30.0.1",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.68.0",
+    "vite": "8.2.2",
+    "vitest": "4.1.11"
   }
 }

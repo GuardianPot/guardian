@@ -88,6 +88,7 @@ func TestLocalAuthenticationPostgreSQLAndTLSContract(t *testing.T) {
 	if _, err := service.AuthorizeMutation(ctx, first.SessionToken, first.CSRFToken, "https://evil.example"); !errors.Is(err, auth.ErrOriginInvalid) {
 		t.Fatalf("cross-origin mutation error = %v", err)
 	}
+	assertConcurrentSessionAuthorization(t, store, service, first.SessionToken, first.Session.SessionID)
 
 	httpCredentials := exerciseAuthTLS(t, store, service, seed, password, origin)
 	if _, err := service.AuthorizeRead(ctx, httpCredentials.SessionToken); !errors.Is(err, auth.ErrSessionInvalid) {
@@ -299,7 +300,10 @@ func provisioningSecret(t *testing.T, value string) string {
 
 func assertSessionExpiry(t *testing.T, store *Store, userID string) {
 	t.Helper()
-	now := time.Now().UTC()
+	var now time.Time
+	if err := store.pool.QueryRow(context.Background(), `SELECT clock_timestamp()`).Scan(&now); err != nil {
+		t.Fatal(err)
+	}
 	for name, instants := range map[string][3]time.Time{
 		"absolute": {now.Add(-9 * time.Hour), now.Add(-9 * time.Hour), now.Add(-time.Hour)},
 		"idle":     {now.Add(-time.Hour), now.Add(-16 * time.Minute), now.Add(7 * time.Hour)},
@@ -325,10 +329,54 @@ INSERT INTO guardian_auth.sessions (
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := store.AuthenticateSession(context.Background(), tokenHash, now, auth.SessionIdleExpiry); !errors.Is(err, auth.ErrSessionInvalid) {
+			if _, err := store.AuthenticateSession(context.Background(), tokenHash, auth.SessionIdleExpiry); !errors.Is(err, auth.ErrSessionInvalid) {
 				t.Fatalf("expired session token %s accepted: %v", token, err)
 			}
 		})
+	}
+}
+
+func assertConcurrentSessionAuthorization(
+	t *testing.T,
+	store *Store,
+	service *auth.Service,
+	sessionToken, sessionID string,
+) {
+	t.Helper()
+	const requestCount = 32
+	start := make(chan struct{})
+	outcomes := make(chan error, requestCount)
+	var ready sync.WaitGroup
+	ready.Add(requestCount)
+	for range requestCount {
+		go func() {
+			ready.Done()
+			<-start
+			_, err := service.AuthorizeRead(context.Background(), sessionToken)
+			outcomes <- err
+		}()
+	}
+	ready.Wait()
+	close(start)
+	for range requestCount {
+		if err := <-outcomes; err != nil {
+			t.Fatalf("concurrent session authorization failed: %v", err)
+		}
+	}
+
+	var lastSeenAt, databaseNow time.Time
+	var revokedAt *time.Time
+	if err := store.pool.QueryRow(context.Background(), `
+SELECT last_seen_at, revoked_at, clock_timestamp()
+FROM guardian_auth.sessions
+WHERE session_id = $1`, sessionID).Scan(&lastSeenAt, &revokedAt, &databaseNow); err != nil {
+		t.Fatal(err)
+	}
+	if revokedAt != nil {
+		t.Fatalf("concurrent authorization revoked an active session at %s", revokedAt.UTC())
+	}
+	if lastSeenAt.After(databaseNow) {
+		t.Fatalf("session last-seen time %s is ahead of database time %s", lastSeenAt.UTC(), databaseNow.UTC())
 	}
 }
 

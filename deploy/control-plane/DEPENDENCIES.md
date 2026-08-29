@@ -6,6 +6,7 @@ Resolved versions are committed in the relevant `go.mod` and `go.sum` files.
 |---|---:|---|---|
 | Go | 1.27.0 | Runtime/toolchain | BSD-3-Clause |
 | Go build image | `golang:1.27-bookworm` (digest pinned) | Container build | BSD-3-Clause and Debian package licenses |
+| Node.js build image | `node:24-bookworm` (digest pinned) | Web Console container build only | MIT and Debian package licenses |
 | Distroless runtime image | `static-debian13:nonroot` (digest pinned) | Container runtime | Apache-2.0 project and bundled Debian package licenses |
 | PostgreSQL image | 18.6-trixie (digest pinned) | Development/integration database | PostgreSQL License |
 | `github.com/jackc/pgx/v5` | 5.10.0 | PostgreSQL driver/pool | MIT |
@@ -16,6 +17,11 @@ Resolved versions are committed in the relevant `go.mod` and `go.sum` files.
 | `otelgrpc` | 0.71.0 | gRPC trace-context instrumentation | Apache-2.0 |
 | `google.golang.org/grpc` | 1.83.2 | Bounded TLS 1.3 device channel | Apache-2.0 |
 | `google.golang.org/protobuf` | 1.36.12 | Generated device-channel messages | BSD-3-Clause |
+| React / React DOM | 19.2.8 | Web Console UI | MIT |
+| React Router DOM | 7.18.3 | Explicit Web Console routes | MIT |
+| TanStack React Query | 5.102.8 | Non-secret server state | MIT |
+| Radix Dialog / Label | 1.1.23 / 2.1.15 | Accessible UI primitives | MIT |
+| Vite | 8.2.2 | Web Console build tool | MIT |
 
 `sqlc` and the upstream goose CLI are tool-only modules under
 `apps/control-plane/tools/`; they are not linked into the Control Plane runtime.

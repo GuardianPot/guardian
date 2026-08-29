@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -116,5 +117,28 @@ func TestServeFailsClosedWithoutAuthRuntimeSettings(t *testing.T) {
 	base["GUARDIAN_MASTER_KEY_FILE"] = filepath.Join(t.TempDir(), "master.key")
 	if _, _, err := Load([]string{"serve"}, lookup(base)); err == nil || !strings.Contains(err.Error(), "GUARDIAN_PUBLIC_ORIGIN") {
 		t.Fatalf("missing public-origin error = %v", err)
+	}
+}
+
+func TestServeValidatesOptionalWebConsoleDirectory(t *testing.T) {
+	base := map[string]string{
+		"GUARDIAN_DATABASE_URL":    "postgres://guardian:secret@db/guardian",
+		"GUARDIAN_MASTER_KEY_FILE": filepath.Join(t.TempDir(), "master.key"),
+		"GUARDIAN_PUBLIC_ORIGIN":   "https://guardian.example.test",
+		"GUARDIAN_WEB_CONSOLE_DIR": "relative/web-console",
+	}
+	if _, _, err := Load([]string{"serve"}, lookup(base)); err == nil || !strings.Contains(err.Error(), "GUARDIAN_WEB_CONSOLE_DIR") {
+		t.Fatalf("relative web-console directory error = %v", err)
+	}
+	base["GUARDIAN_WEB_CONSOLE_DIR"] = filepath.Join(t.TempDir(), "web-console")
+	if err := os.Mkdir(base["GUARDIAN_WEB_CONSOLE_DIR"], 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(base["GUARDIAN_WEB_CONSOLE_DIR"], "index.html"), []byte("web console"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, cfg, err := Load([]string{"serve"}, lookup(base))
+	if err != nil || cfg.WebConsoleDirectory != base["GUARDIAN_WEB_CONSOLE_DIR"] {
+		t.Fatalf("absolute web-console directory = (%q, %v)", cfg.WebConsoleDirectory, err)
 	}
 }
