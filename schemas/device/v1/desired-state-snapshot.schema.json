@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://guardianpot.dev/schemas/device/v1/desired-state-snapshot.schema.json",
+  "title": "Guardian desired-state snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["message_id", "revision", "edge_configuration", "zones", "placeholder_decoys"],
+  "properties": {
+    "message_id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "revision": { "type": "integer", "minimum": 1 },
+    "edge_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device_id", "environment_id"],
+      "properties": {
+        "device_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "environment_id": { "type": "string", "format": "uuid" }
+      }
+    },
+    "zones": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["zone_id", "display_name", "cidr", "source_revision"],
+        "properties": {
+          "zone_id": { "type": "string", "format": "uuid" },
+          "display_name": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "cidr": { "type": "string", "minLength": 9, "maxLength": 18 },
+          "source_revision": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "placeholder_decoys": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["object_id", "zone_id", "display_name"],
+        "properties": {
+          "object_id": { "type": "string", "format": "uuid" },
+          "zone_id": { "type": "string", "format": "uuid" },
+          "display_name": { "type": "string", "minLength": 1, "maxLength": 512 }
+        }
+      }
+    }
+  }
+}

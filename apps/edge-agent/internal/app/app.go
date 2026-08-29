@@ -12,9 +12,11 @@ import (
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/components"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/config"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/devicechannel"
+	devicev1 "github.com/GuardianPot/guardian/apps/edge-agent/internal/devicechannel/gen/guardian/device/v1"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/enrollment"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/identity"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/lifecycle"
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/reconciliation"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/storage"
 	"go.opentelemetry.io/otel"
 )
@@ -69,9 +71,17 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) (runErr er
 	}
 
 	graph := components.NewFoundation(store, metadata, enrollmentStatus)
-	channel, err := devicechannel.NewClient(devicechannel.Config{
+	var channel *devicechannel.Client
+	reconciler, err := reconciliation.New(store, metadata.DeviceID, reconciliation.PublisherFunc(func(observed *devicev1.ObservedState) error {
+		return channel.EnqueueObserved(observed)
+	}), nil)
+	if err != nil {
+		return fmt.Errorf("build desired-state reconciler: %w", err)
+	}
+	channel, err = devicechannel.NewClient(devicechannel.Config{
 		Endpoint: cfg.DeviceChannelEndpoint, AgentVersion: channelAgentVersion,
 		Credentials: credentials, Logger: logger,
+		DesiredHandler: reconciler, ObservedAcknowledgementHandler: reconciler,
 		StateRecorder: devicechannel.StateRecorderFunc(func(ctx context.Context, state, reason string) error {
 			status := "degraded"
 			if state == "connected" {
@@ -86,6 +96,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) (runErr er
 		return fmt.Errorf("build device channel client: %w", err)
 	}
 	graph.Channel = channel
+	graph.Reconciler = reconciler
 	ordered := graph.Ordered()
 	ordered = append(ordered, enrollment.NewRotationManager(
 		cfg.ControlPlaneEndpoint,

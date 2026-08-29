@@ -230,6 +230,25 @@ func TestReceiveValidHeartbeatKeepsSessionFresh(t *testing.T) {
 	}
 }
 
+func TestMissingReconciliationHandlerDoesNotSilentlyDiscardDesiredAcknowledgement(t *testing.T) {
+	fixture := newTLSFixture(t)
+	verifier := &testVerifier{deviceID: testDeviceID, serial: fixture.clientLeaf.SerialNumber.Text(16)}
+	verifier.eligible.Store(true)
+	server := newTestServer(t, fixture, verifier)
+	stream := openTestStream(t, server.Address(), fixture)
+	negotiate(t, stream, ProtocolMajor, ProtocolMinor, true)
+	if err := stream.Send(&devicev1.ConnectRequest{Payload: &devicev1.ConnectRequest_Acknowledgement{
+		Acknowledgement: &devicev1.Acknowledgement{
+			MessageId: testDeviceID, Kind: devicev1.AcknowledgementKind_ACKNOWLEDGEMENT_KIND_DESIRED_STATE, Revision: 1,
+		},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stream.Recv(); status.Code(err) != codes.Unimplemented {
+		t.Fatalf("missing reconciliation handler acknowledgement error = %v", err)
+	}
+}
+
 type testVerifier struct {
 	deviceID string
 	serial   string

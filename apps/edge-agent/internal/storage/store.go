@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	currentSchemaVersion = 1
+	currentSchemaVersion = 2
 	defaultBusyTimeout   = 5 * time.Second
 	maxEventPayloadBytes = 1 << 20
 )

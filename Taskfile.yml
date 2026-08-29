@@ -70,7 +70,7 @@ tasks:
 
   control-plane:integration:
     desc: Run disposable PostgreSQL 18 migration, persistence, and lifecycle evidence
-    deps: [control-plane:generated, environment:integration]
+    deps: [control-plane:generated, environment:integration, reconciliation:integration]
     cmds:
       - |
         temporary_key="$(mktemp /tmp/guardian-control-plane-master.XXXXXX)"
@@ -131,6 +131,12 @@ tasks:
     deps: [control-plane:generated, privileged:generated]
     cmds:
       - bash tests/integration/device-channel/run.sh
+
+  reconciliation:integration:
+    desc: Run P1-W6 PostgreSQL, SQLite, real mTLS convergence, replay, restart, retry, race, and redaction evidence
+    deps: [control-plane:generated, privileged:generated, edge:tools]
+    cmds:
+      - bash tests/integration/reconciliation/run.sh
 
   privileged:security:
     desc: Run privileged-helper boundary, abuse, socket, peer, and service-profile tests

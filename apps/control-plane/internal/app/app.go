@@ -21,6 +21,7 @@ import (
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/health"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/jobs"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/lifecycle"
+	"github.com/GuardianPot/guardian/apps/control-plane/internal/reconciliation"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/secretstore"
 	"github.com/GuardianPot/guardian/apps/control-plane/internal/storage"
 )
@@ -95,10 +96,18 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 			api.WithTLSFiles(cfg.TLSCertificateFile, cfg.TLSPrivateKeyFile, authority.CertificatePEM()),
 		)
 		if cfg.DeviceChannelEnabled() {
+			reconciliationService, err := reconciliation.NewService(store)
+			if err != nil {
+				return fmt.Errorf("build reconciliation service: %w", err)
+			}
+			reconciliationHandler, err := reconciliation.NewChannelHandler(reconciliationService)
+			if err != nil {
+				return fmt.Errorf("build reconciliation channel handler: %w", err)
+			}
 			channelServer, err = devicechannel.NewServer(devicechannel.Config{
 				Address: cfg.DeviceChannelAddress, TLSCertificateFile: cfg.TLSCertificateFile,
 				TLSPrivateKeyFile: cfg.TLSPrivateKeyFile, DeviceCAPEM: authority.CertificatePEM(),
-				Verifier: deviceService, Logger: logger,
+				Verifier: deviceService, Reconciliation: reconciliationHandler, Logger: logger,
 			})
 			if err != nil {
 				return fmt.Errorf("build device channel server: %w", err)
@@ -109,6 +118,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		auth.New(),
 		environment.New(),
 		devices.New(),
+		reconciliation.New(),
 		deception.New(),
 		health.New(),
 		audit.New(),

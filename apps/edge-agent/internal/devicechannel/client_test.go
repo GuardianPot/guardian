@@ -27,6 +27,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const edgeTestDeviceID = "0198f7c4-7b30-7f11-8a44-111111111111"
@@ -39,7 +40,7 @@ func TestClientNegotiatesAcknowledgesAndReconnectsAfterControlRestart(t *testing
 	client, err := NewClient(Config{
 		Endpoint: server.address(), AgentVersion: "guardian-edge/test", Credentials: fixture.client,
 		RootCAs: fixture.roots, Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-		StateRecorder: states, AcknowledgementHandler: acknowledgementHandlerFunc(func(_ context.Context, ack *devicev1.Acknowledgement) error {
+		StateRecorder: states, ObservedAcknowledgementHandler: acknowledgementHandlerFunc(func(_ context.Context, ack *devicev1.Acknowledgement) error {
 			acknowledgements <- ack
 			return nil
 		}),
@@ -59,7 +60,13 @@ func TestClientNegotiatesAcknowledgesAndReconnectsAfterControlRestart(t *testing
 	waitForState(t, states.changed, "connected", time.Second)
 
 	messageID := "0198f7c4-7b30-7f11-8a44-222222222222"
-	if err := client.EnqueueObserved(messageID, 7, 7); err != nil {
+	if err := client.EnqueueObserved(&devicev1.ObservedState{
+		MessageId: messageID, DesiredRevision: 7, ObservedRevision: 7, LastGoodRevision: 7,
+		Condition: &devicev1.ReconciliationCondition{
+			Status:     devicev1.ReconciliationConditionStatus_RECONCILIATION_CONDITION_STATUS_CONVERGED,
+			ReasonCode: "applied", AttemptCount: 1, LastTransitionTime: timestamppb.Now(),
+		},
+	}); err != nil {
 		t.Fatal(err)
 	}
 	select {
