@@ -2,7 +2,7 @@
 
 - Review date: 2026-08-29
 - Work package: P1-W9
-- Decisions: EN-08, CP-06, OB-01, OB-02, SA-14, W9-C1-A through W9-C14-A
+- Decisions: EN-08, CP-06, OB-01, OB-02, SA-14, W9-C1-A through W9-C15-A
 - Scope: Edge evidence, durable report/ACK, authenticated ingest, projection,
   environment aggregate, read API, and fixed read-only runtime probe
 
