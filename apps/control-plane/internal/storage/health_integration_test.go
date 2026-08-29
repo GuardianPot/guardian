@@ -3,6 +3,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -37,6 +38,10 @@ VALUES ($1, $2, 'health-edge', 'active', $3, $3)`, deviceID, configured.Environm
 		t.Fatal(err)
 	}
 	first := integrationHealthReport(1, "0198dc8c-c600-7000-8000-000000000045", now)
+	expectedPayload, err := health.MarshalReport(first)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if outcome, err := store.StoreHealthReport(ctx, deviceID, first, now.Add(time.Second)); err != nil || outcome != health.ApplyAccepted {
 		t.Fatalf("first report = (%v, %v)", outcome, err)
 	}
@@ -45,6 +50,14 @@ VALUES ($1, $2, 'health-edge', 'active', $3, $3)`, deviceID, configured.Environm
 	}
 	if err := store.MarkHealthDisconnected(ctx, deviceID, now.Add(3*time.Second)); err != nil {
 		t.Fatal(err)
+	}
+	var persistedPayload []byte
+	if err := store.pool.QueryRow(ctx, `
+SELECT report_payload FROM guardian_health.device_projections WHERE device_id = $1`, deviceID).Scan(&persistedPayload); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(persistedPayload, expectedPayload) {
+		t.Fatal("disconnect rewrote the accepted report payload")
 	}
 	store.Close()
 

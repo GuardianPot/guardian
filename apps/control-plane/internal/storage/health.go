@@ -76,13 +76,28 @@ func (s *Store) MarkHealthDisconnected(ctx context.Context, deviceID string, at 
 			return unknownErr
 		}
 		current = &health.Projection{ReceivedAt: at, ObservedAt: at, Conditions: conditions}
-	}
-	next, err := current.MarkDisconnected(at)
-	if err != nil {
-		return err
-	}
-	if err := saveHealthProjection(ctx, tx, deviceID, environmentID, next, nil); err != nil {
-		return err
+		next, markErr := current.MarkDisconnected(at)
+		if markErr != nil {
+			return markErr
+		}
+		if err := saveHealthProjection(ctx, tx, deviceID, environmentID, next, nil); err != nil {
+			return err
+		}
+	} else {
+		next, markErr := current.MarkDisconnected(at)
+		if markErr != nil {
+			return markErr
+		}
+		result, updateErr := tx.Exec(ctx, `
+UPDATE guardian_health.device_projections
+SET disconnected_at = $2
+WHERE device_id = $1`, deviceID, next.DisconnectedAt)
+		if updateErr != nil {
+			return fmt.Errorf("persist health disconnect: %w", updateErr)
+		}
+		if result.RowsAffected() != 1 {
+			return fmt.Errorf("persist health disconnect: %w", health.ErrNotFound)
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit health disconnect: %w", err)

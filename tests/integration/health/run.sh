@@ -62,7 +62,9 @@ MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' docker run --rm \
 
 node "$repo_root/tests/integration/health/check-contracts.mjs"
 
-if rg -n --hidden --glob '!go.work.sum' \
+# model_test.go intentionally contains bounded credential-shaped hostile input
+# to prove that canonical messages reject it; it is not committed evidence.
+if rg -n --hidden --glob '!go.work.sum' --glob '!**/model_test.go' \
   'BEGIN (EC |RSA |)PRIVATE KEY|authorization:[[:space:]]*bearer|token[=:][A-Za-z0-9_-]{20,}' \
   "$repo_root/apps/control-plane/internal/health" \
   "$repo_root/apps/control-plane/internal/storage/health.go" \
