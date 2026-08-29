@@ -49,9 +49,14 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("build environment service: %w", err)
 	}
+	healthService, err := health.NewService(store)
+	if err != nil {
+		return fmt.Errorf("build health service: %w", err)
+	}
 	serverOptions := []api.Option{
 		api.WithAuthService(authService),
 		api.WithEnvironmentService(environmentService),
+		api.WithHealthService(healthService),
 		api.WithEnvironmentAuthorizer(api.EnvironmentAuthorizerFunc(func(
 			ctx context.Context, sessionToken, csrf, origin string, mutation bool,
 		) (string, error) {
@@ -104,10 +109,14 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 			if err != nil {
 				return fmt.Errorf("build reconciliation channel handler: %w", err)
 			}
+			healthHandler, err := devicechannel.NewHealthChannelHandler(healthService)
+			if err != nil {
+				return fmt.Errorf("build health channel handler: %w", err)
+			}
 			channelServer, err = devicechannel.NewServer(devicechannel.Config{
 				Address: cfg.DeviceChannelAddress, TLSCertificateFile: cfg.TLSCertificateFile,
 				TLSPrivateKeyFile: cfg.TLSPrivateKeyFile, DeviceCAPEM: authority.CertificatePEM(),
-				Verifier: deviceService, Reconciliation: reconciliationHandler, Logger: logger,
+				Verifier: deviceService, Reconciliation: reconciliationHandler, Health: healthHandler, Logger: logger,
 			})
 			if err != nil {
 				return fmt.Errorf("build device channel server: %w", err)

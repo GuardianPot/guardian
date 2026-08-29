@@ -24,12 +24,12 @@ const (
 // Projection is the latest accepted full report plus the trusted server
 // receive time used for staleness.
 type Projection struct {
-	ReportID           string
-	Sequence           uint64
-	ObservedAt         time.Time
-	ReceivedAt         time.Time
-	Conditions         []Condition
-	connectionOverride *Condition
+	ReportID       string
+	Sequence       uint64
+	ObservedAt     time.Time
+	ReceivedAt     time.Time
+	Conditions     []Condition
+	DisconnectedAt *time.Time
 }
 
 // ApplyReport validates ordering, exact duplicate semantics, and Edge
@@ -81,14 +81,17 @@ func (projection Projection) EffectiveConditions(at time.Time) ([]Condition, err
 		return nil, err
 	}
 	conditions := cloneConditions(projection.Conditions)
-	if projection.connectionOverride != nil {
-		if err := projection.connectionOverride.Validate(); err != nil || projection.connectionOverride.Type != TypeEdgeConnected {
-			return nil, ErrInvalidCondition
-		}
-		if at.Before(projection.connectionOverride.LastTransitionTime) {
+	if projection.DisconnectedAt != nil {
+		if err := ValidateTimestamp(*projection.DisconnectedAt); err != nil || at.Before(*projection.DisconnectedAt) {
 			return nil, ErrInvalidTimestamp
 		}
-		conditions[0] = cloneCondition(*projection.connectionOverride)
+		conditions[0] = Condition{
+			Type:               TypeEdgeConnected,
+			Status:             StatusFalse,
+			Reason:             "channel_disconnected",
+			Message:            "Device channel is disconnected.",
+			LastTransitionTime: *projection.DisconnectedAt,
+		}
 		return conditions, nil
 	}
 	if at.Sub(projection.ReceivedAt) <= StaleAfter {
@@ -127,20 +130,13 @@ func (projection Projection) MarkDisconnected(at time.Time) (Projection, error) 
 	}
 	next := cloneProjection(projection)
 	transitionTime := at
-	if next.connectionOverride != nil && next.connectionOverride.Status == StatusFalse && next.connectionOverride.Reason == "channel_disconnected" {
-		if at.Before(next.connectionOverride.LastTransitionTime) {
+	if next.DisconnectedAt != nil {
+		if at.Before(*next.DisconnectedAt) {
 			return Projection{}, ErrInvalidTimestamp
 		}
-		transitionTime = next.connectionOverride.LastTransitionTime
+		transitionTime = *next.DisconnectedAt
 	}
-	override := Condition{
-		Type:               TypeEdgeConnected,
-		Status:             StatusFalse,
-		Reason:             "channel_disconnected",
-		Message:            "Device channel is disconnected.",
-		LastTransitionTime: transitionTime,
-	}
-	next.connectionOverride = &override
+	next.DisconnectedAt = &transitionTime
 	return next, nil
 }
 
@@ -242,9 +238,9 @@ func cloneConditions(conditions []Condition) []Condition {
 func cloneProjection(projection Projection) Projection {
 	copyProjection := projection
 	copyProjection.Conditions = cloneConditions(projection.Conditions)
-	if projection.connectionOverride != nil {
-		copyOverride := cloneCondition(*projection.connectionOverride)
-		copyProjection.connectionOverride = &copyOverride
+	if projection.DisconnectedAt != nil {
+		copyDisconnectedAt := *projection.DisconnectedAt
+		copyProjection.DisconnectedAt = &copyDisconnectedAt
 	}
 	return copyProjection
 }

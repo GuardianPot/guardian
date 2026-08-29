@@ -49,6 +49,10 @@ type HealthHandler interface {
 	HealthReport(context.Context, DeviceIdentity, *devicev1.HealthReport) error
 }
 
+type HealthDisconnectHandler interface {
+	ChannelClosed(context.Context, DeviceIdentity) error
+}
+
 type DeviceIdentity struct {
 	DeviceID          string
 	CertificateSerial string
@@ -215,8 +219,17 @@ func (s *Server) Connect(stream grpc.BidiStreamingServer[devicev1.ConnectRequest
 	session := newActiveSession(stream.Context(), identity)
 	s.sessions.activate(session)
 	defer func() {
-		s.sessions.remove(session)
+		wasCurrent := s.sessions.remove(session)
 		session.cancel()
+		if wasCurrent {
+			if handler, ok := s.health.(HealthDisconnectHandler); ok {
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				defer cancel()
+				if err := handler.ChannelClosed(ctx, session.identity); err != nil {
+					s.logger.ErrorContext(ctx, "Record device channel disconnect failed", "device_id", deviceID)
+				}
+			}
+		}
 	}()
 	if s.reconciliation != nil {
 		desired, handlerErr := s.reconciliation.DesiredState(stream.Context(), identity)
@@ -448,12 +461,14 @@ func (r *sessionRegistry) get(deviceID string) *activeSession {
 	return r.active[deviceID]
 }
 
-func (r *sessionRegistry) remove(session *activeSession) {
+func (r *sessionRegistry) remove(session *activeSession) bool {
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	if r.active[session.identity.DeviceID] == session {
 		delete(r.active, session.identity.DeviceID)
+		return true
 	}
-	r.mu.Unlock()
+	return false
 }
 
 type recentIDs struct {

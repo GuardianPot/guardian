@@ -32,6 +32,7 @@ type Server struct {
 	deviceAuthorizer   DeviceAdminAuthorizer
 	environmentService EnvironmentService
 	environmentAuth    EnvironmentAuthorizer
+	healthService      HealthService
 	authService        AuthService
 	logger             *slog.Logger
 	http               *http.Server
@@ -119,6 +120,8 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /v1/device-certificates:rotate", s.handleRotateDeviceCertificate)
 	mux.HandleFunc("POST /v1/environments/{environmentId}/devices/{deviceId}/disable", s.handleDisableDevice)
 	mux.HandleFunc("POST /v1/environments/{environmentId}/devices/{deviceId}/revoke", s.handleRevokeDevice)
+	mux.HandleFunc("GET /v1/environments/{environmentId}/health", s.handleEnvironmentHealth)
+	mux.HandleFunc("GET /v1/devices/{deviceId}/health", s.handleDeviceHealth)
 	return mux
 }
 
