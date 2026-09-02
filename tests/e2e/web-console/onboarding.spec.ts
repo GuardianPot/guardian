@@ -4,11 +4,14 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import process from 'node:process';
 import { spawn } from 'node:child_process';
-import { currentHealthTransitionTime, publishHealthy } from './device-health';
+import { currentHealthTransitionTime, hostileHealthMessage, publishHealth } from './device-health';
 
 test('real owner onboarding, Edge enrollment, health degradation, and recovery', async ({ page, context }, testInfo) => {
   const projectIndex = ['chromium', 'firefox', 'webkit'].indexOf(testInfo.project.name);
   expect(projectIndex).toBeGreaterThanOrEqual(0);
+  // Any dialog would mean injected backend text executed rather than rendered.
+  const dialogs: string[] = [];
+  page.on('dialog', (dialog) => { dialogs.push(dialog.message()); void dialog.dismiss(); });
   const recoveryCodes = JSON.parse(required('GUARDIAN_E2E_RECOVERY_CODES')) as string[];
   const fixtureDirectory = required('GUARDIAN_E2E_FIXTURE_DIR');
   const identityDirectory = join(fixtureDirectory, `identity-${testInfo.project.name}`);
@@ -74,7 +77,7 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
   await expect(page).not.toHaveURL(new RegExp(secretText!));
 
   const healthySince = currentHealthTransitionTime();
-  let connection = await publishHealthy(identityDirectory, 1, healthySince);
+  let connection = await publishHealth(identityDirectory, 1, healthySince);
   const deviceLink = page.getByRole('link', { name: new RegExp(`edge-${testInfo.project.name}.*active`, 's') });
   await expect(deviceLink).toBeVisible();
   await deviceLink.click();
@@ -85,7 +88,7 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
   connection.close();
   await expect(page.getByText('Action required', { exact: true }).first()).toBeVisible({ timeout: 20_000 });
   await new Promise((resolve) => setTimeout(resolve, 100));
-  connection = await publishHealthy(identityDirectory, 2, healthySince);
+  connection = await publishHealth(identityDirectory, 2, healthySince);
   await expect(page.getByText('Healthy', { exact: true }).first()).toBeVisible({ timeout: 20_000 });
 
   expect(await page.evaluate(async () => ({
@@ -100,6 +103,24 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
   const screenshotDirectory = join(required('GUARDIAN_E2E_OUTPUT_DIR'), 'screenshots');
   await mkdir(screenshotDirectory, { recursive: true });
   await page.screenshot({ path: join(screenshotDirectory, `onboarding-complete-${testInfo.project.name}.png`), fullPage: true });
+
+  // Hostile backend text travels the real device channel, Control Plane
+  // persistence, and API before the browser renders it.
+  connection.close();
+  await expect(page.getByText('Action required', { exact: true }).first()).toBeVisible({ timeout: 20_000 });
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  connection = await publishHealth(identityDirectory, 3, healthySince, {
+    type: 'HEALTH_CONDITION_TYPE_SPOOL_HEALTHY',
+    status: 'HEALTH_CONDITION_STATUS_FALSE',
+    reason: 'capacity_critical',
+    message: hostileHealthMessage,
+    lastTransitionTime: currentHealthTransitionTime(),
+  });
+  const conditionList = page.getByRole('list', { name: 'Device health conditions' });
+  await expect(conditionList.getByText(hostileHealthMessage, { exact: true })).toBeVisible({ timeout: 20_000 });
+  expect(await conditionList.locator('img, svg, script, iframe, object, embed').count()).toBe(0);
+  await expect(page.getByText(/Blocking: Event spool/)).toHaveText(/capacity_critical/);
+  expect(dialogs).toEqual([]);
   connection.close();
 
   await context.clearCookies();

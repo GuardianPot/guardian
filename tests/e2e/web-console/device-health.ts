@@ -8,6 +8,25 @@ import process from 'node:process';
 type Connection = { close(): void };
 export type HealthTransitionTime = Readonly<{ seconds: string; nanos: number }>;
 
+/**
+ * Replaces exactly one canonical condition in an otherwise all-true snapshot.
+ * A status or reason change must carry a fresh transition time; the backend
+ * rejects a non-monotonic rewrite of transition history.
+ */
+export type HealthConditionOverride = Readonly<{
+  type: string;
+  status: string;
+  reason: string;
+  message: string;
+  lastTransitionTime: HealthTransitionTime;
+}>;
+
+/**
+ * Bounded, secret-free markup that the canonical contract accepts. It proves
+ * the operator path renders backend text inertly rather than as elements.
+ */
+export const hostileHealthMessage = '<img src=x onerror="alert(1)"><script>alert(2)</script>"><svg onload=alert(3)>';
+
 const health = [
   ['HEALTH_CONDITION_TYPE_EDGE_CONNECTED', 'connected'],
   ['HEALTH_CONDITION_TYPE_DEVICE_CERTIFICATE_READY', 'valid'],
@@ -23,10 +42,11 @@ export function currentHealthTransitionTime(): HealthTransitionTime {
   return { seconds: String(Math.floor(Date.now() / 1000)), nanos: 0 };
 }
 
-export async function publishHealthy(
+export async function publishHealth(
   identityDirectory: string,
   sequence: number,
   lastTransitionTime: HealthTransitionTime,
+  override?: HealthConditionOverride,
 ): Promise<Connection> {
   const repoRoot = required('GUARDIAN_E2E_REPO_ROOT');
   const protoRoot = join(repoRoot, 'proto');
@@ -57,14 +77,20 @@ export async function publishHealthy(
         }
         stream.write({ healthReport: {
           schemaVersion: 'guardian.health.report.v1', reportId: reportID, sequence: String(sequence), observedAt: now,
-          conditions: health.map(([type, reason], index) => ({
+          conditions: health.map(([type, reason], index) => override?.type === type ? {
+            type,
+            status: override.status,
+            reason: override.reason,
+            message: override.message,
+            lastTransitionTime: override.lastTransitionTime,
+          } : {
             type,
             status: 'HEALTH_CONDITION_STATUS_TRUE',
             reason,
             message: '',
             ...(index === 2 ? { observedRevision: '1' } : {}),
             lastTransitionTime,
-          })),
+          }),
         } });
       }
       if (message.desiredState) {
