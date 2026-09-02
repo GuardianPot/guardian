@@ -97,6 +97,8 @@ master-key permission check for local convenience.
   response and never leaks a filesystem path.
 - A 401 from authenticated API use expires the UI session view. Reauthenticate;
   do not reconstruct a CSRF value.
+- A refused sign-out is reported as failed and the session remains active. Retry
+  or revoke the session through the Control Plane; do not assume it ended.
 - A health 404 or fetch error is rendered as unavailable, never healthy.
 - A pending or active inventory record without a health projection remains
   explicitly unreported.

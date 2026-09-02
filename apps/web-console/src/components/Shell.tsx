@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import styles from '../styles/app.module.css';
 
 export function Shell() {
   const auth = useAuth();
+  const [signOutError, setSignOutError] = useState('');
   return (
     <div className={styles.shell}>
       <a className={styles.skipLink} href="#main-content">Skip to content</a>
@@ -19,10 +21,22 @@ export function Shell() {
           <span>Signed in as</span>
           <strong>{auth.session?.username}</strong>
           {auth.canMutate ? (
-            <button className={styles.textButton} type="button" onClick={() => void auth.logout()}>Sign out</button>
+            <button
+              className={styles.textButton}
+              type="button"
+              onClick={() => {
+                setSignOutError('');
+                // A refused sign-out must stay visible instead of silently
+                // leaving the operator on an apparently ended session.
+                auth.logout().catch(() => setSignOutError('Sign-out failed. This session is still active.'));
+              }}
+            >
+              Sign out
+            </button>
           ) : (
             <Link to="/login">Re-authenticate</Link>
           )}
+          {signOutError && <p className={styles.formError} role="alert">{signOutError}</p>}
         </div>
       </aside>
       <div className={styles.workspace}>
