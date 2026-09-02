@@ -64,7 +64,10 @@ node "$repo_root/tests/integration/health/check-contracts.mjs"
 
 # model_test.go intentionally contains bounded credential-shaped hostile input
 # to prove that canonical messages reject it; it is not committed evidence.
-if rg -n --hidden --glob '!go.work.sum' --glob '!**/model_test.go' \
+# POSIX grep keeps the identical pattern runnable on any CI image; an unusable
+# scanner is treated as a failure rather than as a passing scan.
+set +e
+scan_output="$(grep -REn --exclude=model_test.go --exclude=go.work.sum \
   'BEGIN (EC |RSA |)PRIVATE KEY|authorization:[[:space:]]*bearer|token[=:][A-Za-z0-9_-]{20,}' \
   "$repo_root/apps/control-plane/internal/health" \
   "$repo_root/apps/control-plane/internal/storage/health.go" \
@@ -72,8 +75,17 @@ if rg -n --hidden --glob '!go.work.sum' --glob '!**/model_test.go' \
   "$repo_root/apps/edge-agent/internal/storage/health.go" \
   "$repo_root/apps/edge-agent/internal/privileged/runtime.go" \
   "$repo_root/docs/runbooks/health" \
-  "$repo_root/security/p1-w9-health-review.md"; then
+  "$repo_root/security/p1-w9-health-review.md" 2>&1)"
+scan_status=$?
+set -e
+if [ "$scan_status" -eq 0 ]; then
+  printf '%s\n' "$scan_output" >&2
   echo "Health source/evidence scan found committed credential-shaped material" >&2
+  exit 1
+fi
+if [ "$scan_status" -ne 1 ]; then
+  printf '%s\n' "$scan_output" >&2
+  echo "Health source/evidence scan could not complete (status $scan_status)" >&2
   exit 1
 fi
 
