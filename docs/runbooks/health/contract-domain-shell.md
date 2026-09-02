@@ -120,5 +120,18 @@ task health:integration
 ```
 
 The full repository acceptance gate remains `task validate`. P1-W9 backend and
-failure evidence is produced by `task health:integration`; final browser
-escaping/no-fake-green evidence is completed with the P1-W11 route shell.
+failure evidence is produced by `task health:integration`, which the quality
+workflow now runs so the evidence carries a CI link.
+
+Browser escaping and no-fake-green evidence runs with the P1-W11 route shell:
+
+```text
+task web:e2e
+```
+
+Each of Chromium, Firefox, and WebKit publishes one bounded, secret-free markup
+message on `spool_healthy=False/capacity_critical` through the real device
+channel and requires the console to render it as literal text, with no element
+created inside the condition list and no dialog raised. Because that report
+changes a condition status, it carries a fresh transition time; reusing the
+earlier timestamp is correctly rejected as a non-monotonic history rewrite.

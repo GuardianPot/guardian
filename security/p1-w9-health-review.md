@@ -80,6 +80,32 @@ reopens SQLite with an unacknowledged report, verifies mismatch/ACK behavior,
 exercises PostgreSQL disconnect/recovery, repeats race-enabled tests, and scans
 the health boundary for credential-shaped material.
 
+## Hostile-message and CI evidence amendment — 2026-09-03
+
+Owner-authorized closure of the two remaining P1-W9 evidence gaps. No decision,
+contract, threshold, boundary, or acceptance criterion changed.
+
+- **End-to-end hostile-message evidence.** The test-only publisher can now
+  replace exactly one canonical condition, so a bounded, secret-free markup
+  message travels the real mTLS device channel, Control Plane validation and
+  persistence, the authorized read API, and the browser. Chromium, Firefox, and
+  WebKit each assert the message appears as literal text inside the condition
+  list, that the list contains no `img`, `svg`, `script`, `iframe`, `object`, or
+  `embed` element, that the aggregate attributes the block to the spool
+  condition with reason `capacity_critical`, and that no dialog was raised. A
+  status change carries a fresh transition time, so the backend's monotonic
+  transition-history validation stays unweakened.
+- **API escaping evidence.** `TestHealthReadEncodesHostileMessagesAsInertJSONText`
+  proves both read endpoints emit no raw `<img`, `<script`, `<svg`, or `">`
+  sequence and that decoding the response returns the message byte-for-byte, so
+  escaping is lossless rather than stripping or entity rewriting.
+- **CI wiring.** `task health:integration` now runs in the quality workflow, so
+  the durability, ACK/replay, disconnect, helper/runtime stop-restart, and
+  race evidence produces a CI link as `§12` requires instead of local-only runs.
+  Its committed credential-shaped scan moved from `rg` to the identical POSIX
+  `grep -E` pattern so any CI image can run it, and a scanner that cannot
+  complete is now a failure rather than a silent pass.
+
 ## Known limitations and residual risk
 
 - Non-Linux builds report clock and filesystem measurements as unavailable;
@@ -89,9 +115,9 @@ the health boundary for credential-shaped material.
 - An accepted exact duplicate after reconnect remains idempotent and does not
   rewrite a prior disconnect override. ACK permits the next newer full report,
   which clears it; channel-state dirtiness schedules that report immediately.
-- P1-W11 owns final browser route composition, hostile-message escaping, and
-  screenshot evidence. Backend acceptance must not be presented as that UI
-  evidence.
+- P1-W11 owns browser route composition and screenshot evidence; both are now
+  merged, and the hostile-message browser evidence above closes the remaining
+  UI gap. Backend acceptance still must not be presented as that UI evidence.
 - The pinned `govulncheck` scan found no called vulnerabilities in either Go
   application. The unchanged Control Plane dependency graph retains one
   module-only warning, `GO-2026-5932`, for the unmaintained
