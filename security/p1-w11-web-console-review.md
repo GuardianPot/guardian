@@ -83,6 +83,27 @@ taken after enrollment-secret dismissal. The test-only health publisher is
 outside every production build and can affect only the disposable test Control
 Plane to which its one-time device identity belongs.
 
+## Post-merge coverage amendment — 2026-09-02
+
+Owner-authorized route/session test hardening inside the existing P1-W11 scope.
+No decision, contract, boundary, or acceptance criterion changed.
+
+Added component coverage now exercises the environment, device, and shell
+routes directly instead of only through the browser job: the read-only
+reload gate on every mutation control, a rejected zone that never claims
+success, the one-time secret leaving DOM, browser storage, and the query
+cache, an unavailable or missing health projection never rendering as
+healthy, inventory state staying separate from health, hostile backend text
+staying inert, a denied record rendering as unavailable, and a mid-session
+401 clearing the CSRF proof plus non-session query state and returning the
+operator to sign-in.
+
+One defect surfaced and was corrected: `Shell` discarded the sign-out promise,
+so a backend refusal produced an unhandled rejection and left the operator with
+no signal while the session stayed active. Sign-out failure is now rendered as
+an alert and the session is explicitly reported as still active. The session,
+CSRF, revocation, and expiry semantics are unchanged.
+
 ## Known limitations and residual risk
 
 - Phase 1 has one local owner and no role editor, OIDC, or delegated access.
