@@ -17,3 +17,6 @@ bin/
 # Lab state and local evidence
 .lab/
 evidence/local/
+
+# Claude Code local settings (personal, not shared)
+.claude/settings.local.json
