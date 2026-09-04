@@ -49,8 +49,25 @@ the Step 2–6 source documents.
 | [0016](0016-routed-secondary-ip-placement.md) | Routed secondary-IP placement |
 | [0017](0017-versioned-device-telemetry-contracts.md) | Versioned device and telemetry contracts |
 
+## Project ADRs
+
+Records created by this project rather than imported from Step 4. They follow
+the `Proposed → Accepted → Superseded` lifecycle above; only `@sinanganiz` can
+move one to `Accepted`.
+
+| ADR | Decision | Status |
+|---|---|---|
+| [0018](0018-web-console-frontend-architecture.md) | Web Console frontend architecture | Proposed |
+
 ## Change proposals
 
 Material changes use the versioned templates in
 [`docs/change-proposals/`](../change-proposals/). An agent may draft a
 proposal, but only `@sinanganiz` can accept it.
+
+| Proposal | Subject | Status |
+|---|---|---|
+| [0001](../change-proposals/0001-secondary-ip-placement.md) | Routed secondary-IP placement | APPROVED |
+| [0002](../change-proposals/0002-p1-w8-acceptance-reference.md) | P1-W8 acceptance reference | APPROVED |
+| [0003](../change-proposals/0003-web-console-session-csrf-reissue.md) | Web Console CSRF re-issue and step-up | RECOMMENDED |
+| [0004](../change-proposals/0004-web-console-error-contract.md) | Structured Web/Public API error contract | RECOMMENDED |
