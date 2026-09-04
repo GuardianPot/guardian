@@ -34,6 +34,26 @@ approved predecessors close.
 - AC-ON-001/002/003 and AC-SEC-005/006;
 - restart, reconnect, and idempotency smoke evidence.
 
+## Web Console scope clarification — 2026-09-03
+
+The Product Owner resolved how the `Edge enrollment, rotation, and revocation`
+exit evidence applies to the Web Console. Revocation is satisfied at
+capability level by the `P1-W4` API, the device-channel refusal behaviour, and
+their acceptance evidence. A console interface for device disable and revoke,
+enrollment-token list and revoke, zone edit and delete, session list and
+revoke, and password change is **Phase 2 work**, delivered by `WCX-09` in
+`docs/work-packages/phase-1_2-web-console-extended-multi-phase-work-packages/`.
+
+This gate therefore does not wait on `WCX-09`. The clarification records a
+scope boundary only; it changes no exit-evidence item and no gate status.
+
+Two implementation defects in the delivered `P1-W11` console are recorded in
+`WCX-000` section 4 as `GAP-1`, the operator block including sign-out being
+hidden below 900 pixels, and `GAP-2`, the absence of any error boundary. They
+are scheduled in `WCX-10` and `WCX-04`. Whether either must close before this
+gate is closed remains a Product Owner decision; nothing in the planning set
+asserts that it must.
+
 ## Work-package evidence
 
 | Package | Issue | PR | Acceptance state |
