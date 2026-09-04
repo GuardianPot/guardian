@@ -143,7 +143,7 @@ approved phase.
 | Notification channel configuration and escalation contacts | NT-02, NT-03, NT-06, NT-07, AC-NT-002, AC-NT-003, P4-W11, P4-W12 | WCX-18 |
 | Update and rollback control, the full `UX-07` health minimum including queue and explicit loss state and AI provider status, and the diagnostics bundle entry point | UP-01..UP-04, UX-07, OPS-04, P5-W3, P5-W4, P5-W8, P5-W11 | WCX-19 |
 | Synthetic honey credential generation, one-time reveal, manual placement, and trigger history | DC-09, CS-03, DATA-02, P2-W9 | WCX-20 |
-| Retention configuration and purge visibility | DATA-01, DATA-06, EV-05 | WCX-21, blocked on a backend owner |
+| Retention configuration and purge visibility | DATA-01, DATA-06, EV-05 | WCX-21, backend assigned by CP-0006 |
 | Device re-enrollment recovery path | SEC-06 | WCX-09, level 3 |
 | Decoys of a disabled or revoked device marked unmanaged and kept visible | SEC-06 | WCX-11 section 8.8 |
 | Emulated persona disclosure, no claim of a real Windows host | AC-SMB-002, DC-11 | WCX-11 section 8.9 |
@@ -281,6 +281,8 @@ implementation contract and therefore cannot be executed on this record alone.
 |---|---|---|---|
 | [`0003`](../../change-proposals/0003-web-console-session-csrf-reissue.md) | WC-D08 | `WCX-09` sensitive-action reauthentication | APPROVED 2026-09-04 |
 | [`0004`](../../change-proposals/0004-web-console-error-contract.md) | WC-D03 option B | `WCX-11` field-level validation display | APPROVED 2026-09-04 |
+| [`0005`](../../change-proposals/0005-agent-work-package-issue-authority.md) | AP-07, AP-15 amendment | work-package issue creation | APPROVED 2026-09-04 |
+| [`0006`](../../change-proposals/0006-retention-configuration-ownership.md) | DATA-01, DATA-06 ownership | `WCX-21` | APPROVED 2026-09-04 |
 
 Both proposals were approved subject to every constraint in their
 Recommendation sections; those constraints are binding on `WCX-09` and
@@ -350,8 +352,8 @@ recorded durably in
 - **Decision status:** CLOSED — 0 open material owner decisions as of
   2026-09-03.
 - **Implementation authority:** granted for `WCX-01` through `WCX-20` by
-  Product Owner promotion on 2026-09-04. `WCX-21` remains `draft` pending a
-  backend owner for retention configuration. Promotion is not `READY`; `PM-16`
+  Product Owner promotion on 2026-09-04. All twenty-one are promoted; CP-0006 assigned
+  the retention backend. Promotion is not `READY`; `PM-16`
   dependency gating still applies per package.
 - **Change control:** Any material modification of this record requires an
   explicit change proposal and Product Owner approval.
