@@ -88,4 +88,28 @@ CI and agents may record evidence but cannot mark this gate `APPROVED` or
 
 ## Current status
 
-`IN PROGRESS — WAVE 1 READY`
+`APPROVED — CLOSED`
+
+## Product Owner gate decision — 2026-09-04
+
+The Product Owner reviewed the `P1-G0` through `P1-W11` evidence set and closed
+the Phase 1 gate. Every required exit-evidence item above is satisfied:
+authentication and TOTP, environment and zone CRUD, Edge enrollment, rotation
+and revocation, the production-shaped mTLS device channel, desired and observed
+state reconciliation, SQLite durable local state with explicit corruption
+behaviour, privileged-helper security tests, the platform health UI with
+truthful degraded reasons, the append-oriented audit baseline, browser
+onboarding E2E, `AC-ON-001/002/003`, `AC-SEC-005/006`, and restart, reconnect
+and idempotency smoke evidence.
+
+Two carried items are recorded rather than blocking:
+
+- `GAP-1` and `GAP-2` are implementation defects in the delivered `P1-W11`
+  console, scheduled in `WCX-10` and `WCX-04`. The Product Owner accepted the
+  gate with them outstanding.
+- The Web Console revocation interface is Phase 2 work in `WCX-09`, per the
+  scope clarification above. Revocation itself is satisfied at capability
+  level by `P1-W4` and the device-channel refusal behaviour.
+
+Phase 2 product implementation is authorized. Phase 2 packages must still
+follow their approved dependency order.

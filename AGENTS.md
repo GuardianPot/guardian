@@ -33,6 +33,18 @@ Stop implementation and request owner review if a change would alter product
 scope, architecture, security boundaries, contracts, release authority,
 privileged networking, PKI, secrets, or an approved acceptance criterion.
 
+## GitHub issue authority
+
+Change proposal 0005 permits creating a GitHub issue **only** from a committed
+work-package spec whose `status` is `approved-for-implementation` or
+`accepted`, using the repository issue form and referencing the spec path
+without restating its requirements.
+
+Everything else stays denied: bug, change-proposal, and security-finding
+issues; issue edit, close, reopen, label, assignment, and milestone changes;
+Project field or configuration changes; and setting an issue `READY`. An
+agent-created issue carries no authority beyond the spec it references.
+
 Never:
 
 - push directly to `main`;

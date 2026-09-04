@@ -10,14 +10,15 @@ directory name is not a phase assignment.
 
 ## Status
 
-The Product Owner promoted `WCX-01` through `WCX-20` to
+The Product Owner promoted `WCX-01` through `WCX-21` to
 `approved-for-implementation` on 2026-09-04. Specification approval is not the
 same as `READY`: an issue becomes `READY` only when its dependencies are
 closed, per `PM-16`.
 
-`WCX-21` remains `draft`. No roadmap package owns retention configuration
-endpoints, so its backend dependency does not yet exist. It is promotable once
-the Product Owner assigns that owner.
+`WCX-21` was promoted on the same date once change proposal
+[`0006`](../../change-proposals/0006-retention-configuration-ownership.md)
+gave it a narrowly enumerated Control Plane surface for the retention domain
+it consumes.
 
 Change proposals [`0003`](../../change-proposals/0003-web-console-session-csrf-reissue.md)
 and [`0004`](../../change-proposals/0004-web-console-error-contract.md) were
@@ -107,7 +108,7 @@ WCX-19 and all others   ──> WCX-15                (Phase 5, last)
 | WCX-13 | WCX-12, P3-W14, P3-W15 | Detail, journey, and evidence explorer need incident detail backend |
 | WCX-14 | WCX-13, P4-W9, P4-W10 | Explanation and notification UI need AI and notification backends |
 | WCX-16 | WCX-11, P2-W14 | Coverage state is backend truth from the functional health package |
-| WCX-21 | WCX-08, WCX-11, and a Product Owner-assigned backend owner | Retention endpoints have no roadmap owner yet; the package is not promotable until one exists |
+| WCX-21 | WCX-08, WCX-11, CP-0006 | Owns its own retention backend under CP-0006 narrow paths |
 | WCX-20 | WCX-11, P2-W9 | The credential workflow attaches to decoys and needs the synthetic credential domain |
 | WCX-17 | WCX-13, P3-W8, P3-W11 | Corrections and suppression act on incident detail |
 | WCX-18 | WCX-14, P4-W11, P4-W12 | Channel configuration needs the email and webhook backends |

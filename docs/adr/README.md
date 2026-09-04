@@ -71,3 +71,5 @@ proposal, but only `@sinanganiz` can accept it.
 | [0002](../change-proposals/0002-p1-w8-acceptance-reference.md) | P1-W8 acceptance reference | APPROVED |
 | [0003](../change-proposals/0003-web-console-session-csrf-reissue.md) | Web Console CSRF re-issue and step-up | APPROVED |
 | [0004](../change-proposals/0004-web-console-error-contract.md) | Structured Web/Public API error contract | APPROVED |
+| [0005](../change-proposals/0005-agent-work-package-issue-authority.md) | Agent work-package issue authority | APPROVED |
+| [0006](../change-proposals/0006-retention-configuration-ownership.md) | Retention configuration backend ownership | APPROVED |
