@@ -13,6 +13,7 @@ import {
   zone,
   type StubHandler,
 } from '@shared/testing/harness';
+import { authKeys } from '@features/auth';
 import { EnvironmentPage } from './EnvironmentPage';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -165,7 +166,7 @@ describe('EnvironmentPage', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Save name' }));
 
-    await waitFor(() => expect(queryClient.getQueryData(['session'])).toBeNull());
+    await waitFor(() => expect(queryClient.getQueryData(authKeys.session())).toBeNull());
     await waitFor(() => expect(screen.getByLabelText('Display name')).toBeDisabled());
     expect(screen.getByRole('button', { name: 'Save name' })).toBeDisabled();
     expect(stub.called(patch)).toHaveLength(1);

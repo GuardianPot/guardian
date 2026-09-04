@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 import { AuthProvider, useAuth } from '@features/auth';
-import type { Device, Environment, HealthCondition, HealthView, Session, Zone } from '@shared/api/types';
+import type { Device, Environment, HealthCondition, HealthConditionType, HealthView, Session, Zone } from '@shared/api/types';
 
 export const environmentID = '018f1f7e-6d31-7cc5-8db8-17547f78e6c1';
 export const deviceID = '018f1f7e-6d31-7cc5-8db8-17547f78e6c2';
@@ -101,7 +101,7 @@ export function zone(overrides: Partial<Zone> = {}): Zone {
   };
 }
 
-const conditionTypes = [
+const conditionTypes: HealthConditionType[] = [
   'edge_connected',
   'device_certificate_ready',
   'config_converged',

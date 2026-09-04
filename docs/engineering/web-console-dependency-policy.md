@@ -48,3 +48,28 @@ Production dependencies as of `WCX-01`:
 package. `WCX-02`, `WCX-06`, `WCX-11`, `WCX-12`, and `WCX-19` each add
 dependencies their specifications name; none may be added ahead of its
 package.
+
+## Recorded exceptions
+
+### `openapi-typescript` peer range — 2026-09-04
+
+`openapi-typescript@7.13.0` declares `peer typescript@^5.x` while the console
+pins TypeScript `6.0.3`, so a plain `npm install` reports `ERESOLVE`. It was
+added with `--legacy-peer-deps`.
+
+This is a stale peer range, not a functional incompatibility. The evidence:
+
+- the generator produces correct output against the pinned TypeScript, and
+  that output is then typechecked by the same TypeScript in `tsc -b`, which is
+  the real compatibility proof;
+- `npm ci`, which is what CI runs, resolves the committed lockfile without the
+  flag, so the continuous-integration path is unaffected;
+- the package is development-only and contributes zero production bytes.
+
+The cost is that a developer running a fresh `npm install` must pass
+`--legacy-peer-deps`. Remove this exception once `openapi-typescript` widens
+its peer range to include TypeScript 6.
+
+A future peer conflict follows the same rule as a licence: record it here with
+evidence that it is a stale range rather than an incompatibility, or stop and
+escalate.

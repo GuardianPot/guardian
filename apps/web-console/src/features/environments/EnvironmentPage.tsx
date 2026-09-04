@@ -1,11 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, ApiError } from '@shared/api/client';
+import { toConsoleError } from '@shared/api/error';
+import { devicesQuery } from '@features/devices';
+import {
+  createEnrollmentSecret,
+  createZone as createZoneRequest,
+  environmentInvalidation,
+  environmentKeys,
+  environmentQuery,
+  updateEnvironment as updateEnvironmentRequest,
+  zonesQuery,
+} from './api';
 import type { EnrollmentSecret } from '@shared/api/types';
 import { useAuth, useCapability } from '@features/auth';
 import { textField } from '@shared/forms/textField';
-import { HealthPanel, formatTime } from '@features/health';
+import { environmentHealthQuery, HealthPanel, formatTime } from '@features/health';
 import { SecretDialog } from './SecretDialog';
 import { EmptyState, ErrorState, LoadingState } from '@shared/ui/Status';
 import styles from '@shared/styles/app.module.css';
@@ -21,10 +31,10 @@ export function EnvironmentPage() {
   const enrollDevice = useCapability('device.enroll');
   const defineZone = useCapability('zone.create');
   const updateEnvironment = useCapability('environment.update');
-  const environment = useQuery({ queryKey: ['environment', environmentId], queryFn: () => api.environment(environmentId) });
-  const zones = useQuery({ queryKey: ['zones', environmentId], queryFn: () => api.zones(environmentId) });
-  const devices = useQuery({ queryKey: ['devices', environmentId], queryFn: () => api.devices(environmentId), refetchInterval: 5_000 });
-  const health = useQuery({ queryKey: ['environment-health', environmentId], queryFn: () => api.environmentHealth(environmentId), retry: false, refetchInterval: 5_000 });
+  const environment = useQuery(environmentQuery(environmentId));
+  const zones = useQuery(zonesQuery(environmentId));
+  const devices = useQuery(devicesQuery(environmentId));
+  const health = useQuery(environmentHealthQuery(environmentId));
 
   useEffect(() => { secretRef.current = secret; }, [secret]);
   useEffect(() => {
@@ -34,21 +44,15 @@ export function EnvironmentPage() {
   }, []);
 
   const rename = useMutation({
-    mutationFn: (displayName: string) => api.updateEnvironment(environment.data!, displayName, auth.csrf!),
+    mutationFn: (displayName: string) => updateEnvironmentRequest(environment.data!, displayName, auth.csrf!),
     onSuccess: (updated) => {
-      queryClient.setQueryData(['environment', environmentId], updated);
-      void queryClient.invalidateQueries({ queryKey: ['environments'] });
+      queryClient.setQueryData(environmentKeys.detail(environmentId), updated);
+      void environmentInvalidation.afterEnvironmentWrite(queryClient);
     },
   });
   const createZone = useMutation({
-    mutationFn: (input: { display_name: string; cidr: string }) => api.createZone(environmentId, input, auth.csrf!),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['zones', environmentId] }),
-        queryClient.invalidateQueries({ queryKey: ['environment', environmentId] }),
-        queryClient.invalidateQueries({ queryKey: ['environments'] }),
-      ]);
-    },
+    mutationFn: (input: { display_name: string; cidr: string }) => createZoneRequest(environmentId, input, auth.csrf!),
+    onSuccess: () => environmentInvalidation.afterZoneWrite(queryClient, environmentId),
   });
 
   async function submitRename(event: FormEvent<HTMLFormElement>) {
@@ -75,9 +79,9 @@ export function EnvironmentPage() {
     const form = event.currentTarget;
     setCreatingSecret(true);
     try {
-      const created = await api.createEnrollmentSecret(environmentId, textField(new FormData(form), 'device_name'), auth.csrf);
+      const created = await createEnrollmentSecret(environmentId, textField(new FormData(form), 'device_name'), auth.csrf);
       form.reset(); setSecret(created);
-      await queryClient.invalidateQueries({ queryKey: ['devices', environmentId] });
+      await environmentInvalidation.afterEnrollmentSecret(queryClient, environmentId);
     } catch { setMessage('Enrollment secret creation was denied.'); }
     finally { setCreatingSecret(false); }
   }
@@ -124,7 +128,7 @@ export function EnvironmentPage() {
       {health.data ? <HealthPanel health={health.data} /> : (
         <section className={styles.panel} aria-labelledby="health-unavailable-heading">
           <p className={styles.eyebrow}>Backend health projection</p><h2 id="health-unavailable-heading">Health not yet reported</h2>
-          <p>{health.error instanceof ApiError && health.error.status === 404 ? 'No active Edge has supplied a health projection.' : 'The current health projection is unavailable. This is not a healthy signal.'}</p>
+          <p>{toConsoleError(health.error).kind === 'not-found' ? 'No active Edge has supplied a health projection.' : 'The current health projection is unavailable. This is not a healthy signal.'}</p>
         </section>
       )}
       <div className={styles.twoColumn}>

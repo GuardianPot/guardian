@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { HealthCondition, HealthView } from '@shared/api/types';
+import type { HealthCondition, HealthConditionType, HealthView } from '@shared/api/types';
 import { HealthPanel } from './HealthPanel';
 
-const conditionTypes = [
+const conditionTypes: HealthConditionType[] = [
   'edge_connected',
   'device_certificate_ready',
   'config_converged',

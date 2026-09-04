@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '@shared/api/client';
+import { createEnvironment as createEnvironmentRequest, environmentInvalidation, environmentsQuery } from './api';
 import { useAuth, useCapability } from '@features/auth';
 import { textField } from '@shared/forms/textField';
 import { EmptyState, ErrorState, LoadingState } from '@shared/ui/Status';
@@ -12,10 +12,10 @@ export function EnvironmentsPage() {
   const queryClient = useQueryClient();
   const [error, setError] = useState('');
   const createEnvironment = useCapability('environment.create');
-  const environments = useQuery({ queryKey: ['environments'], queryFn: () => api.environments() });
+  const environments = useQuery(environmentsQuery());
   const create = useMutation({
-    mutationFn: (displayName: string) => api.createEnvironment(displayName, auth.csrf!),
-    onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['environments'] }); },
+    mutationFn: (displayName: string) => createEnvironmentRequest(displayName, auth.csrf!),
+    onSuccess: () => environmentInvalidation.afterEnvironmentWrite(queryClient),
   });
 
   async function submit(event: FormEvent<HTMLFormElement>) {

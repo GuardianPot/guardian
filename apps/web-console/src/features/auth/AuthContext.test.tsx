@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RequireAuth } from '@app/router';
 import { EnvironmentsPage } from '@features/environments';
 import { SignedIn, environment, json, loginHandlers, stubFetch, type StubHandler } from '@shared/testing/harness';
+import { environmentKeys } from '@features/environments';
+import { authKeys } from './api';
 import { AuthProvider, useAuth } from './AuthContext';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -60,8 +62,8 @@ describe('AuthContext', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Create environment' }));
 
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeVisible();
-    await waitFor(() => expect(queryClient.getQueryData(['environments'])).toBeUndefined());
-    expect(queryClient.getQueryData(['session'])).toBeNull();
+    await waitFor(() => expect(queryClient.getQueryData(environmentKeys.list())).toBeUndefined());
+    expect(queryClient.getQueryData(authKeys.session())).toBeNull();
     expect(stub.called('POST /v1/environments')).toHaveLength(1);
   });
 

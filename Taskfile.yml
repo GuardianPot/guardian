@@ -198,8 +198,14 @@ tasks:
       - bash tests/integration/edge-agent/run.sh
       - task: edge:wal
 
+  web:generated:
+    desc: Verify the committed Web Console OpenAPI types match the contract
+    cmds:
+      - npm run generated:check
+
   web:check:
     desc: Typecheck and build the web-console workspace
+    deps: [web:generated]
     dir: apps/web-console
     cmds:
       - npm run typecheck
