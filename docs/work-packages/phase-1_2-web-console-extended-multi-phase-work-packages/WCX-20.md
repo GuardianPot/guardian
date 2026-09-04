@@ -3,7 +3,7 @@ id: WCX-20
 phase: 2
 wave: capability
 title: Synthetic honey credential workflow
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console

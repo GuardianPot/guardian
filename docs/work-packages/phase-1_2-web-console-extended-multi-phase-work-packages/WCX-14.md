@@ -3,7 +3,7 @@ id: WCX-14
 phase: 4
 wave: capability
 title: AI explanation, notification centre, disposition
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console

@@ -3,7 +3,7 @@ id: WCX-03
 phase: 2
 wave: foundation
 title: Design tokens, severity semantics, theme and motion policy
-status: draft
+status: approved-for-implementation
 risk: medium
 components:
   - web-console

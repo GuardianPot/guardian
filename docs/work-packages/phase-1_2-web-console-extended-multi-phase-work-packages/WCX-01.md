@@ -3,7 +3,7 @@ id: WCX-01
 phase: 2
 wave: foundation
 title: Module boundaries, capability seam, lint and typecheck hardening
-status: draft
+status: approved-for-implementation
 risk: medium
 components:
   - web-console

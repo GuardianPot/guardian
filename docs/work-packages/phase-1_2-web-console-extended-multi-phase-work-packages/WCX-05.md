@@ -3,7 +3,7 @@ id: WCX-05
 phase: 2
 wave: foundation
 title: Accessibility baseline and enforcement
-status: draft
+status: approved-for-implementation
 risk: medium
 components:
   - web-console

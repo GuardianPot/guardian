@@ -3,7 +3,7 @@ id: WCX-12
 phase: 3
 wave: capability
 title: Incident-first dashboard, tables, pagination, virtualisation
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console

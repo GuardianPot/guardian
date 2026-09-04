@@ -1,7 +1,7 @@
 # Change proposal 0004: structured Web/Public API error contract
 
-- Status: RECOMMENDED
-- Owner decision: PENDING
+- Status: APPROVED
+- Owner decision: `@sinanganiz` approved on 2026-09-04.
 - Affected decision IDs: `CP-04`, `TS-06`, `RE-10`, `WC-D03`
 - Affected acceptance criteria: `PERF-07` common API behaviour on the reference
   dataset; `WCX-04` data-state matrix requirement that `denied` is
@@ -183,10 +183,10 @@ mismatch between backend and console can never hide a rejection reason.
 
 ## Owner decision record
 
-- Decision: PENDING
-- Decided by: PENDING
-- Date: PENDING
-- Rationale:
+- Decision: APPROVED
+- Decided by: `@sinanganiz`
+- Date: 2026-09-04
+- Rationale: Option B approved: additive optional code, field_errors, retry_after, and request_id on the existing status body, subject to every constraint in the Recommendation section including the closed code vocabulary and the prohibition on free-text operator-facing messages.
 
 Context for the decision: the Product Owner accepted `WC-D03` on 2026-09-03 as
 Option A now plus Option B routed here. The strongest argument for approving

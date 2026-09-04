@@ -3,7 +3,7 @@ id: WCX-04
 phase: 2
 wave: foundation
 title: Shared component layer, data-state matrix, error boundary
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console

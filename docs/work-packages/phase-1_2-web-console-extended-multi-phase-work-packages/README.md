@@ -10,17 +10,19 @@ directory name is not a phase assignment.
 
 ## Status
 
-Every `WCX-nn` package is `status: draft`. Per Step 7 decision `WP-04` an agent
-cannot set `approved-for-implementation` or `accepted`. Only the Product Owner
-promotes a package, and only after its dependencies are closed.
+The Product Owner promoted `WCX-01` through `WCX-20` to
+`approved-for-implementation` on 2026-09-04. Specification approval is not the
+same as `READY`: an issue becomes `READY` only when its dependencies are
+closed, per `PM-16`.
 
-Two packages additionally depend on change proposals that only the Product
-Owner can approve:
+`WCX-21` remains `draft`. No roadmap package owns retention configuration
+endpoints, so its backend dependency does not yet exist. It is promotable once
+the Product Owner assigns that owner.
 
-- `WCX-09` sensitive-action reauthentication depends on change proposal
-  [`0003`](../../change-proposals/0003-web-console-session-csrf-reissue.md).
-- `WCX-11` field-level validation display depends on change proposal
-  [`0004`](../../change-proposals/0004-web-console-error-contract.md).
+Change proposals [`0003`](../../change-proposals/0003-web-console-session-csrf-reissue.md)
+and [`0004`](../../change-proposals/0004-web-console-error-contract.md) were
+approved on 2026-09-04, so `WCX-09` level-3 actions and `WCX-11` field-level
+validation are unblocked.
 
 ## Package index
 

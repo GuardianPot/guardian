@@ -1,7 +1,7 @@
 # Change proposal 0003: Web Console CSRF re-issue and sensitive-action step-up
 
-- Status: RECOMMENDED
-- Owner decision: PENDING
+- Status: APPROVED
+- Owner decision: `@sinanganiz` approved on 2026-09-04.
 - Affected decision IDs: `W11-C3-A`, `IA-04`, `IA-05`, `SA-11`, `WC-D08`
 - Affected acceptance criteria: `P1-W11` acceptance "TOTP and one-time secrets
   are handled without browser persistence leakage"; the Phase 1 browser
@@ -173,10 +173,10 @@ wait indication and never retries automatically.
 
 ## Owner decision record
 
-- Decision: PENDING
-- Decided by: PENDING
-- Date: PENDING
-- Rationale:
+- Decision: APPROVED
+- Decided by: `@sinanganiz`
+- Date: 2026-09-04
+- Rationale: Option B approved: CSRF re-issue endpoint plus single-use step-up reauthentication for device revoke, device re-enroll, session revoke, and password change, subject to every constraint in the Recommendation section.
 
 Context for the decision: the Product Owner accepted `WC-D08` Option B in the
 Web Console decision register on 2026-09-03. That acceptance closed the

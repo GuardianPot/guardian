@@ -3,7 +3,7 @@ id: WCX-10
 phase: 2
 wave: foundation
 title: Navigation information architecture and responsive correction
-status: draft
+status: approved-for-implementation
 risk: medium
 components:
   - web-console

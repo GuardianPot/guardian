@@ -3,7 +3,7 @@ id: WCX-18
 phase: 4
 wave: capability
 title: Notification channel configuration and escalation contacts
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console
