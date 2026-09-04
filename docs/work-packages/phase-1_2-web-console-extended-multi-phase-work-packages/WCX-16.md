@@ -3,7 +3,7 @@ id: WCX-16
 phase: 2
 wave: capability
 title: Guided onboarding, placement validation, and coverage verification
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console

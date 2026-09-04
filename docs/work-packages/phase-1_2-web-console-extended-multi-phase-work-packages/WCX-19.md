@@ -3,7 +3,7 @@ id: WCX-19
 phase: 5
 wave: capability
 title: Update and rollback control, operational health, diagnostics bundle
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console

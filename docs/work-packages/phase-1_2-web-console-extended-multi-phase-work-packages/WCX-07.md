@@ -3,7 +3,7 @@ id: WCX-07
 phase: 2
 wave: foundation
 title: Freshness policy, code splitting, performance budgets
-status: draft
+status: approved-for-implementation
 risk: medium
 components:
   - web-console

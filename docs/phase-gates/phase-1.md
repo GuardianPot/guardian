@@ -58,17 +58,28 @@ asserts that it must.
 
 | Package | Issue | PR | Acceptance state |
 |---|---|---|---|
-| P1-W1 | [#26](https://github.com/GuardianPot/guardian/issues/26) | Pending | Ready to implement |
-| P1-W2 | [#30](https://github.com/GuardianPot/guardian/issues/30) | Pending | Blocked by dependencies |
-| P1-W3 | [#27](https://github.com/GuardianPot/guardian/issues/27) | Pending | Blocked by dependencies |
-| P1-W4 | [#32](https://github.com/GuardianPot/guardian/issues/32) | Pending | Blocked by dependencies |
-| P1-W5 | [#35](https://github.com/GuardianPot/guardian/issues/35) | Pending | Blocked by dependencies |
-| P1-W6 | [#34](https://github.com/GuardianPot/guardian/issues/34) | Pending | Blocked by dependencies |
-| P1-W7 | [#31](https://github.com/GuardianPot/guardian/issues/31) | Pending | Ready to implement |
-| P1-W8 | [#29](https://github.com/GuardianPot/guardian/issues/29) | Pending | Blocked by dependencies |
-| P1-W9 | [#28](https://github.com/GuardianPot/guardian/issues/28) | Pending | Blocked by dependencies |
-| P1-W10 | [#36](https://github.com/GuardianPot/guardian/issues/36) | Pending | Blocked by dependencies |
-| P1-W11 | [#33](https://github.com/GuardianPot/guardian/issues/33) | Pending | Blocked by dependencies |
+| P1-G0 | — | [#24](https://github.com/GuardianPot/guardian/pull/24) | Accepted |
+| P1-G1 | — | [#41](https://github.com/GuardianPot/guardian/pull/41) | Accepted |
+| P1-W1 | [#26](https://github.com/GuardianPot/guardian/issues/26) | [#38](https://github.com/GuardianPot/guardian/pull/38) | Accepted |
+| P1-W2 | [#30](https://github.com/GuardianPot/guardian/issues/30) | [#46](https://github.com/GuardianPot/guardian/pull/46) | Accepted |
+| P1-W3 | [#27](https://github.com/GuardianPot/guardian/issues/27) | [#47](https://github.com/GuardianPot/guardian/pull/47) | Accepted |
+| P1-W4 | [#32](https://github.com/GuardianPot/guardian/issues/32) | [#45](https://github.com/GuardianPot/guardian/pull/45) | Accepted |
+| P1-W5 | [#35](https://github.com/GuardianPot/guardian/issues/35) | [#52](https://github.com/GuardianPot/guardian/pull/52) | Accepted |
+| P1-W6 | [#34](https://github.com/GuardianPot/guardian/issues/34) | [#53](https://github.com/GuardianPot/guardian/pull/53) | Accepted |
+| P1-W7 | [#31](https://github.com/GuardianPot/guardian/issues/31) | [#39](https://github.com/GuardianPot/guardian/pull/39) | Accepted |
+| P1-W8 | [#29](https://github.com/GuardianPot/guardian/issues/29) | [#42](https://github.com/GuardianPot/guardian/pull/42) | Accepted |
+| P1-W9 | [#28](https://github.com/GuardianPot/guardian/issues/28) | [#44](https://github.com/GuardianPot/guardian/pull/44), [#54](https://github.com/GuardianPot/guardian/pull/54), [#58](https://github.com/GuardianPot/guardian/pull/58) | Accepted |
+| P1-W10 | [#36](https://github.com/GuardianPot/guardian/issues/36) | [#43](https://github.com/GuardianPot/guardian/pull/43) | Accepted |
+| P1-W11 | [#33](https://github.com/GuardianPot/guardian/issues/33) | [#55](https://github.com/GuardianPot/guardian/pull/55), [#57](https://github.com/GuardianPot/guardian/pull/57) | Accepted |
+
+## Product Owner acceptance — 2026-09-04
+
+The Product Owner accepted the `P1-G0` through `P1-W11` evidence set. Every
+package is merged and its acceptance evidence is recorded, so Web Console
+packages that depend on Phase 1 output may reach `READY` under `PM-16`.
+
+Gate closure itself is a separate Product Owner action and is unchanged by
+this record.
 
 ## Gate authority
 

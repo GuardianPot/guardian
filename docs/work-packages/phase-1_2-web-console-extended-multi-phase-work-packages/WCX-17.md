@@ -3,7 +3,7 @@ id: WCX-17
 phase: 3
 wave: capability
 title: Expected-source management and incident merge and split
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console

@@ -3,7 +3,7 @@ id: WCX-06
 phase: 2
 wave: foundation
 title: Test tooling, hostile-content contract, component workbench
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console

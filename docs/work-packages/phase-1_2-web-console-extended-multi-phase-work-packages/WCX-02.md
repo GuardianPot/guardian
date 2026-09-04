@@ -3,7 +3,7 @@ id: WCX-02
 phase: 2
 wave: foundation
 title: Generated OpenAPI types, API transport, and error taxonomy
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console

@@ -3,7 +3,7 @@ id: WCX-09
 phase: 2
 wave: capability
 title: Operator completeness and sensitive-action reauthentication
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console

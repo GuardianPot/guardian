@@ -277,10 +277,14 @@ regression, and full-browser evidence covers every delivered surface.
 Two accepted decisions alter an approved contract or an approved
 implementation contract and therefore cannot be executed on this record alone.
 
-| Proposal | Decision | Blocks | Owner action required |
+| Proposal | Decision | Was blocking | Status |
 |---|---|---|---|
-| [`0003`](../../change-proposals/0003-web-console-session-csrf-reissue.md) | WC-D08 | `WCX-09` sensitive-action reauthentication | Record `OWNER DECISION` and `APPROVED` |
-| [`0004`](../../change-proposals/0004-web-console-error-contract.md) | WC-D03 option B | `WCX-11` field-level validation display | Record `OWNER DECISION` and `APPROVED` |
+| [`0003`](../../change-proposals/0003-web-console-session-csrf-reissue.md) | WC-D08 | `WCX-09` sensitive-action reauthentication | APPROVED 2026-09-04 |
+| [`0004`](../../change-proposals/0004-web-console-error-contract.md) | WC-D03 option B | `WCX-11` field-level validation display | APPROVED 2026-09-04 |
+
+Both proposals were approved subject to every constraint in their
+Recommendation sections; those constraints are binding on `WCX-09` and
+`WCX-11`.
 
 `WC-D03` option A is not blocked and is implemented in `WCX-02`.
 
@@ -288,8 +292,8 @@ implementation contract and therefore cannot be executed on this record alone.
 
 Decisions `WC-D01`, `WC-D02`, `WC-D05`, `WC-D06`, `WC-D09`, and `WC-D24` are
 recorded durably in
-[ADR 0018](../../adr/0018-web-console-frontend-architecture.md), status
-`Proposed`. Only `@sinanganiz` can move it to `Accepted`.
+[ADR 0018](../../adr/0018-web-console-frontend-architecture.md), accepted by
+`@sinanganiz` on 2026-09-04.
 
 ## 8. Traceability to approved acceptance criteria
 
@@ -345,7 +349,9 @@ recorded durably in
 
 - **Decision status:** CLOSED — 0 open material owner decisions as of
   2026-09-03.
-- **Implementation authority:** NOT granted by this record. Each `WCX-nn`
-  package carries `status: draft` until the Product Owner promotes it.
+- **Implementation authority:** granted for `WCX-01` through `WCX-20` by
+  Product Owner promotion on 2026-09-04. `WCX-21` remains `draft` pending a
+  backend owner for retention configuration. Promotion is not `READY`; `PM-16`
+  dependency gating still applies per package.
 - **Change control:** Any material modification of this record requires an
   explicit change proposal and Product Owner approval.

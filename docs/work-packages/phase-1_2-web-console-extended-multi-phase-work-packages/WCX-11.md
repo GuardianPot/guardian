@@ -3,7 +3,7 @@ id: WCX-11
 phase: 2
 wave: capability
 title: Form and validation stack with decoy management UI
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console

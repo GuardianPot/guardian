@@ -3,7 +3,7 @@ id: WCX-13
 phase: 3
 wave: capability
 title: Incident detail, attacker journey, evidence explorer
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console

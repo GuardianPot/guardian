@@ -57,7 +57,7 @@ move one to `Accepted`.
 
 | ADR | Decision | Status |
 |---|---|---|
-| [0018](0018-web-console-frontend-architecture.md) | Web Console frontend architecture | Proposed |
+| [0018](0018-web-console-frontend-architecture.md) | Web Console frontend architecture | Accepted |
 
 ## Change proposals
 
@@ -69,5 +69,5 @@ proposal, but only `@sinanganiz` can accept it.
 |---|---|---|
 | [0001](../change-proposals/0001-secondary-ip-placement.md) | Routed secondary-IP placement | APPROVED |
 | [0002](../change-proposals/0002-p1-w8-acceptance-reference.md) | P1-W8 acceptance reference | APPROVED |
-| [0003](../change-proposals/0003-web-console-session-csrf-reissue.md) | Web Console CSRF re-issue and step-up | RECOMMENDED |
-| [0004](../change-proposals/0004-web-console-error-contract.md) | Structured Web/Public API error contract | RECOMMENDED |
+| [0003](../change-proposals/0003-web-console-session-csrf-reissue.md) | Web Console CSRF re-issue and step-up | APPROVED |
+| [0004](../change-proposals/0004-web-console-error-contract.md) | Structured Web/Public API error contract | APPROVED |

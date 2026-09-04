@@ -3,7 +3,7 @@ id: WCX-08
 phase: 2
 wave: foundation
 title: Text catalogue and canonical timestamp presentation
-status: draft
+status: approved-for-implementation
 risk: low
 components:
   - web-console

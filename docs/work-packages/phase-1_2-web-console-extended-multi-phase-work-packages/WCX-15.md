@@ -3,7 +3,7 @@ id: WCX-15
 phase: 5
 wave: capability
 title: Security hardening, theme completion, regression suites
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console

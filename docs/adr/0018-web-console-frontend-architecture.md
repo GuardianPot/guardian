@@ -1,6 +1,7 @@
 # ADR 0018: Web Console frontend architecture
 
-- Status: Proposed
+- Status: Accepted
+- Accepted by: `@sinanganiz` on 2026-09-04
 - Date: 2026-09-03
 - Decision refs: WC-D01, WC-D02, WC-D05, WC-D06, WC-D09, WC-D24
 - Approved baseline refs: TS-02, TS-03, TS-04, TS-05, DT-07, CP-04, CP-08,
