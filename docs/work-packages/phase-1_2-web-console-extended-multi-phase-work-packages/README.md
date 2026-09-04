@@ -27,29 +27,29 @@ validation are unblocked.
 
 ## Package index
 
-| Package | Phase | Wave | Title | Risk |
-|---|---|---|---|---|
-| [WCX-01](WCX-01.md) | 2 | foundation | Module boundaries, capability seam, lint and typecheck hardening | medium |
-| [WCX-02](WCX-02.md) | 2 | foundation | Generated OpenAPI types, API transport, and error taxonomy | high |
-| [WCX-03](WCX-03.md) | 2 | foundation | Design tokens, severity semantics, theme and motion policy | medium |
-| [WCX-04](WCX-04.md) | 2 | foundation | Shared component layer, data-state matrix, error boundary | high |
-| [WCX-05](WCX-05.md) | 2 | foundation | Accessibility baseline and enforcement | medium |
-| [WCX-06](WCX-06.md) | 2 | foundation | Test tooling, hostile-content contract, component workbench | high |
-| [WCX-07](WCX-07.md) | 2 | foundation | Freshness policy, code splitting, performance budgets | medium |
-| [WCX-08](WCX-08.md) | 2 | foundation | Text catalogue and canonical timestamp presentation | low |
-| [WCX-09](WCX-09.md) | 2 | capability | Operator completeness and sensitive-action reauthentication | high |
-| [WCX-10](WCX-10.md) | 2 | foundation | Navigation information architecture and responsive correction | medium |
-| [WCX-11](WCX-11.md) | 2 | capability | Form and validation stack with decoy management UI | high |
-| [WCX-12](WCX-12.md) | 3 | capability | Incident-first dashboard, tables, pagination, virtualisation | high |
-| [WCX-13](WCX-13.md) | 3 | capability | Incident detail, attacker journey, evidence explorer | high |
-| [WCX-14](WCX-14.md) | 4 | capability | AI explanation, notification centre, disposition | high |
-| [WCX-15](WCX-15.md) | 5 | capability | Security hardening, theme completion, regression suites | high |
-| [WCX-16](WCX-16.md) | 2 | capability | Guided onboarding, placement validation, coverage verification | high |
-| [WCX-17](WCX-17.md) | 3 | capability | Expected-source management and incident merge and split | high |
-| [WCX-18](WCX-18.md) | 4 | capability | Notification channel configuration and escalation contacts | high |
-| [WCX-19](WCX-19.md) | 5 | capability | Update and rollback, operational health, diagnostics bundle | high |
-| [WCX-20](WCX-20.md) | 2 | capability | Synthetic honey credential workflow | high |
-| [WCX-21](WCX-21.md) | 2 | capability | Retention configuration and purge visibility | high |
+| Package | Issue | Phase | Wave | Title | Risk |
+|---|---|---|---|---|---|
+| [WCX-01](WCX-01.md) | [#63](https://github.com/GuardianPot/guardian/issues/63) | 2 | foundation | Module boundaries, capability seam, lint and typecheck hardening | medium |
+| [WCX-02](WCX-02.md) | [#64](https://github.com/GuardianPot/guardian/issues/64) | 2 | foundation | Generated OpenAPI types, API transport, and error taxonomy | high |
+| [WCX-03](WCX-03.md) | [#65](https://github.com/GuardianPot/guardian/issues/65) | 2 | foundation | Design tokens, severity semantics, theme and motion policy | medium |
+| [WCX-04](WCX-04.md) | [#66](https://github.com/GuardianPot/guardian/issues/66) | 2 | foundation | Shared component layer, data-state matrix, error boundary | high |
+| [WCX-05](WCX-05.md) | [#67](https://github.com/GuardianPot/guardian/issues/67) | 2 | foundation | Accessibility baseline and enforcement | medium |
+| [WCX-06](WCX-06.md) | [#68](https://github.com/GuardianPot/guardian/issues/68) | 2 | foundation | Test tooling, hostile-content contract, component workbench | high |
+| [WCX-07](WCX-07.md) | [#69](https://github.com/GuardianPot/guardian/issues/69) | 2 | foundation | Freshness policy, code splitting, performance budgets | medium |
+| [WCX-08](WCX-08.md) | [#70](https://github.com/GuardianPot/guardian/issues/70) | 2 | foundation | Text catalogue and canonical timestamp presentation | low |
+| [WCX-09](WCX-09.md) | [#71](https://github.com/GuardianPot/guardian/issues/71) | 2 | capability | Operator completeness and sensitive-action reauthentication | high |
+| [WCX-10](WCX-10.md) | [#72](https://github.com/GuardianPot/guardian/issues/72) | 2 | foundation | Navigation information architecture and responsive correction | medium |
+| [WCX-11](WCX-11.md) | [#73](https://github.com/GuardianPot/guardian/issues/73) | 2 | capability | Form and validation stack with decoy management UI | high |
+| [WCX-12](WCX-12.md) | [#74](https://github.com/GuardianPot/guardian/issues/74) | 3 | capability | Incident-first dashboard, tables, pagination, virtualisation | high |
+| [WCX-13](WCX-13.md) | [#75](https://github.com/GuardianPot/guardian/issues/75) | 3 | capability | Incident detail, attacker journey, evidence explorer | high |
+| [WCX-14](WCX-14.md) | [#76](https://github.com/GuardianPot/guardian/issues/76) | 4 | capability | AI explanation, notification centre, disposition | high |
+| [WCX-15](WCX-15.md) | [#77](https://github.com/GuardianPot/guardian/issues/77) | 5 | capability | Security hardening, theme completion, regression suites | high |
+| [WCX-16](WCX-16.md) | [#78](https://github.com/GuardianPot/guardian/issues/78) | 2 | capability | Guided onboarding, placement validation, coverage verification | high |
+| [WCX-17](WCX-17.md) | [#79](https://github.com/GuardianPot/guardian/issues/79) | 3 | capability | Expected-source management and incident merge and split | high |
+| [WCX-18](WCX-18.md) | [#80](https://github.com/GuardianPot/guardian/issues/80) | 4 | capability | Notification channel configuration and escalation contacts | high |
+| [WCX-19](WCX-19.md) | [#81](https://github.com/GuardianPot/guardian/issues/81) | 5 | capability | Update and rollback, operational health, diagnostics bundle | high |
+| [WCX-20](WCX-20.md) | [#82](https://github.com/GuardianPot/guardian/issues/82) | 2 | capability | Synthetic honey credential workflow | high |
+| [WCX-21](WCX-21.md) | [#83](https://github.com/GuardianPot/guardian/issues/83) | 2 | capability | Retention configuration and purge visibility | high |
 
 `WCX-16` through `WCX-21` were added on 2026-09-04 by the coverage audit
 recorded in `00-master-decision-record.md` section 3.8. They cover approved
@@ -78,7 +78,7 @@ P1-W11 (delivered console shell)
   |                    +--> WCX-10 navigation IA + responsive
   |
   +--> WCX-06 test tooling + hostile contract + workbench
-         (independent start; required before WCX-09 and later capability work)
+         (required before WCX-09 and later capability work)
 
 WCX-01..WCX-08, WCX-10  ──> WCX-09, WCX-11        (Phase 2 capability)
 WCX-11                  ──> WCX-16, WCX-20, WCX-21  (Phase 2 capability)
@@ -128,8 +128,9 @@ capability and may run as soon as their structural dependency closes.
 
 ## Execution waves
 
-1. `WCX-01`, and `WCX-06` in parallel.
-2. `WCX-02` and `WCX-03`.
+1. `WCX-01`. Its dependencies are the only ones already closed, so it is the
+   only package that can reach `READY` today.
+2. `WCX-02`, `WCX-03`, and `WCX-06` once `WCX-01` is accepted.
 3. `WCX-04`.
 4. `WCX-05`, `WCX-07`, `WCX-08`, `WCX-10`.
 5. `WCX-09` once change proposal `0003` is approved.
