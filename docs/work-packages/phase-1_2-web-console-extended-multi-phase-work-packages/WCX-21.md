@@ -3,10 +3,11 @@ id: WCX-21
 phase: 2
 wave: capability
 title: Retention configuration and purge visibility
-status: draft
+status: approved-for-implementation
 risk: high
 components:
   - web-console
+  - control-plane
 decision_refs:
   - DATA-01
   - DATA-06
@@ -19,25 +20,31 @@ decision_refs:
   - OPS-03
   - WC-D15
   - WC-D16
-blocked_by_missing_backend_owner: true
 acceptance_refs:
   - DATA-01 data-class-specific configurable retention
   - DATA-06 environment-level retention and purge
 depends_on:
   - WCX-11
   - WCX-08
-integration_dependencies:
-  - a Product Owner-assigned backend package owning retention configuration
+change_proposal_refs:
+  - CP-0006
 allowed_paths:
   - "apps/web-console/src/**"
   - "tests/e2e/web-console/**"
   - "security/wcx-21-retention-review.md"
   - "docs/runbooks/web-console/development.md"
   - "docs/work-packages/phase-1_2-web-console-extended-multi-phase-work-packages/WCX-21.md"
+  - "apps/control-plane/internal/retention/**"
+  - "apps/control-plane/internal/api/retention.go"
+  - "apps/control-plane/internal/api/retention_test.go"
+  - "apps/control-plane/internal/app/app.go"
+  - "apps/control-plane/internal/storage/retention.go"
+  - "apps/control-plane/internal/storage/retention_test.go"
+  - "apps/control-plane/internal/storage/queries/retention.sql"
+  - "apps/control-plane/internal/storage/migrations/**"
+  - "openapi/guardian.yaml"
 forbidden_paths:
-  - "apps/control-plane/**"
   - "apps/edge-agent/**"
-  - "openapi/**"
   - "proto/**"
   - "0-planning-documents/**"
 requires_owner_review: true
@@ -77,26 +84,30 @@ for two phases under a retention policy the operator cannot see or change.
 - `OPS-03` — staleness indicators.
 - `AUTH-06` — configuration changes are audited.
 
-## 4. Dependencies and the unresolved backend owner
+## 4. Dependencies and backend ownership
 
 `WCX-11` for the form stack and `WCX-08` for wording and timestamps.
 
-**This package has a blocking prerequisite that does not currently exist.** No
-roadmap package owns retention configuration endpoints. `P5-W10` exercises
-retention and purge behaviour as a PostgreSQL storage benchmark, not as an
-operator-configurable capability, and no Phase 1 through Phase 5 package
-delivers a contract for reading or writing retention policy.
+**This package owns its own backend**, assigned by change proposal
+[`0006`](../../change-proposals/0006-retention-configuration-ownership.md),
+approved 2026-09-04. No roadmap package owned retention configuration
+endpoints; `P5-W10` exercises retention and purge only as a PostgreSQL storage
+benchmark. Rather than expand an approved phase, `0006` gives this package a
+narrowly enumerated Control Plane surface, following the pattern approved for
+`P1-W11` under `W11-C8-A` and reused in `WCX-06` and `WCX-09`.
 
-This package therefore cannot start until the Product Owner assigns a backend
-owner for:
+The backend scope is exactly:
 
-- reading the effective retention policy per data class, including its default
-  and whether it is operator-modifiable;
-- writing an operator-chosen value within permitted bounds;
-- reporting purge job execution, its scope, and its outcome.
+- a `retention` module holding the policy domain and its bounds;
+- endpoints reading the effective policy per data class, including default,
+  permitted bounds, and whether the class is operator-modifiable;
+- an endpoint writing an operator-chosen value within bounds;
+- purge execution state and outcome, reported from the existing jobs module;
+- one forward-only migration and its `sqlc` queries;
+- the corresponding `openapi/guardian.yaml` resource.
 
-That assignment is a roadmap decision, not something this package can make.
-Until it exists, `WCX-21` stays `draft` and is not promotable.
+No existing domain, handler, migration, or query may change behaviour. Audit,
+auth, environment, device, health, and reconciliation code is untouched.
 
 ## 5. Scope
 
@@ -115,8 +126,8 @@ Until it exists, `WCX-21` stays `draft` and is not promotable.
 - No manual purge trigger. Purge is a backend job; the console shows its
   state. A console-initiated bulk deletion is not an approved capability.
 - No retention default values invented by this package. `DATA-01` defers the
-  exact day counts to an owner decision; the console reads defaults from the
-  backend and hardcodes nothing.
+  exact day counts to an owner decision and CP-0006 constraint 5 keeps them
+  deferred; the console reads defaults from the backend and hardcodes nothing.
 - No legal, compliance, or regulatory guidance text. The console states what
   the configuration does, not whether it satisfies any external obligation.
 - No per-incident or per-evidence retention override.
@@ -220,8 +231,7 @@ Rules:
 
 ### 9.6 API and data contracts
 
-Consumed from the backend package the Product Owner assigns per section 4.
-This package defines no contract. If the assigned contract cannot express
+Defined by this package under CP-0006 and added to `openapi/guardian.yaml`. If the assigned contract cannot express
 per-class bounds, modifiability, or purge outcome, stop and escalate.
 
 ### 9.7 Error and failure behaviour
@@ -331,10 +341,8 @@ that the console hardcodes no default. Record
 
 Stop and request owner review if any of the following occurs:
 
-- no backend owner has been assigned for retention configuration, which is the
-  current state and blocks this package entirely;
-- the assigned contract cannot express per-class bounds, modifiability, or
-  purge outcome;
+- the retention contract cannot express per-class bounds or modifiability;
+- purge outcome cannot be reported per class;
 - the contract permits reducing audit retention without a distinguishable
   control, so the `EV-05` accountability concern cannot be surfaced;
 - the contract exposes an individual-record deletion operation, which
