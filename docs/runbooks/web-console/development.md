@@ -104,3 +104,86 @@ master-key permission check for local convenience.
   explicitly unreported.
 - Never attach DevTools storage dumps, network archives, HAR files, traces,
   videos, or screenshots captured while a one-time secret is visible.
+
+## Module layout and boundaries
+
+`WCX-01` established a feature-sliced source tree. The layout is:
+
+```text
+apps/web-console/src/
+  main.tsx      Vite entry; the only file outside a layer
+  app/          router, application shell, providers
+  features/
+    auth/       session context, capability seam, sign-in
+    environments/
+    devices/
+    health/
+  shared/
+    api/        transport and DTO types
+    auth/       capability types and the pure resolver
+    forms/      typed form-field readers
+    ui/         shared presentation components
+    styles/     CSS Modules and global styles
+    theme/      design tokens (WCX-03)
+    text/       operator text catalogue (WCX-08)
+    hooks/
+    testing/    test-only helpers, never imported by production code
+  generated/    generated OpenAPI types (WCX-02)
+```
+
+Path aliases resolve identically in TypeScript, Vite, and Vitest:
+
+| Alias | Target |
+|---|---|
+| `@app/*` | `src/app/*` |
+| `@features/*` | `src/features/*` |
+| `@shared/*` | `src/shared/*` |
+| `@generated/*` | `src/generated/*` |
+
+Import rules, enforced by `no-restricted-imports` in `eslint.config.js`:
+
+1. `app` may import feature public APIs and `shared`.
+2. A feature may import `shared`, `generated`, and its own internals.
+3. A feature may import another feature only through that feature's `index.ts`,
+   and only for a pair listed in `eslint.config.js` with its reason. The
+   approved pairs are `environments -> auth`, `environments -> health`, and
+   `devices -> health`.
+4. `shared` may never import `features` or `app`.
+5. Deep imports into another feature and relative imports that escape a
+   directory are always errors.
+6. `@shared/testing` is unreachable from production modules.
+
+`npm run lint` runs ESLint and then `test/check-boundaries.mjs`, which lints
+the fixtures under `src/**/__boundary__/` and fails if any boundary violation
+stops being an error. Those fixtures are excluded from the normal lint run and
+are never imported by the application.
+
+## Capability seam
+
+`useCapability(capability)` from `@features/auth` decides whether a control
+renders as available. It is **presentation only**. The Control Plane enforces
+every authorization decision, and a rejected request must still be rendered
+truthfully.
+
+A denied capability disables its control and shows the reason. It must never
+hide the control: a missing control reads as a broken product, while a
+disabled one with a reason tells the operator what to do.
+
+Phase 2 has one local owner and no role model, so every capability resolves
+from whether the in-memory CSRF proof exists. The `not-permitted` denial is
+declared for a future role model and is unreachable today; callers handle it
+exhaustively so a later role model needs no call-site change.
+
+## Static analysis
+
+- `npm run typecheck` runs `tsc -b`, covering `src`, `vite.config.ts`,
+  `eslint.config.js`, and `test/*.mjs`.
+- `strict` is extended with `noUncheckedIndexedAccess`, `noImplicitOverride`,
+  and `exactOptionalPropertyTypes`.
+- ESLint runs `typescript-eslint` type-checked rules plus
+  `eslint-plugin-react-hooks`.
+- `npm run bundle:check` enforces the size budget, forbids production source
+  maps, and fails if test-only code reaches a production chunk.
+
+New dependencies follow
+[`docs/engineering/web-console-dependency-policy.md`](../../engineering/web-console-dependency-policy.md).

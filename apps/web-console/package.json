@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit -p tsconfig.app.json && vite build",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "lint": "eslint . --max-warnings=0",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
+    "lint": "eslint . --max-warnings=0 && node test/check-boundaries.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "bundle:check": "node test/check-bundle.mjs"
@@ -31,6 +31,7 @@
     "@types/react-dom": "19.2.5",
     "@vitejs/plugin-react": "6.1.1",
     "eslint": "10.9.1",
+    "eslint-plugin-react-hooks": "7.1.1",
     "jsdom": "30.0.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.68.0",
