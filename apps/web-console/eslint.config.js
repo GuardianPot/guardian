@@ -104,9 +104,11 @@ export default tseslint.config(
   // Approved cross-feature pairs, each with its reason:
   //   environments -> auth    session state and the capability seam
   //   environments -> health  renders the backend health projection panel
+  //   environments -> devices creating an enrollment secret changes the device
+  //                           inventory, so the environment feature invalidates it
   //   devices      -> health  renders the backend health projection panel
   featureBoundary('auth', []),
-  featureBoundary('environments', ['auth', 'health']),
+  featureBoundary('environments', ['auth', 'health', 'devices']),
   featureBoundary('devices', ['health']),
   featureBoundary('health', []),
   // Tests may reach the harness but still may not deep-import a feature.

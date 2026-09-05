@@ -10,7 +10,8 @@
     "lint": "eslint . --max-warnings=0 && node test/check-boundaries.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "bundle:check": "node test/check-bundle.mjs"
+    "bundle:check": "node test/check-bundle.mjs",
+    "generate:api": "npx --yes openapi-typescript@7.13.0 ../../openapi/guardian.yaml --output src/generated/openapi.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "1.1.23",
@@ -24,6 +25,7 @@
     "@axe-core/playwright": "4.13.0",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.62.1",
+    "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
     "@testing-library/user-event": "14.6.6",

@@ -187,3 +187,89 @@ exhaustively so a later role model needs no call-site change.
 
 New dependencies follow
 [`docs/engineering/web-console-dependency-policy.md`](../../engineering/web-console-dependency-policy.md).
+
+## Generated API types
+
+`WCX-02` derives every DTO from the approved OpenAPI contract, satisfying
+`RE-10`. Nothing under `src/shared/api/types.ts` re-declares a field, union, or
+enum; a schema removed or renamed in `openapi/guardian.yaml` fails typecheck
+rather than drifting silently.
+
+Regenerate after any contract change:
+
+```text
+npm run generate:api -w @guardianpot/web-console
+```
+
+`task web:check` runs `npm run generated:check` first. It regenerates into a
+temporary path, compares byte-for-byte against the committed file, and also
+fails if the generated module ever declares runtime code. Generated types emit
+nothing, so they add no production bytes.
+
+The generator runs from the workspace directory because the repository-root
+`redocly.yaml` declares a named API that `openapi-typescript` would otherwise
+require an output key for.
+
+## API layer
+
+One transport, one error taxonomy, per-feature API modules.
+
+- `@shared/api/transport` owns the only `fetch` call. Its security behaviour is
+  fixed: `credentials: 'include'`, `cache: 'no-store'`, the CSRF proof on
+  mutations only, `If-Match` on revisioned updates, and the
+  `guardian:unauthorized` event on an unexpected 401. It never sets `Origin`;
+  that is a forbidden fetch header the browser supplies and the Control Plane
+  validates.
+- `@shared/api/error` classifies every failure into a `ConsoleError`.
+  Components consume the classification and never inspect an HTTP status. The
+  operator-facing message comes from a fixed table keyed by `messageKey`; a
+  backend `status` slug is retained for diagnostics and is never rendered, so
+  a hostile slug cannot reach the DOM.
+
+| Condition | Kind | Retryable |
+|---|---|---|
+| 401 without an active mutation proof | `unauthenticated` | no |
+| 401 on a request that carried a proof | `reauthentication-required` | no |
+| 403 | `forbidden` | no |
+| 404 | `not-found` | no |
+| 400, 422 | `validation` | no |
+| 409, 412 | `conflict` | no |
+| 429 | `rate-limited` | yes |
+| 500 to 504 | `unavailable` | yes |
+| `AbortError` | `timeout` | yes |
+| `TypeError` from `fetch` | `network` | yes |
+| anything else | `unexpected` | no |
+
+- Each feature owns an `api.ts` exporting its query-key factory, its
+  `queryOptions()` helpers, and its mutations. Keys follow
+  `[feature, resource, ...scopeIds]`; no component builds one. Invalidation
+  lives beside the mutation that causes it.
+- Reads retry at most twice and only for a retryable classification; mutations
+  never retry. Every read carries the query's `AbortSignal`.
+- A 304 is a success with no body, handled before the error branch because
+  `Response.ok` is false for it.
+
+`WCX-07` replaces the per-query `refetchInterval` values with the central
+freshness policy; `WCX-08` moves `messageKey` text into the operator catalogue.
+
+## Continuous integration
+
+Two workflows, one job each, no conditions (change proposal `0007`).
+
+| Workflow | Trigger | Contents |
+|---|---|---|
+| `pr.yml` | every pull request | repository policy, Markdown format, contract layout, generated freshness, dependency policy, workflow SHA pins, secret scan, the full Web Console gate, and Go vet, unit tests, and formatting |
+| `full.yml` | push to `main`, nightly 03:00 UTC, manual dispatch | everything above plus Go integration and race suites, both PostgreSQL integrations, contract tooling, container smoke build, Cowrie fixture, buf breaking checks, and the three-engine browser flow |
+
+A pull request runs no Docker, no browser engines, and no generation tooling,
+so it needs neither `task` nor `buf`. The heavy half moved to post-merge and
+nightly; nothing was deleted.
+
+Run the browser flow locally against a subset with `GUARDIAN_E2E_PROJECTS`:
+
+```text
+GUARDIAN_E2E_PROJECTS=chromium task web:e2e:run
+```
+
+`task web:e2e` runs the full web gate first; `task web:e2e:run` runs only the
+flow. The runner asserts one post-dismissal screenshot per selected engine.

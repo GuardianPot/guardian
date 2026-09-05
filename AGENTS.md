@@ -49,7 +49,9 @@ Never:
 
 - push directly to `main`;
 - merge or bypass a pull request;
-- change repository settings, rulesets, environments, or secrets;
+- change repository settings, rulesets, environments, or secrets, except a
+  specific change the Product Owner directs in writing, which is recorded in a
+  change proposal before or with the change;
 - use production credentials or signing keys;
 - execute attacker-facing behavior against an unauthorized network;
 - treat AI output as automatic security or containment authority.

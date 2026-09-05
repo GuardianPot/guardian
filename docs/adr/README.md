@@ -73,3 +73,5 @@ proposal, but only `@sinanganiz` can accept it.
 | [0004](../change-proposals/0004-web-console-error-contract.md) | Structured Web/Public API error contract | APPROVED |
 | [0005](../change-proposals/0005-agent-work-package-issue-authority.md) | Agent work-package issue authority | APPROVED |
 | [0006](../change-proposals/0006-retention-configuration-ownership.md) | Retention configuration backend ownership | APPROVED |
+| [0007](../change-proposals/0007-pull-request-ci-scope.md) | Pull-request CI scope | APPROVED |
+| [0008](../change-proposals/0008-lightweight-delivery-process.md) | Lightweight delivery process | APPROVED |

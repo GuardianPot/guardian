@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { api } from '@shared/api/client';
-import { HealthPanel, formatTime } from '@features/health';
+import { deviceQuery } from './api';
+import { deviceHealthQuery, HealthPanel, formatTime } from '@features/health';
 import { ErrorState, LoadingState } from '@shared/ui/Status';
 import styles from '@shared/styles/app.module.css';
 
 export function DevicePage() {
   const { environmentId = '', deviceId = '' } = useParams();
-  const device = useQuery({ queryKey: ['device', environmentId, deviceId], queryFn: () => api.device(environmentId, deviceId), refetchInterval: 5_000 });
-  const health = useQuery({ queryKey: ['device-health', deviceId], queryFn: () => api.deviceHealth(deviceId), retry: false, refetchInterval: 5_000 });
+  const device = useQuery(deviceQuery(environmentId, deviceId));
+  const health = useQuery(deviceHealthQuery(deviceId));
   if (device.isPending) return <LoadingState label="Loading device inventory…" />;
   if (device.isError || !device.data) return <ErrorState>The device record is unavailable or outside this environment.</ErrorState>;
   return (

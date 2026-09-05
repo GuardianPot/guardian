@@ -1,7 +1,7 @@
 import * as Label from '@radix-ui/react-label';
 import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { ApiError } from '@shared/api/client';
+import { toConsoleError } from '@shared/api/error';
 import { textField } from '@shared/forms/textField';
 import { useAuth } from './AuthContext';
 import { useCapability } from './useCapability';
@@ -33,7 +33,7 @@ export function LoginPage() {
       event.currentTarget.reset();
       void navigate('/environments', { replace: true });
     } catch (caught) {
-      setError(caught instanceof ApiError && caught.status === 429 ? 'Too many attempts. Wait before trying again.' : 'Sign-in was denied. Check your credentials and MFA proof.');
+      setError(toConsoleError(caught).kind === 'rate-limited' ? 'Too many attempts. Wait before trying again.' : 'Sign-in was denied. Check your credentials and MFA proof.');
     } finally {
       setSubmitting(false);
     }

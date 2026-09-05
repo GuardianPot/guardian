@@ -156,16 +156,34 @@ if command -v cygpath >/dev/null 2>&1; then
   export GUARDIAN_E2E_RESULTS_DIR="$(cygpath -w "$results_dir")"
 fi
 
-npx playwright test --config "$repo_root/tests/e2e/web-console/playwright.config.ts"
+# A pull request proves the flow in one engine; main, the nightly sweep, and a
+# manual dispatch prove it in all three. GUARDIAN_E2E_PROJECTS selects which.
+e2e_projects="${GUARDIAN_E2E_PROJECTS:-chromium firefox webkit}"
+project_args=()
+project_count=0
+for project in $e2e_projects; do
+  case "$project" in
+    chromium|firefox|webkit) project_args+=(--project "$project") ;;
+    *) echo "unsupported Playwright project: $project" >&2; exit 1 ;;
+  esac
+  project_count=$((project_count + 1))
+done
+if [[ ${#project_args[@]} -eq 0 ]]; then
+  echo 'no Playwright project selected' >&2
+  exit 1
+fi
+
+npx playwright test --config "$repo_root/tests/e2e/web-console/playwright.config.ts" "${project_args[@]}"
 
 if find "$output_dir" -type f \( -name '*.json' -o -name '*.txt' -o -name '*.zip' \) -print -quit | grep -q .; then
   echo 'unexpected text or trace artifact was produced' >&2
   exit 1
 fi
 screenshot_count="$(find "$output_dir/screenshots" -type f -name 'onboarding-complete-*.png' | wc -l | tr -d ' ')"
-if [[ "$screenshot_count" != '3' ]]; then
-  echo "expected three post-dismissal screenshots, found $screenshot_count" >&2
+expected_screenshots="$project_count"
+if [[ "$screenshot_count" != "$expected_screenshots" ]]; then
+  echo "expected $expected_screenshots post-dismissal screenshots, found $screenshot_count" >&2
   exit 1
 fi
 
-echo 'P1-W11 Chromium, Firefox, WebKit real onboarding, enrollment, health, accessibility, reduced-motion, and secret-lifetime evidence passed.'
+echo "Real onboarding, enrollment, health, accessibility, reduced-motion, and secret-lifetime evidence passed in: $e2e_projects"

@@ -1,9 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api } from '@shared/api/client';
+import { authKeys, login as loginRequest, logout as logoutRequest, sessionQuery, type LoginInput } from './api';
 import type { Session } from '@shared/api/types';
-
-type LoginInput = { username: string; password: string; totp_code?: string; recovery_code?: string };
 
 type AuthValue = {
   session: Session | null | undefined;
@@ -18,17 +16,12 @@ const AuthContext = createContext<AuthValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [csrf, setCsrf] = useState<string | null>(null);
-  const sessionQuery = useQuery({
-    queryKey: ['session'],
-    queryFn: () => api.session(),
-    staleTime: 30_000,
-    retry: false,
-  });
+  const session = useQuery(sessionQuery());
 
   const expire = useCallback(() => {
     setCsrf(null);
-    queryClient.setQueryData(['session'], null);
-    queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'session' });
+    queryClient.setQueryData(authKeys.session(), null);
+    queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'auth' });
   }, [queryClient]);
 
   useEffect(() => {
@@ -37,20 +30,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [expire]);
 
   const value = useMemo<AuthValue>(() => ({
-    session: sessionQuery.data,
+    session: session.data,
     csrf,
-    loading: sessionQuery.isPending,
+    loading: session.isPending,
     async login(input) {
-      const credentials = await api.login(input);
+      const credentials = await loginRequest(input);
       setCsrf(credentials.csrf_token);
-      queryClient.setQueryData(['session'], credentials.session);
+      queryClient.setQueryData(authKeys.session(), credentials.session);
     },
     async logout() {
       if (!csrf) throw new Error('Re-authentication is required before logout.');
-      await api.logout(csrf);
+      await logoutRequest(csrf);
       expire();
     },
-  }), [csrf, expire, queryClient, sessionQuery.data, sessionQuery.isPending]);
+  }), [csrf, expire, queryClient, session.data, session.isPending]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

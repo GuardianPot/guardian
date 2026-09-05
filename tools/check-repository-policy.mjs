@@ -6,7 +6,8 @@ const required = [
   "CONTRIBUTING.md",
   ".github/CODEOWNERS",
   ".github/PULL_REQUEST_TEMPLATE.md",
-  ".github/workflows/quality.yml",
+  ".github/workflows/pr.yml",
+  ".github/workflows/full.yml",
   "docs/adr/README.md",
   "docs/change-proposals/0002-p1-w8-acceptance-reference.md",
   "docs/engineering/context-map.md",
@@ -67,7 +68,9 @@ const requiredSections = [
 for (const packagePath of required.filter((path) =>
   path.startsWith("docs/work-packages/phase-1/P1-")
 )) {
-  const content = readFileSync(packagePath, "utf8");
+  // Normalise line endings: Windows checkouts get CRLF for Markdown, and the
+  // frontmatter assertions below are written against LF.
+  const content = readFileSync(packagePath, "utf8").replace(/\r\n/g, "\n");
   const packageId = packagePath.match(/(P1-(?:G0|W\d+))\.md$/)?.[1];
   const expectedStatus = packageId === "P1-G0"
     ? "accepted"
