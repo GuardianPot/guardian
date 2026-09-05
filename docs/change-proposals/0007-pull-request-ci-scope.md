@@ -47,9 +47,11 @@ it was slowing development out of proportion to the risk it caught.
 2. Area selection is computed from the diff by `.github/scripts/changed-areas.sh`
    using `git diff` only, so no new third-party action is introduced and
    `CI-03` is unaffected.
-3. Selection fails safe. Any change to `package.json`, `package-lock.json`,
-   `Taskfile.yml`, `go.work`, `.github/workflows/`, or `.github/scripts/` runs
-   every area, and an unavailable base commit runs every area.
+3. Selection fails safe where it matters. A change to `.github/workflows/`
+   or `.github/scripts/` runs every area, because those decide what runs at
+   all, as does an unavailable base commit. Node manifests select only the
+   areas that consume them, so a console change that also edits
+   `Taskfile.yml` no longer drags in the Go and container suites.
 4. Nothing is deleted. A push to `main`, the nightly schedule, and manual
    dispatch all set `FULL=true`, which runs every job regardless of paths and
    restores the three-engine browser matrix.

@@ -267,9 +267,10 @@ Change proposal `0007` split the single `quality` job into selective jobs.
 Every job runs regardless of paths on a push to `main`, on the nightly
 schedule, and on manual dispatch, which is also when the browser flow runs in
 all three engines. Selection is computed by `.github/scripts/changed-areas.sh`
-from `git diff` alone, and fails safe: a change to `package.json`,
-`package-lock.json`, `Taskfile.yml`, `go.work`, or anything under
-`.github/workflows/` or `.github/scripts/` runs every area.
+from `git diff` alone. Only a change under `.github/workflows/` or
+`.github/scripts/` forces every area, because those decide what runs at all.
+Node manifests select the areas that consume them, so editing `Taskfile.yml`
+alongside console work does not drag in the Go and container suites.
 
 Run the browser flow locally against a subset with `GUARDIAN_E2E_PROJECTS`:
 
