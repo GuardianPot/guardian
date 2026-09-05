@@ -252,6 +252,67 @@ One transport, one error taxonomy, per-feature API modules.
 `WCX-07` replaces the per-query `refetchInterval` values with the central
 freshness policy; `WCX-08` moves `messageKey` text into the operator catalogue.
 
+## Visual system
+
+Two token layers and one rule: colour is never the only channel.
+
+- `@shared/theme/primitives.css` holds raw values — neutrals, hues, spacing,
+  type, radii, elevation, durations. Nothing outside the theme directory may
+  reference a primitive.
+- `@shared/theme/semantic.css` is the only file that reads a primitive. It
+  assigns meaning: surface, line, text, brand, health, severity, config,
+  device, confidence, interaction, notice, spacing, motion. `WCX-15` adds the
+  light theme by reassigning these same names and nothing else, which is why
+  the block is a flat list of assignments with no rules in it.
+- Components use semantic names only. `test/check-theme-tokens.mjs` fails the
+  lint on any colour literal or raw duration in `src/**/*.css` outside the
+  theme directory. Layout geometry is deliberately out of scope: it does not
+  change with the theme.
+
+Colour carries meaning in exactly three disjoint groups, asserted by
+`tokens.test.ts`:
+
+| Group | Hues | Meaning |
+|---|---|---|
+| brand | azure | identity only, never a status |
+| health | green, red, slate | reported truth; unknown is a category, not a midpoint |
+| severity | the five-step `--color-sev-*` ramp | ordered impact |
+
+Device inventory state and configuration completeness are **neutral greys on
+purpose**. Inventory is not health and a complete configuration is not
+protection; giving either a green would assert something the system does not
+know. They are distinguished by glyph and text instead.
+
+`@shared/theme/statusEncoding` is the only place a status string becomes a
+visual. Every lookup is total — an unrecognised value, including a prototype
+key, resolves to `UNKNOWN_ENCODING`, never to healthy or complete. Confidence
+returns filled steps and a label with **no tone and no glyph** (`WC-D11`);
+it is never coloured like severity.
+
+Motion is capped at `--motion-standard` (200 ms) and never encodes status.
+`prefers-reduced-motion: reduce` collapses every duration to `--motion-none`.
+
+CSS size, measured minified per file (`WCX-03` section 9.10 asks for before
+and after):
+
+| File | Before | After |
+|---|---:|---:|
+| `theme/primitives.css` | — | 1541 |
+| `theme/semantic.css` | — | 3199 |
+| `styles/global.css` | 1094 | 1090 |
+| `styles/app.module.css` | 8465 | 10373 |
+| **bundle** | **10952** | **18461** |
+
+The package estimated roughly 3 KiB and expected removing duplicated literals
+to offset most of it. That was wrong in both directions and the real number is
+7509 bytes. Tokenising *costs* bytes at the use site as well as the definition
+site — `var(--health-true)` is longer than the `#7cf2bd` it replaced — so
+there is no offset to collect, and two deliberate layers mean 139 custom
+properties are declared before a single rule is written. The remaining growth
+is eleven new class rules in `app.module.css` for the severity tones and the
+status glyph. The 32 KiB budget holds with 13.5 KiB of headroom, and the cost
+buys the light theme in `WCX-15` as a reassignment rather than a rewrite.
+
 ## Continuous integration
 
 Two workflows, one job each, no conditions (change proposal `0007`).

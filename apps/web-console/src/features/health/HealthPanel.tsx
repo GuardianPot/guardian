@@ -1,4 +1,5 @@
 import type { HealthStatus, HealthView } from '@shared/api/types';
+import { healthEncoding } from '@shared/theme/statusEncoding';
 import styles from '@shared/styles/app.module.css';
 
 const labels: Record<string, string> = {
@@ -27,7 +28,7 @@ export function HealthPanel({ health }: { health: HealthView }) {
           <p className={styles.eyebrow}>Backend health projection</p>
           <h2 id="health-heading">Eight-condition health</h2>
         </div>
-        <span className={`${styles.statusBadge} ${styles[`health${aggregate}`]}`}>
+        <span className={`${styles.statusBadge} ${styles[healthEncoding(aggregate).tone] ?? ''}`}>
           {statusLabel(aggregate)}
         </span>
       </div>
@@ -41,7 +42,7 @@ export function HealthPanel({ health }: { health: HealthView }) {
       <ul className={styles.conditionGrid} aria-label="Device health conditions">
         {health.conditions.map((condition) => (
           <li key={condition.type} className={styles.condition}>
-            <span className={`${styles.conditionDot} ${styles[`health${condition.status}`]}`} aria-hidden="true" />
+            <span className={`${styles.conditionDot} ${styles[healthEncoding(condition.status).tone] ?? ''}`} aria-hidden="true" />
             <div>
               <strong>{labels[condition.type] ?? condition.type}</strong>
               <span>{statusLabel(condition.status)} · {condition.reason}</span>

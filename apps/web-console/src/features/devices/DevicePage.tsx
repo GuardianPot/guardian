@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
+import { deviceEncoding } from '@shared/theme/statusEncoding';
 import { deviceQuery } from './api';
 import { deviceHealthQuery, HealthPanel, formatTime } from '@features/health';
 import { ErrorState, LoadingState } from '@shared/ui/Status';
@@ -16,7 +17,7 @@ export function DevicePage() {
       <Link className={styles.backLink} to={`/environments/${environmentId}`}>← Environment overview</Link>
       <header className={styles.pageHeader}>
         <div><p className={styles.eyebrow}>Edge device</p><h1>{device.data.display_name}</h1><p className={styles.mono}>{device.data.device_id}</p></div>
-        <span className={`${styles.statusBadge} ${styles[`device${device.data.state}`]}`}>Inventory: {device.data.state}</span>
+        <span className={`${styles.statusBadge} ${styles[deviceEncoding(device.data.state).tone] ?? ''}`}>Inventory: {deviceEncoding(device.data.state).label}</span>
       </header>
       <section className={styles.factGrid} aria-label="Device inventory facts">
         <div><span>Inventory state</span><strong>{device.data.state}</strong></div>

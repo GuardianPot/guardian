@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
-    "lint": "eslint . --max-warnings=0 && node test/check-boundaries.mjs",
+    "lint": "eslint . --max-warnings=0 && node test/check-boundaries.mjs && node test/check-theme-tokens.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "bundle:check": "node test/check-bundle.mjs",
