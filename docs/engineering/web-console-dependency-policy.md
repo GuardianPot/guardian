@@ -49,27 +49,45 @@ package. `WCX-02`, `WCX-06`, `WCX-11`, `WCX-12`, and `WCX-19` each add
 dependencies their specifications name; none may be added ahead of its
 package.
 
+## Peer conflicts
+
+**`--legacy-peer-deps` is forbidden.** It does not merely relax the failing
+range; it stops npm installing peers generally, so an unrelated peer can
+disappear from the lockfile without any error.
+
+That is not hypothetical. On 2026-09-04 `openapi-typescript@7.13.0` was added
+with the flag because it declares `peer typescript@^5.x` while the console pins
+TypeScript `6.0.3`. The install silently dropped `@testing-library/dom`, a peer
+of `@testing-library/react` from which `screen` and `waitFor` are re-exported.
+Local runs still passed because the package remained in an existing
+`node_modules`; CI's clean `npm ci` failed with thirteen "has no exported
+member" errors.
+
+When a dependency's peer range is genuinely stale, resolve it in this order:
+
+1. Take a newer release of the dependency whose range includes our version.
+2. Run the tool without declaring it, pinned at the point of use:
+   `npx --yes <package>@<exact version>`. This suits development-only
+   generators that run on demand and keeps the dependency tree untouched.
+3. Stop and escalate. Do not reach for a resolution flag.
+
+Whichever path is taken, declare every package the source actually imports,
+including one reached through a re-export. `@testing-library/dom` is now an
+explicit development dependency for that reason.
+
 ## Recorded exceptions
 
-### `openapi-typescript` peer range — 2026-09-04
+### `openapi-typescript` — resolved by option 2, 2026-09-04
 
-`openapi-typescript@7.13.0` declares `peer typescript@^5.x` while the console
-pins TypeScript `6.0.3`, so a plain `npm install` reports `ERESOLVE`. It was
-added with `--legacy-peer-deps`.
+`openapi-typescript@7.13.0` declares `peer typescript@^5.x` against our pinned
+TypeScript `6.0.3`. It is **not** a declared dependency. `npm run generate:api`
+and `tools/check-generated.mjs` both invoke it as
+`npx --yes openapi-typescript@7.13.0`, so the version is pinned at the call
+site and the dependency tree is unaffected.
 
-This is a stale peer range, not a functional incompatibility. The evidence:
-
-- the generator produces correct output against the pinned TypeScript, and
-  that output is then typechecked by the same TypeScript in `tsc -b`, which is
-  the real compatibility proof;
-- `npm ci`, which is what CI runs, resolves the committed lockfile without the
-  flag, so the continuous-integration path is unaffected;
-- the package is development-only and contributes zero production bytes.
-
-The cost is that a developer running a fresh `npm install` must pass
-`--legacy-peer-deps`. Remove this exception once `openapi-typescript` widens
-its peer range to include TypeScript 6.
-
-A future peer conflict follows the same rule as a licence: record it here with
-evidence that it is a stale range rather than an incompatibility, or stop and
-escalate.
+The trade recorded knowingly: the generator is not lockfile-pinned, so it is
+fetched at generation time rather than resolved from the committed tree. It is
+development-only, contributes zero production bytes, and its output is
+committed and verified byte-for-byte by the freshness check, so a substituted
+generator cannot alter the shipped types without failing that check. Declare it
+normally once its peer range includes TypeScript 6.

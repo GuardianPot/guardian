@@ -251,3 +251,30 @@ One transport, one error taxonomy, per-feature API modules.
 
 `WCX-07` replaces the per-query `refetchInterval` values with the central
 freshness policy; `WCX-08` moves `messageKey` text into the operator catalogue.
+
+## Continuous integration scope
+
+Change proposal `0007` split the single `quality` job into selective jobs.
+
+| Job | When it runs |
+|---|---|
+| Fast gate | every pull request and push, unconditionally |
+| Web Console | the diff touches `apps/web-console/`, `tests/e2e/web-console/`, or `openapi/` |
+| Go and integration | the diff touches Control Plane, Edge Agent, `pkg/`, or an integration suite |
+| Contracts and container | the diff touches `proto/`, `openapi/`, `schemas/`, buf config, `deploy/`, `decoys/`, or a Dockerfile |
+| Browser E2E | with the Web Console job; Chromium only on a pull request |
+
+Every job runs regardless of paths on a push to `main`, on the nightly
+schedule, and on manual dispatch, which is also when the browser flow runs in
+all three engines. Selection is computed by `.github/scripts/changed-areas.sh`
+from `git diff` alone, and fails safe: a change to `package.json`,
+`package-lock.json`, `Taskfile.yml`, `go.work`, or anything under
+`.github/workflows/` or `.github/scripts/` runs every area.
+
+Run the browser flow locally against a subset with `GUARDIAN_E2E_PROJECTS`:
+
+```text
+GUARDIAN_E2E_PROJECTS=chromium task web:e2e
+```
+
+The runner asserts one post-dismissal screenshot per selected engine.

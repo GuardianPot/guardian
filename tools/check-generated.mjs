@@ -26,7 +26,13 @@ if (existsSync(committed)) {
     // named API without an openapi-ts output key, is not picked up.
     execFileSync(
       "npx",
-      ["openapi-typescript", "../../openapi/guardian.yaml", "--output", candidate],
+      [
+        "--yes",
+        "openapi-typescript@7.13.0",
+        "../../openapi/guardian.yaml",
+        "--output",
+        candidate,
+      ],
       { stdio: "pipe", shell: process.platform === "win32", cwd: "apps/web-console" }
     );
     if (readFileSync(committed, "utf8") !== readFileSync(candidate, "utf8")) {
