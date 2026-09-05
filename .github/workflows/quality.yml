@@ -160,9 +160,14 @@ jobs:
         with:
           path: ~/go/bin
           key: gotools-${{ runner.os }}-task3.53.1-buf1.72.0
+      # `task web:e2e:run` depends on control-plane:generated and
+      # privileged:generated, which run sqlc and `buf generate`, so this job
+      # needs the same tool set as the Go job.
       - name: Install pinned Go tools
         if: steps.gotools.outputs.cache-hit != 'true'
-        run: go install github.com/go-task/task/v3/cmd/task@v3.53.1
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@v3.53.1
+          go install github.com/bufbuild/buf/cmd/buf@v1.72.0
       - name: Put Go tools on PATH
         run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Install dependencies
@@ -187,7 +192,7 @@ jobs:
         env:
           GUARDIAN_E2E_ARTIFACT_DIR: ${{ runner.temp }}/guardian-web-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           GUARDIAN_E2E_PROJECTS: ${{ env.FULL == 'true' && 'chromium firefox webkit' || 'chromium' }}
-        run: task web:e2e
+        run: task web:e2e:run
       - name: Upload redacted Web Console evidence
         if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

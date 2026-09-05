@@ -215,8 +215,14 @@ tasks:
       - npm run bundle:check
 
   web:e2e:
-    desc: Run the real Web Console onboarding path in Chromium, Firefox, and WebKit
-    deps: [web:check, control-plane:generated, privileged:generated, edge:tools]
+    desc: Run the full web gate and then the real browser onboarding path
+    deps: [web:check]
+    cmds:
+      - task: web:e2e:run
+
+  web:e2e:run:
+    desc: Run the browser onboarding path without repeating the web gate
+    deps: [control-plane:generated, privileged:generated, edge:tools]
     cmds:
       - bash tests/e2e/web-console/run.sh
 
