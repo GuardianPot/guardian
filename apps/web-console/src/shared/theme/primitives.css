@@ -1,0 +1,90 @@
+/**
+ * Primitive tokens (WCX-03, decision WC-D10).
+ *
+ * Raw scales only. A name here carries no meaning, so nothing outside
+ * `semantic.css` may reference one. Component CSS Modules use semantic tokens.
+ */
+:root {
+  /* Neutrals, teal-tinted to match the product surface. */
+  --color-neutral-0: #020e11;
+  --color-neutral-50: #071a1f;
+  --color-neutral-100: #0b2429;
+  --color-neutral-200: #102f34;
+  --color-neutral-300: #183c41;
+  --color-neutral-400: #23454a;
+  --color-neutral-500: #31575c;
+  --color-neutral-600: #3b6469;
+  --color-neutral-700: #91aaa6;
+  --color-neutral-800: #bed0cc;
+  --color-neutral-900: #c5d9d5;
+  --color-neutral-1000: #eaf5f1;
+
+  /* Brand. Deliberately not a green: the brand must never read as healthy. */
+  --color-azure-300: #8ecdf5;
+  --color-azure-500: #4aa8e8;
+
+  /* Health. Three categorical values, never an ordered ramp. */
+  --color-green-300: #7cf2bd;
+  --color-green-500: #32d38b;
+  --color-red-400: #ff837c;
+  --color-slate-400: #a8b5c2;
+
+  /* Severity. One ordered ramp so the five steps are perceivably sequenced. */
+  --color-sev-1: #93a4b5;
+  --color-sev-2: #cfc478;
+  --color-sev-3: #f0a44f;
+  --color-sev-4: #f2734a;
+  --color-sev-5: #f2708a;
+
+  /* Space. */
+  --space-1: 0.25rem;
+  --space-2: 0.35rem;
+  --space-3: 0.5rem;
+  --space-4: 0.7rem;
+  --space-5: 0.85rem;
+  --space-6: 1rem;
+  --space-7: 1.25rem;
+  --space-8: 1.5rem;
+  --space-9: 2rem;
+  --space-10: 3rem;
+
+  /* Radius. */
+  --radius-1: 0.4rem;
+  --radius-2: 0.55rem;
+  --radius-3: 0.7rem;
+  --radius-4: 1rem;
+  --radius-5: 1.2rem;
+  --radius-round: 999px;
+
+  /* Type. */
+  --font-size-1: 0.72rem;
+  --font-size-2: 0.75rem;
+  --font-size-3: 0.78rem;
+  --font-size-4: 0.82rem;
+  --font-size-5: 0.9rem;
+  --font-size-6: 1.05rem;
+  --font-size-7: 1.25rem;
+  --line-height-tight: 1;
+  --line-height-normal: 1.55;
+  --line-height-loose: 1.7;
+  --weight-regular: 400;
+  --weight-bold: 700;
+  --weight-heavy: 800;
+  --weight-black: 900;
+
+  /* Size. */
+  --size-control: 2.75rem;
+  --size-mark: 2.6rem;
+  --size-dot: 0.55rem;
+
+  /* Elevation. */
+  --elevation-1: 0 1.3rem 3rem rgb(0 0 0 / 16%);
+  --elevation-2: 0 2rem 7rem rgb(0 0 0 / 30%);
+  --elevation-3: 0 2rem 8rem rgb(0 0 0 / 100%);
+
+  /* Motion. The budget in WCX-03 section 9.4 caps these values. */
+  --duration-fast: 150ms;
+  --duration-standard: 200ms;
+  --duration-none: 0.001ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0.2, 1);
+}

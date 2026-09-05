@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { createEnvironment as createEnvironmentRequest, environmentInvalidation, environmentsQuery } from './api';
 import { useAuth, useCapability } from '@features/auth';
 import { textField } from '@shared/forms/textField';
+import { configEncoding } from '@shared/theme/statusEncoding';
 import { EmptyState, ErrorState, LoadingState } from '@shared/ui/Status';
 import styles from '@shared/styles/app.module.css';
 
@@ -48,7 +49,7 @@ export function EnvironmentsPage() {
               <li key={environment.environment_id}>
                 <Link className={styles.environmentCard} to={`/environments/${environment.environment_id}`}>
                   <span><strong>{environment.display_name}</strong><small>{environment.zone_count} {environment.zone_count === 1 ? 'zone' : 'zones'}</small></span>
-                  <span className={environment.status === 'zones_defined' ? styles.configReady : styles.configPending}>
+                  <span className={`${styles.statusBadge} ${styles[configEncoding(environment.status).tone] ?? ''}`}>
                     {environment.status === 'zones_defined' ? 'Configured' : 'Needs zones'}
                   </span>
                 </Link>

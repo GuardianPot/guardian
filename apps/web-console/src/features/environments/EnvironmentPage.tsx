@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toConsoleError } from '@shared/api/error';
+import { configEncoding, deviceEncoding } from '@shared/theme/statusEncoding';
 import { devicesQuery } from '@features/devices';
 import {
   createEnrollmentSecret,
@@ -94,7 +95,7 @@ export function EnvironmentPage() {
       <Link className={styles.backLink} to="/environments">← All environments</Link>
       <header className={styles.pageHeader}>
         <div><p className={styles.eyebrow}>Environment</p><h1>{environment.data.display_name}</h1><p className={styles.mono}>{environment.data.environment_id}</p></div>
-        <span className={environment.data.status === 'zones_defined' ? styles.configReady : styles.configPending}>
+        <span className={`${styles.statusBadge} ${styles[configEncoding(environment.data.status).tone] ?? ''}`}>
           {environment.data.status === 'zones_defined' ? 'Configuration complete' : 'Zones required'}
         </span>
       </header>
@@ -110,7 +111,7 @@ export function EnvironmentPage() {
               <li key={device.device_id}>
                 <Link to={`/environments/${environmentId}/devices/${device.device_id}`}>
                   <span><strong>{device.display_name}</strong><small>{device.device_id}</small></span>
-                  <span className={`${styles.statusBadge} ${styles[`device${device.state}`]}`}>{device.state}</span>
+                  <span className={`${styles.statusBadge} ${styles[deviceEncoding(device.state).tone] ?? ''}`}>{deviceEncoding(device.state).label}</span>
                 </Link>
               </li>
             ))}
