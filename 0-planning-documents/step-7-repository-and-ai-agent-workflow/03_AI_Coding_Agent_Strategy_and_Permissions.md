@@ -138,7 +138,13 @@ Agent task environment receives only narrow task secrets, never GitHub settings 
 Issue edit/close only if task integration needs; closing does not equal acceptance.
 
 ## Karar AP-08 — Merge PR
-**DENY.**
+**ALLOW**, bounded (change proposal 0009, 2026-09-05).
+The agent may squash-merge a pull request it opened once every required check
+has passed and the branch is mergeable without an override.
+`--admin`, `--merge`, `--rebase`, merging past a pending or failing check, and
+any change to the branch protection rules stay **DENY**.
+Merging does not equal acceptance; acceptance evidence is still recorded and
+still approved by the owner.
 
 ## Karar AP-09 — Release create/publish
 **DENY.**
@@ -166,7 +172,9 @@ Local agents:
 - preferably wrapper verifies branch.
 
 ## Karar AP-15 — `gh` CLI
-**APPROVED DECISION:** read PR/issue + create/update task PR only. No `gh repo edit`, secret, environment, ruleset, release commands.
+**APPROVED DECISION:** read PR/issue, create/update task PR, and squash-merge a
+task PR within the `AP-08` bound (change proposal 0009). No `gh repo edit`,
+secret, environment, ruleset, or release commands, and no `--admin` merge.
 
 ## Karar AP-16 — Docker/containerd/KVM privileges
 Normal agent tasks no privileged host access.
@@ -191,7 +199,7 @@ If used:
 - `dontAsk`/explicit allowlist for headless CI-like task,
 - block `bypassPermissions`,
 - project/managed deny rules,
-- PreToolUse hooks can hard-block merge/release/admin commands.
+- PreToolUse hooks can hard-block release/admin commands and an `--admin` merge.
 
 Claude docs expose deny→ask→allow semantics and hooks that can deny even when permissive modes are requested.
 

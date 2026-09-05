@@ -48,7 +48,12 @@ agent-created issue carries no authority beyond the spec it references.
 Never:
 
 - push directly to `main`;
-- merge or bypass a pull request;
+- bypass branch protection, merge a pull request whose required checks have not
+  passed, or use an administrator override to merge (change proposal 0009
+  permits squash-merging a pull request the agent opened once every required
+  check has passed and the branch is mergeable without an override; merging is
+  not acceptance, and the work package's acceptance evidence is still recorded
+  and still approved by the Product Owner);
 - change repository settings, rulesets, environments, or secrets, except a
   specific change the Product Owner directs in writing, which is recorded in a
   change proposal before or with the change;
