@@ -1,0 +1,101 @@
+name: full
+
+# The complete gate, in one job with no conditions.
+#
+# Runs on every push to `main`, nightly, and on demand. Nothing that used to
+# run per pull request was deleted; it moved here. See change proposal 0007.
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Full validation
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: '1.27.0'
+      - name: Restore pinned Go tools
+        id: gotools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/go/bin
+          key: gotools-${{ runner.os }}-task3.53.1-buf1.72.0
+      - name: Install pinned Go tools
+        if: steps.gotools.outputs.cache-hit != 'true'
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@v3.53.1
+          go install github.com/bufbuild/buf/cmd/buf@v1.72.0
+      - name: Put Go tools on PATH
+        run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Repository policy
+        run: task policy
+      - name: Formatting
+        run: task format:check
+      - name: Contract tooling
+        run: task contracts
+      - name: Go checks and integration
+        run: task go:check
+      - name: Control Plane PostgreSQL integration
+        run: task control-plane:integration
+      - name: Health durability and failure-injection integration
+        run: task health:integration
+      - name: Web checks
+        run: task web:check
+
+      - name: Cache browser engines
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install browser engines
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Web Console real browser onboarding
+        env:
+          GUARDIAN_E2E_ARTIFACT_DIR: ${{ runner.temp }}/guardian-web-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+        run: task web:e2e:run
+      - name: Upload redacted Web Console evidence
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: web-browser-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/guardian-web-evidence-${{ github.run_id }}-${{ github.run_attempt }}/screenshots/*.png
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Container smoke build
+        run: task container:check
+      - name: Cowrie adapter fixture
+        run: bash tools/cowrie-fixture.sh
+      - name: Buf breaking regression tests
+        run: node --test tools/check-buf-breaking.test.mjs
+      - name: Buf breaking signal
+        env:
+          GUARDIAN_BUF_BASE_REF: ${{ github.sha }}
+        run: node tools/check-buf-breaking.mjs

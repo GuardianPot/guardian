@@ -160,11 +160,13 @@ fi
 # manual dispatch prove it in all three. GUARDIAN_E2E_PROJECTS selects which.
 e2e_projects="${GUARDIAN_E2E_PROJECTS:-chromium firefox webkit}"
 project_args=()
+project_count=0
 for project in $e2e_projects; do
   case "$project" in
     chromium|firefox|webkit) project_args+=(--project "$project") ;;
     *) echo "unsupported Playwright project: $project" >&2; exit 1 ;;
   esac
+  project_count=$((project_count + 1))
 done
 if [[ ${#project_args[@]} -eq 0 ]]; then
   echo 'no Playwright project selected' >&2
@@ -178,7 +180,7 @@ if find "$output_dir" -type f \( -name '*.json' -o -name '*.txt' -o -name '*.zip
   exit 1
 fi
 screenshot_count="$(find "$output_dir/screenshots" -type f -name 'onboarding-complete-*.png' | wc -l | tr -d ' ')"
-expected_screenshots=$(( ${#project_args[@]} ))
+expected_screenshots="$project_count"
 if [[ "$screenshot_count" != "$expected_screenshots" ]]; then
   echo "expected $expected_screenshots post-dismissal screenshots, found $screenshot_count" >&2
   exit 1

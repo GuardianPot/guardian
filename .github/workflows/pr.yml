@@ -1,0 +1,79 @@
+name: pr
+
+# Everything a pull request needs, in one job with no conditions.
+#
+# Heavy suites — Go integration, containers, browser end-to-end — live in
+# `full.yml` and run on every push to `main`, nightly, and on demand. The
+# trade is recorded in change proposal 0007.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: PR checks
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: '1.27.0'
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Repository policy
+        run: npm run policy:check
+      - name: Markdown format
+        run: npm run format:check
+      - name: Contract layout
+        run: npm run contracts:check
+      - name: Generated artifact freshness
+        run: npm run generated:check
+      - name: Dependency policy
+        run: npm run dependencies:check
+      - name: Workflow pins
+        run: npm run workflow:check
+      - name: Secret pattern scan
+        run: npm run security:check
+
+      - name: Web Console typecheck
+        run: npm run typecheck -w @guardianpot/web-console
+      - name: Web Console lint
+        run: npm run lint -w @guardianpot/web-console
+      - name: Web Console tests
+        run: npm run test -w @guardianpot/web-console
+      - name: Web Console build
+        run: npm run build -w @guardianpot/web-console
+      - name: Web Console bundle budget
+        run: npm run bundle:check -w @guardianpot/web-console
+
+      # Vet and unit tests only. Integration, race, and privileged suites need
+      # Docker and generation tooling, so they run in `full.yml`.
+      - name: Go vet
+        env:
+          GOWORK: 'off'
+        run: |
+          go -C apps/control-plane vet ./...
+          go -C apps/edge-agent vet ./...
+      - name: Go unit tests
+        env:
+          GOWORK: 'off'
+        run: |
+          go -C apps/control-plane test ./...
+          go -C apps/edge-agent test ./...
+      - name: Go formatting
+        run: node tools/check-gofmt.mjs

@@ -39,57 +39,59 @@ it was slowing development out of proportion to the risk it caught.
 
 ## Recommendation
 
-**Option 2**, with these constraints as part of the approval:
+**Option 3, simplified further than originally proposed.** Path-based job
+selection was tried first and produced three configuration defects in a row: a
+missing `buf`, a duplicated web gate, and a screenshot count that counted
+argument-vector entries instead of engines. Each cost a full round trip. The
+selection machinery was more error-prone than the coverage it bought, so it is
+gone.
 
-1. The fast gate is unconditional on every pull request: repository policy,
-   Markdown format, contract layout, generated-artifact freshness, dependency
-   policy, workflow SHA pins, and the secret scan.
-2. Area selection is computed from the diff by `.github/scripts/changed-areas.sh`
-   using `git diff` only, so no new third-party action is introduced and
-   `CI-03` is unaffected.
-3. Selection fails safe where it matters. A change to `.github/workflows/`
-   or `.github/scripts/` runs every area, because those decide what runs at
-   all, as does an unavailable base commit. Node manifests select only the
-   areas that consume them, so a console change that also edits
-   `Taskfile.yml` no longer drags in the Go and container suites.
-4. Nothing is deleted. A push to `main`, the nightly schedule, and manual
-   dispatch all set `FULL=true`, which runs every job regardless of paths and
-   restores the three-engine browser matrix.
-5. A pull request that touches the console runs the browser flow in Chromium
-   only. `CI-18` keeps Playwright E2E required; this narrows the per-pull-request
-   engine matrix, not the requirement.
-6. Caches cover the pinned Go tools and the Playwright engines, under `CI-07`.
+Two workflows, one job each, no conditions and no scripts:
+
+1. `pr.yml` runs on every pull request: repository policy, Markdown format,
+   contract layout, generated-artifact freshness, dependency policy, workflow
+   SHA pins, the secret scan, the full Web Console gate, and Go vet, unit
+   tests, and formatting. No Docker, no browser engines, no generation
+   tooling.
+2. `full.yml` runs on every push to `main`, nightly at 03:00 UTC, and on
+   manual dispatch. It is the complete previous gate: Go checks with the
+   integration and race suites, both PostgreSQL integrations, contract
+   tooling, the container smoke build, the Cowrie fixture, buf breaking
+   checks, and the three-engine browser flow.
+
+Nothing was deleted. Every check that ran before still runs; the heavy half
+moved from pre-merge to post-merge and nightly.
 
 ## Impact
 
 - **Product scope:** none.
 - **Architecture:** none.
 - **Contracts and data:** none.
-- **Security and trust boundary:** the secret scan, repository policy, workflow
-  pin check, and dependency policy remain unconditional on every pull request,
-  so no security gate is weakened for any change. Hostile-rendering and
-  session tests live in the web job, which runs whenever console code changes.
-- **Operations and release:** required-check names change, so the branch
-  protection required-check list must be updated by the owner. Under `CI-26`
-  that list is owner-controlled and cannot be set by an agent.
+- **Security and trust boundary:** every static and policy gate stays on the
+  pull request: secret scan, repository policy, dependency policy, workflow
+  SHA pins, and the full Web Console suite, which carries the hostile-content
+  and session-lifetime tests. The release blockers that need a browser or a
+  container run on main and nightly.
+- **Operations and release:** the required check is now a single name,
+  `PR checks`. The branch protection list must be updated by the owner; under
+  `CI-26` an agent cannot set it.
 
 ## Rollout and failure behavior
 
-The workflow replaces the previous single job in one commit. Reverting is a
-single file revert plus deleting the selection script.
+`quality.yml` and the selection script are deleted and replaced by `pr.yml`
+and `full.yml`. Reverting is restoring one file from git history.
 
-**The accepted risk, stated plainly:** a regression in Go, container, contract,
-or cross-engine browser behaviour introduced by a pull request that does not
-touch those paths is no longer caught before merge. It is caught on the push to
-`main` or by the nightly sweep, so the exposure window is at most one day and
-the offending commit is already on `main` when it is found. Options 1 and 3 sit
-either side of that trade; option 2 was chosen because the paths are
-well-separated in this repository and the fail-safe in constraint 3 covers the
-cases where they are not.
+**The accepted risk, stated plainly:** a regression in Go integration,
+container, contract, or browser behaviour is no longer caught before merge on
+any pull request. It surfaces on the push to `main` or in the nightly sweep,
+so the exposure window is at most one day and the offending commit is already
+on `main` when it is found. Go vet, Go unit tests, and the whole Web Console
+suite still run pre-merge, so compile errors, unit regressions, and
+hostile-content failures are caught as before.
 
-If cross-path regressions turn out to reach `main` in practice, the correction
-is to widen the selection patterns in the script, not to restore the single
-job.
+If regressions start reaching `main` in practice, the correction is to move a
+specific suite back into `pr.yml`, one step at a time, rather than restoring
+path-based selection.
 
 ## Owner decision record
 

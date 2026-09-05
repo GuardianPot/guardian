@@ -252,30 +252,24 @@ One transport, one error taxonomy, per-feature API modules.
 `WCX-07` replaces the per-query `refetchInterval` values with the central
 freshness policy; `WCX-08` moves `messageKey` text into the operator catalogue.
 
-## Continuous integration scope
+## Continuous integration
 
-Change proposal `0007` split the single `quality` job into selective jobs.
+Two workflows, one job each, no conditions (change proposal `0007`).
 
-| Job | When it runs |
-|---|---|
-| Fast gate | every pull request and push, unconditionally |
-| Web Console | the diff touches `apps/web-console/`, `tests/e2e/web-console/`, or `openapi/` |
-| Go and integration | the diff touches Control Plane, Edge Agent, `pkg/`, or an integration suite |
-| Contracts and container | the diff touches `proto/`, `openapi/`, `schemas/`, buf config, `deploy/`, `decoys/`, or a Dockerfile |
-| Browser E2E | with the Web Console job; Chromium only on a pull request |
+| Workflow | Trigger | Contents |
+|---|---|---|
+| `pr.yml` | every pull request | repository policy, Markdown format, contract layout, generated freshness, dependency policy, workflow SHA pins, secret scan, the full Web Console gate, and Go vet, unit tests, and formatting |
+| `full.yml` | push to `main`, nightly 03:00 UTC, manual dispatch | everything above plus Go integration and race suites, both PostgreSQL integrations, contract tooling, container smoke build, Cowrie fixture, buf breaking checks, and the three-engine browser flow |
 
-Every job runs regardless of paths on a push to `main`, on the nightly
-schedule, and on manual dispatch, which is also when the browser flow runs in
-all three engines. Selection is computed by `.github/scripts/changed-areas.sh`
-from `git diff` alone. Only a change under `.github/workflows/` or
-`.github/scripts/` forces every area, because those decide what runs at all.
-Node manifests select the areas that consume them, so editing `Taskfile.yml`
-alongside console work does not drag in the Go and container suites.
+A pull request runs no Docker, no browser engines, and no generation tooling,
+so it needs neither `task` nor `buf`. The heavy half moved to post-merge and
+nightly; nothing was deleted.
 
 Run the browser flow locally against a subset with `GUARDIAN_E2E_PROJECTS`:
 
 ```text
-GUARDIAN_E2E_PROJECTS=chromium task web:e2e
+GUARDIAN_E2E_PROJECTS=chromium task web:e2e:run
 ```
 
-The runner asserts one post-dismissal screenshot per selected engine.
+`task web:e2e` runs the full web gate first; `task web:e2e:run` runs only the
+flow. The runner asserts one post-dismissal screenshot per selected engine.
