@@ -18,7 +18,7 @@
   --surface-raised: var(--color-neutral-200);
   --surface-sunken: var(--color-neutral-100);
   --surface-inset: var(--color-neutral-0);
-  --surface-overlay: rgb(2 14 17 / 78%);
+  --surface-overlay: color-mix(in srgb, var(--color-neutral-0) 78%, transparent);
   --surface-chip: var(--color-neutral-300);
   --surface-control: var(--color-neutral-300);
 
@@ -43,9 +43,9 @@
   --health-true: var(--color-green-300);
   --health-false: var(--color-red-400);
   --health-unknown: var(--color-slate-400);
-  --health-true-surface: rgb(124 242 189 / 12%);
-  --health-false-surface: rgb(255 131 124 / 12%);
-  --health-unknown-surface: rgb(168 181 194 / 12%);
+  --health-true-surface: color-mix(in srgb, var(--color-green-300) 12%, transparent);
+  --health-false-surface: color-mix(in srgb, var(--color-red-400) 12%, transparent);
+  --health-unknown-surface: color-mix(in srgb, var(--color-slate-400) 12%, transparent);
 
   /* Severity. Ordered; confidence is never expressed with these. */
   --severity-informational: var(--color-sev-1);
@@ -53,11 +53,11 @@
   --severity-medium: var(--color-sev-3);
   --severity-high: var(--color-sev-4);
   --severity-critical: var(--color-sev-5);
-  --severity-informational-surface: rgb(147 164 181 / 12%);
-  --severity-low-surface: rgb(207 196 120 / 12%);
-  --severity-medium-surface: rgb(240 164 79 / 12%);
-  --severity-high-surface: rgb(242 115 74 / 12%);
-  --severity-critical-surface: rgb(242 112 138 / 12%);
+  --severity-informational-surface: color-mix(in srgb, var(--color-sev-1) 12%, transparent);
+  --severity-low-surface: color-mix(in srgb, var(--color-sev-2) 12%, transparent);
+  --severity-medium-surface: color-mix(in srgb, var(--color-sev-3) 12%, transparent);
+  --severity-high-surface: color-mix(in srgb, var(--color-sev-4) 12%, transparent);
+  --severity-critical-surface: color-mix(in srgb, var(--color-sev-5) 12%, transparent);
 
   /* Configuration completeness. Neutral by design. */
   --config-complete: var(--color-neutral-1000);
@@ -90,10 +90,10 @@
 
   /* Notice surfaces. */
   --notice-accent: var(--color-azure-300);
-  --notice-surface: rgb(74 168 232 / 10%);
+  --notice-surface: color-mix(in srgb, var(--color-azure-500) 10%, transparent);
   --reauth-surface: var(--color-sev-3);
   --reauth-text: var(--color-neutral-0);
-  --secret-line: rgb(240 164 79 / 35%);
+  --secret-line: color-mix(in srgb, var(--color-sev-3) 35%, transparent);
   --secret-label: var(--color-sev-3);
 
   /* Spacing and shape. */

@@ -32,7 +32,13 @@
 .panel > p:not(.eyebrow):not(.state):not(.empty):not(.blocking):not(.timestamp) { color: var(--text-muted); line-height: var(--line-height-normal); }
 .panelHeading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-6); margin-bottom: var(--space-6); }
 .panelHeading h2 { margin-bottom: 0; }
-.panelHeading > span { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/*
+ * A count, not a status. Deliberately a class rather than `.panelHeading >
+ * span`: a child selector outranks a single tone class, so the descendant
+ * form silently repainted every status badge in a panel heading with
+ * --text-muted and dropped its contrast to 4.22 (WCX-03 follow-up).
+ */
+.panelCount { color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .cardList, .deviceList, .zoneList, .conditionGrid { list-style: none; margin: 0; padding: 0; }
 .cardList li + li, .deviceList li + li, .zoneList li + li { border-top: 1px solid var(--line-subtle); }
 .environmentCard, .deviceList a { display: flex; justify-content: space-between; align-items: center; gap: var(--space-6); padding: var(--space-6) var(--space-1); text-decoration: none; }
@@ -47,20 +53,27 @@
  * inventory is not health and configuration completeness is not protection.
  */
 .statusBadge { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-radius: var(--radius-pill); font-size: var(--font-size-1); font-weight: var(--weight-heavy); white-space: nowrap; }
-.healthTrue { color: var(--health-true); background: var(--health-true-surface); }
-.healthFalse { color: var(--health-false); background: var(--health-false-surface); }
-.healthUnknown { color: var(--health-unknown); background: var(--health-unknown-surface); }
-.severityInformational { color: var(--severity-informational); background: var(--severity-informational-surface); }
-.severityLow { color: var(--severity-low); background: var(--severity-low-surface); }
-.severityMedium { color: var(--severity-medium); background: var(--severity-medium-surface); }
-.severityHigh { color: var(--severity-high); background: var(--severity-high-surface); }
-.severityCritical { color: var(--severity-critical); background: var(--severity-critical-surface); }
-.configComplete { color: var(--config-complete); background: var(--config-complete-surface); }
-.configPending { color: var(--config-pending); background: var(--config-pending-surface); }
-.devicePending { color: var(--device-pending); background: var(--device-pending-surface); }
-.deviceActive { color: var(--device-active); background: var(--device-active-surface); }
-.deviceDisabled { color: var(--device-disabled); background: var(--device-disabled-surface); }
-.deviceRevoked { color: var(--device-revoked); background: var(--device-revoked-surface); }
+/*
+ * Tone rules are compound on purpose. A single class is specificity 0,1,0,
+ * which loses to any `.container element` rule (0,1,1) that sets a colour —
+ * exactly how `.panelHeading > span` repainted the health badge in WCX-03.
+ * Pairing the tone with the element class it may appear on makes it 0,2,0,
+ * so no container rule can silently take a status colour away.
+ */
+.statusBadge.healthTrue, .conditionDot.healthTrue { color: var(--health-true); background: var(--health-true-surface); }
+.statusBadge.healthFalse, .conditionDot.healthFalse { color: var(--health-false); background: var(--health-false-surface); }
+.statusBadge.healthUnknown, .conditionDot.healthUnknown { color: var(--health-unknown); background: var(--health-unknown-surface); }
+.statusBadge.severityInformational { color: var(--severity-informational); background: var(--severity-informational-surface); }
+.statusBadge.severityLow { color: var(--severity-low); background: var(--severity-low-surface); }
+.statusBadge.severityMedium { color: var(--severity-medium); background: var(--severity-medium-surface); }
+.statusBadge.severityHigh { color: var(--severity-high); background: var(--severity-high-surface); }
+.statusBadge.severityCritical { color: var(--severity-critical); background: var(--severity-critical-surface); }
+.statusBadge.configComplete { color: var(--config-complete); background: var(--config-complete-surface); }
+.statusBadge.configPending { color: var(--config-pending); background: var(--config-pending-surface); }
+.statusBadge.devicePending { color: var(--device-pending); background: var(--device-pending-surface); }
+.statusBadge.deviceActive { color: var(--device-active); background: var(--device-active-surface); }
+.statusBadge.deviceDisabled { color: var(--device-disabled); background: var(--device-disabled-surface); }
+.statusBadge.deviceRevoked { color: var(--device-revoked); background: var(--device-revoked-surface); }
 .statusGlyph { width: var(--size-dot); height: var(--size-dot); flex: none; fill: currentcolor; }
 
 .form { display: grid; gap: var(--space-5); margin-top: var(--space-7); }
