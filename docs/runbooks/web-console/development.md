@@ -292,16 +292,42 @@ it is never coloured like severity.
 Motion is capped at `--motion-standard` (200 ms) and never encodes status.
 `prefers-reduced-motion: reduce` collapses every duration to `--motion-none`.
 
+Two rules exist because both were broken once, in the same defect:
+
+- **Every tint is derived, never copied.** A translucent surface is
+  `color-mix(in srgb, var(--color-x) 12%, transparent)`, not a hand-written
+  `rgb()` with the same numbers. The copies drifted the moment a primitive
+  changed, and a badge then composited its foreground over a background from
+  an older palette.
+- **Tone rules are compound**: `.statusBadge.healthTrue`, never `.healthTrue`.
+  A single class is specificity 0,1,0 and loses to any `.container element`
+  rule that sets a colour. `.panelHeading > span { color: var(--text-muted) }`
+  won that way and repainted the health badge grey, dropping it to 4.22.
+
+Contrast is asserted against **what the browser paints**, not what the token
+holds. A badge composites its tone at 12% over the panel beneath it; measuring
+the tone against the bare panel token reports a contrast no operator sees.
+Severity high and critical measured 4.96 and 5.05 that way and were really
+4.30 and 4.34.
+
+The unit table is necessary and not sufficient: it cannot see which rule
+actually wins the cascade. The axe scan in the browser flow is the authority,
+and it runs in `full.yml`, not on a pull request. A change to tokens or to
+badge CSS should be dispatched against `full.yml` on its branch before merge.
+
 CSS size, measured minified per file (`WCX-03` section 9.10 asks for before
 and after):
 
 | File | Before | After |
 |---|---:|---:|
 | `theme/primitives.css` | — | 1541 |
-| `theme/semantic.css` | — | 3199 |
+| `theme/semantic.css` | — | 3588 |
 | `styles/global.css` | 1094 | 1090 |
-| `styles/app.module.css` | 8465 | 10373 |
-| **bundle** | **10952** | **18461** |
+| `styles/app.module.css` | 8465 | 10412 |
+| **bundle** | **10952** | **19500** |
+
+The bundle exceeds the sum of its parts because CSS Modules rewrites each class
+to a hashed name, and the compound tone selectors carry two of them.
 
 The package estimated roughly 3 KiB and expected removing duplicated literals
 to offset most of it. That was wrong in both directions and the real number is

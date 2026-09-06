@@ -102,7 +102,7 @@ export function EnvironmentPage() {
       {message && <p className={styles.notice} role="status">{message}</p>}
       <div className={styles.twoColumn}>
         <section className={styles.panel} aria-labelledby="inventory-heading">
-          <div className={styles.panelHeading}><div><p className={styles.eyebrow}>Inventory truth</p><h2 id="inventory-heading">Edge devices</h2></div><span>{devices.data?.length ?? 0}</span></div>
+          <div className={styles.panelHeading}><div><p className={styles.eyebrow}>Inventory truth</p><h2 id="inventory-heading">Edge devices</h2></div><span className={styles.panelCount}>{devices.data?.length ?? 0}</span></div>
           {devices.isPending && <LoadingState />}
           {devices.isError && <ErrorState>Device inventory could not be loaded.</ErrorState>}
           {devices.data?.length === 0 && <EmptyState>No device records yet. Create an enrollment secret to begin.</EmptyState>}
@@ -134,7 +134,7 @@ export function EnvironmentPage() {
       )}
       <div className={styles.twoColumn}>
         <section className={styles.panel} aria-labelledby="zones-heading">
-          <div className={styles.panelHeading}><h2 id="zones-heading">Private network zones</h2><span>{zones.data?.length ?? 0}</span></div>
+          <div className={styles.panelHeading}><h2 id="zones-heading">Private network zones</h2><span className={styles.panelCount}>{zones.data?.length ?? 0}</span></div>
           {zones.isPending && <LoadingState />}{zones.isError && <ErrorState />}
           {zones.data?.length === 0 && <EmptyState>No zones defined.</EmptyState>}
           <ul className={styles.zoneList}>{zones.data?.map((zone) => <li key={zone.zone_id}><span><strong>{zone.display_name}</strong><small>Updated {formatTime(zone.updated_at)}</small></span><code>{zone.cidr}</code></li>)}</ul>

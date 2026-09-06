@@ -8,10 +8,12 @@ import {
   SEVERITY_COLOURS,
   contrastRatio,
 } from './tokens';
+import { ENCODING_TABLES } from './statusEncoding';
 
 // jsdom does not give import.meta.url a file scheme; vitest runs from the workspace root.
 const primitivesCss = readFileSync('src/shared/theme/primitives.css', 'utf8');
 const semanticCss = readFileSync('src/shared/theme/semantic.css', 'utf8');
+const appCss = readFileSync('src/shared/styles/app.module.css', 'utf8');
 
 describe('design tokens', () => {
   it('meets the WCAG 2.2 threshold for every pairing that can occur', () => {
@@ -89,6 +91,51 @@ describe('design tokens', () => {
     expect(semanticNames.length).toBeGreaterThan(40);
     for (const name of semanticNames) {
       expect(name.trim()).not.toMatch(/^--color-/);
+    }
+  });
+
+  it('never writes a colour value the semantic layer cannot re-theme', () => {
+    // The translucent tints were hand-written rgb() copies of the primitives.
+    // Changing a primitive left the tint behind, so a badge could composite a
+    // foreground over a background from an older generation of the palette.
+    // Every value here is now either a primitive reference or a mix of one.
+    const values = [...semanticCss.matchAll(/^\s*--[a-z0-9-]+:\s*([^;]+);/gm)].map(
+      (match) => match[1]!.trim(),
+    );
+    expect(values.length).toBeGreaterThan(40);
+    for (const value of values) {
+      if (/^var\(--[a-z0-9-]+\)$/.test(value)) continue;
+      if (/^color-mix\(in srgb, var\(--color-[a-z0-9-]+\) \d+%, transparent\)$/.test(value)) continue;
+      // Unitless scalars carry no colour and cannot drift out of the palette.
+      expect(value, `${value} is neither a primitive reference nor a mix of one`).toMatch(
+        /^[\d.]+$/,
+      );
+    }
+  });
+
+  it('gives every tone rule enough specificity to survive a container rule', () => {
+    // A single tone class is 0,1,0 and loses to any `.container element` rule
+    // that sets a colour. That is precisely how `.panelHeading > span` repainted
+    // the health badge with --text-muted and dropped it to 4.22 — a failure the
+    // token table could not see, because it never looked at a rendered element.
+    const tones = new Set(
+      Object.values(ENCODING_TABLES).flatMap((table) =>
+        Object.values(table).map((encoding) => encoding.tone),
+      ),
+    );
+    expect(tones.size).toBeGreaterThan(0);
+
+    const selectors = [...appCss.matchAll(/^([^{}\n]+)\{[^}]*color:/gm)]
+      .flatMap((match) => match[1]!.split(','))
+      .map((selector) => selector.trim())
+      .filter((selector) => [...tones].some((tone) => selector.includes(`.${tone}`)));
+    expect(selectors.length).toBe(tones.size + Object.keys(ENCODING_TABLES.HEALTH).length);
+
+    for (const selector of selectors) {
+      // Two classes, no combinator: 0,2,0 beats every `.container element` rule.
+      expect(selector, `${selector} must pair the tone with the element class it paints`).toMatch(
+        /^\.[A-Za-z][\w-]*\.[A-Za-z][\w-]*$/,
+      );
     }
   });
 

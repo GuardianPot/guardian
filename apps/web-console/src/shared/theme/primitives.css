@@ -30,11 +30,11 @@
   --color-slate-400: #a8b5c2;
 
   /* Severity. One ordered ramp so the five steps are perceivably sequenced. */
-  --color-sev-1: #93a4b5;
+  --color-sev-1: #9cabbb;
   --color-sev-2: #cfc478;
   --color-sev-3: #f0a44f;
-  --color-sev-4: #f2734a;
-  --color-sev-5: #f2708a;
+  --color-sev-4: #f4855f;
+  --color-sev-5: #f48098;
 
   /* Space. */
   --space-1: 0.25rem;

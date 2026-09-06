@@ -40,7 +40,7 @@ export function EnvironmentsPage() {
       </header>
       <div className={styles.twoColumn}>
         <section className={styles.panel} aria-labelledby="environment-list-heading">
-          <div className={styles.panelHeading}><h2 id="environment-list-heading">Configured environments</h2><span>{environments.data?.length ?? 0} total</span></div>
+          <div className={styles.panelHeading}><h2 id="environment-list-heading">Configured environments</h2><span className={styles.panelCount}>{environments.data?.length ?? 0} total</span></div>
           {environments.isPending && <LoadingState />}
           {environments.isError && <ErrorState />}
           {environments.data?.length === 0 && <EmptyState>No environments yet. Create the first isolated scope.</EmptyState>}

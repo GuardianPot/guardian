@@ -25,11 +25,11 @@ export const PRIMITIVE = {
   green500: '#32d38b',
   red400: '#ff837c',
   slate400: '#a8b5c2',
-  sev1: '#93a4b5',
+  sev1: '#9cabbb',
   sev2: '#cfc478',
   sev3: '#f0a44f',
-  sev4: '#f2734a',
-  sev5: '#f2708a',
+  sev4: '#f4855f',
+  sev5: '#f48098',
 } as const;
 
 /** Groups whose colours must never collide. */
@@ -49,10 +49,41 @@ export const SEVERITY_COLOURS = {
   critical: PRIMITIVE.sev5,
 } as const;
 
+/** Alpha of the tone tints in `semantic.css`. */
+export const TINT_ALPHA = 0.12;
+
+/**
+ * Composite a translucent colour over an opaque one, the way the browser
+ * paints it.
+ *
+ * A status badge paints `--<tone>-surface` — the tone at 12% — over the panel
+ * it sits on. Measuring the tone against the bare panel token, as this table
+ * first did, measures a background that is never painted and reports a
+ * contrast the operator never sees. Measured against the bare panel, severity
+ * high and critical reported 4.96 and 5.05; composited over their own 12%
+ * tint they were 4.30 and 4.34, both below the 4.5 threshold. Their primitives
+ * were lightened until the composited figure cleared it.
+ */
+export function composite(colour: string, alpha: number, over: string): string {
+  const parse = (hex: string) => [1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16));
+  const [red, green, blue] = parse(colour);
+  const [baseRed, baseGreen, baseBlue] = parse(over);
+  const mix = (top: number, bottom: number) => Math.round(alpha * top + (1 - alpha) * bottom);
+  return `#${[mix(red!, baseRed!), mix(green!, baseGreen!), mix(blue!, baseBlue!)]
+    .map((value) => value.toString(16).padStart(2, '0'))
+    .join('')}`;
+}
+
+/** The painted background of a tone badge sitting on `surface`. */
+const badge = (tone: string, surface: string): string => composite(tone, TINT_ALPHA, surface);
+
 /**
  * Foreground and background pairs that can actually occur, with the WCAG 2.2
  * threshold each must meet. Text is 4.5; a non-text indicator or a large
  * heading is 3.
+ *
+ * Every background here is what the browser paints, not what the token
+ * nominally holds. `WCX-03` shipped the difference as a real axe failure.
  */
 export const CONTRAST_PAIRS: readonly {
   name: string;
@@ -73,14 +104,23 @@ export const CONTRAST_PAIRS: readonly {
   { name: 'secondary action label', foreground: PRIMITIVE.neutral1000, background: PRIMITIVE.neutral300, minimum: 4.5 },
   { name: 'focus ring on page', foreground: PRIMITIVE.azure300, background: PRIMITIVE.neutral50, minimum: 3 },
   { name: 'focus ring on raised surface', foreground: PRIMITIVE.azure300, background: PRIMITIVE.neutral200, minimum: 3 },
-  { name: 'health true on raised surface', foreground: PRIMITIVE.green300, background: PRIMITIVE.neutral200, minimum: 4.5 },
-  { name: 'health false on raised surface', foreground: PRIMITIVE.red400, background: PRIMITIVE.neutral200, minimum: 4.5 },
-  { name: 'health unknown on raised surface', foreground: PRIMITIVE.slate400, background: PRIMITIVE.neutral200, minimum: 4.5 },
-  { name: 'severity informational on raised surface', foreground: PRIMITIVE.sev1, background: PRIMITIVE.neutral200, minimum: 4.5 },
-  { name: 'severity low on raised surface', foreground: PRIMITIVE.sev2, background: PRIMITIVE.neutral200, minimum: 4.5 },
-  { name: 'severity medium on raised surface', foreground: PRIMITIVE.sev3, background: PRIMITIVE.neutral200, minimum: 4.5 },
-  { name: 'severity high on raised surface', foreground: PRIMITIVE.sev4, background: PRIMITIVE.neutral200, minimum: 4.5 },
-  { name: 'severity critical on raised surface', foreground: PRIMITIVE.sev5, background: PRIMITIVE.neutral200, minimum: 4.5 },
+  { name: 'health true badge on raised surface', foreground: PRIMITIVE.green300, background: badge(PRIMITIVE.green300, PRIMITIVE.neutral200), minimum: 4.5 },
+  { name: 'health false badge on raised surface', foreground: PRIMITIVE.red400, background: badge(PRIMITIVE.red400, PRIMITIVE.neutral200), minimum: 4.5 },
+  { name: 'health unknown badge on raised surface', foreground: PRIMITIVE.slate400, background: badge(PRIMITIVE.slate400, PRIMITIVE.neutral200), minimum: 4.5 },
+  { name: 'severity informational badge', foreground: PRIMITIVE.sev1, background: badge(PRIMITIVE.sev1, PRIMITIVE.neutral200), minimum: 4.5 },
+  { name: 'severity low badge', foreground: PRIMITIVE.sev2, background: badge(PRIMITIVE.sev2, PRIMITIVE.neutral200), minimum: 4.5 },
+  { name: 'severity medium badge', foreground: PRIMITIVE.sev3, background: badge(PRIMITIVE.sev3, PRIMITIVE.neutral200), minimum: 4.5 },
+  { name: 'severity high badge', foreground: PRIMITIVE.sev4, background: badge(PRIMITIVE.sev4, PRIMITIVE.neutral200), minimum: 4.5 },
+  { name: 'severity critical badge', foreground: PRIMITIVE.sev5, background: badge(PRIMITIVE.sev5, PRIMITIVE.neutral200), minimum: 4.5 },
+  { name: 'health true badge on sunken surface', foreground: PRIMITIVE.green300, background: badge(PRIMITIVE.green300, PRIMITIVE.neutral100), minimum: 4.5 },
+  { name: 'health false badge on sunken surface', foreground: PRIMITIVE.red400, background: badge(PRIMITIVE.red400, PRIMITIVE.neutral100), minimum: 4.5 },
+  { name: 'health unknown badge on sunken surface', foreground: PRIMITIVE.slate400, background: badge(PRIMITIVE.slate400, PRIMITIVE.neutral100), minimum: 4.5 },
+  // Error text and the blocking banner paint the health-false tone as plain
+  // text, with no tint behind it, so they need their own pairs.
+  { name: 'error text on raised surface', foreground: PRIMITIVE.red400, background: PRIMITIVE.neutral200, minimum: 4.5 },
+  { name: 'error text on page', foreground: PRIMITIVE.red400, background: PRIMITIVE.neutral50, minimum: 4.5 },
+  { name: 'notice accent on notice surface', foreground: PRIMITIVE.azure300, background: composite(PRIMITIVE.azure500, 0.1, PRIMITIVE.neutral200), minimum: 4.5 },
+  { name: 'secret label on page', foreground: PRIMITIVE.sev3, background: PRIMITIVE.neutral50, minimum: 4.5 },
   { name: 'config complete label', foreground: PRIMITIVE.neutral1000, background: PRIMITIVE.neutral300, minimum: 4.5 },
   { name: 'config pending label', foreground: PRIMITIVE.neutral900, background: PRIMITIVE.neutral500, minimum: 4.5 },
   { name: 'device pending label', foreground: PRIMITIVE.neutral900, background: PRIMITIVE.neutral400, minimum: 4.5 },
