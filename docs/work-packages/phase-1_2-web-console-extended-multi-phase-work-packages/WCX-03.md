@@ -329,17 +329,7 @@ not the palette, is corrected in `WCX-06`.
 6. `task web:check` and `task web:e2e` pass; CSS stays within 32 KiB.
 7. Apart from the brand accent hue, no visual regression is introduced.
 
-## 12. Evidence required
-
-- Contrast test report listing every pairing and its ratio.
-- Before and after screenshots of the environment and device routes, with any
-  enrollment secret dismissed first.
-- CSS bundle size before and after.
-- The list of any computed value that changed to satisfy contrast, with its
-  justification.
-- Lint output showing a colour-literal violation failing.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -351,7 +341,7 @@ Stop and request owner review if any of the following occurs:
 - the CSS budget cannot be met;
 - a token change would alter layout rather than only colour.
 
-## 14. Deliverables
+## 13. Deliverables
 
 Primitive and semantic token files, the disjoint palette, the status glyph
 set, the severity, confidence, health, and device-state encoding contract, the

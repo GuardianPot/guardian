@@ -368,18 +368,7 @@ rule, and the diagnostics request flow. Record
 7. `task web:check` and `task web:e2e` pass within budget.
 8. The security review is recorded.
 
-## 12. Evidence required
-
-- `AC-UP-001` through `AC-UP-004` browser evidence in all three engines.
-- Failed-health-check and rollback evidence showing both facts reported.
-- Unsigned-artefact evidence showing no path to proceed.
-- Loss-state evidence with count and time range on the health surface.
-- AI provider outage evidence with incidents unaffected.
-- Diagnostics request evidence with no content rendering.
-- Axe reports and viewport screenshots.
-- `security/wcx-19-update-diagnostics-review.md`.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -396,7 +385,7 @@ Stop and request owner review if any of the following occurs:
 - the diagnostics contract requires the console to assemble or redact any part
   of the bundle.
 
-## 14. Deliverables
+## 13. Deliverables
 
 Edge update and rollback controls with staged progress and truthful failure
 reporting, decoy pack update by verified digest, the complete `UX-07` health

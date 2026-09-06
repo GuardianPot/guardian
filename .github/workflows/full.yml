@@ -1,14 +1,13 @@
 name: full
 
-# The complete gate, in one job with no conditions.
+# The complete gate, in one job with no conditions: integration suites,
+# containers, and the real-browser end-to-end path.
 #
-# Runs on every push to `main`, nightly, and on demand. Nothing that used to
-# run per pull request was deleted; it moved here. See change proposal 0007.
+# Runs nightly and on demand, not per commit — a full run takes long enough
+# that waiting on it per change is the thing this repository stopped doing.
+# Run it locally with `task validate` before anything that matters.
 
 on:
-  push:
-    branches:
-      - main
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:

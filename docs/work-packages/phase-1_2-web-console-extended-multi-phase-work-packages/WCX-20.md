@@ -299,17 +299,7 @@ are taken only after explicit dismissal.
 7. `task web:check` and `task web:e2e` pass within budget.
 8. The security review is recorded.
 
-## 12. Evidence required
-
-- Browser evidence of the full workflow in all three engines, with the secret
-  dismissed before any capture.
-- Storage, cache, and artefact scans proving the secret does not persist.
-- Source-level proof that no re-reveal path exists.
-- Trigger evidence linking credential use to the resulting incident evidence.
-- Axe reports and viewport screenshots.
-- `security/wcx-20-honey-credential-review.md`.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -323,7 +313,7 @@ Stop and request owner review if any of the following occurs:
 - an operator workflow appears to require automated placement, which `DC-09`
   excludes.
 
-## 14. Deliverables
+## 13. Deliverables
 
 The credential list with non-secret metadata, creation with decoy association
 and one-time reveal under the established secret rules, the manual placement

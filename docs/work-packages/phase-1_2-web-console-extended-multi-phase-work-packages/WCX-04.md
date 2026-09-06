@@ -332,18 +332,7 @@ scan.
 6. `radix-ui` replaces the two individual Radix packages.
 7. `task web:check` and `task web:e2e` pass within budget.
 
-## 12. Evidence required
-
-- State-matrix test report covering all eight states and every mapping row.
-- Error-boundary evidence showing a caught failure with navigation intact and
-  no exception text in the DOM.
-- Screenshots of each state for one representative surface, with any secret
-  dismissed first.
-- Storage-empty assertion output.
-- Hostile-string component test output.
-- Bundle size and dependency-count change from the Radix consolidation.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -355,7 +344,7 @@ Stop and request owner review if any of the following occurs:
 - the confirmation levels require a backend capability that does not exist;
 - the bundle or CSS budget cannot be met.
 
-## 14. Deliverables
+## 13. Deliverables
 
 The eight data-state components with `DataBoundary`, root and route error
 boundaries, the three confirmation levels with their action mapping, the three

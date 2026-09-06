@@ -51,19 +51,18 @@ the Step 2–6 source documents.
 
 ## Project ADRs
 
-Records created by this project rather than imported from Step 4. They follow
-the `Proposed → Accepted → Superseded` lifecycle above; only `@sinanganiz` can
-move one to `Accepted`.
+Records created by this project rather than imported from Step 4. This is where
+new decisions go: write a short ADR when a choice is worth remembering, and
+mark it `Accepted` when you have made the call.
 
 | ADR | Decision | Status |
 |---|---|---|
 | [0018](0018-web-console-frontend-architecture.md) | Web Console frontend architecture | Accepted |
 
-## Change proposals
+## Change proposals (historical)
 
-Material changes use the versioned templates in
-[`docs/change-proposals/`](../change-proposals/). An agent may draft a
-proposal, but only `@sinanganiz` can accept it.
+[`docs/change-proposals/`](../change-proposals/) is a closed record of past
+decisions. The proposal process is retired; new decisions are ADRs.
 
 | Proposal | Subject | Status |
 |---|---|---|
@@ -75,3 +74,4 @@ proposal, but only `@sinanganiz` can accept it.
 | [0006](../change-proposals/0006-retention-configuration-ownership.md) | Retention configuration backend ownership | APPROVED |
 | [0007](../change-proposals/0007-pull-request-ci-scope.md) | Pull-request CI scope | APPROVED |
 | [0008](../change-proposals/0008-lightweight-delivery-process.md) | Lightweight delivery process | APPROVED |
+| [0009](../change-proposals/0009-agent-merge-authority.md) | Agent merge authority | SUPERSEDED by direct-to-`main` delivery |

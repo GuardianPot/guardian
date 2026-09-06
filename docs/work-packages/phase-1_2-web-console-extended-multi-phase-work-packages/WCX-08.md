@@ -304,17 +304,7 @@ here, stop and escalate because `tests/**` is forbidden.
 6. Every wording change is listed in the evidence.
 7. `task web:check` and `task web:e2e` pass; the catalogue stays under 12 KiB.
 
-## 12. Evidence required
-
-- A table of every extracted string: old inline text, new key, and whether the
-  wording changed and why.
-- Lint output for the literal-text fixture and the typecheck fixtures.
-- Screenshots showing timestamps with timezone, and one showing the degraded
-  clock-quality marker.
-- Catalogue size measurement.
-- Secret-shaped-string scan output.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -327,7 +317,7 @@ Stop and request owner review if any of the following occurs:
 - degraded clock quality cannot be associated with a timestamp because the
   health projection does not expose the needed linkage.
 
-## 14. Deliverables
+## 13. Deliverables
 
 The typed text catalogue with namespaces and the literal-text lint rule, the
 recorded wording rules, the `Timestamp` component with full precision, UTC

@@ -6,8 +6,39 @@ vars:
 
 tasks:
   default:
-    desc: Run the complete local validation gate
-    deps: [validate]
+    desc: Run the fast pre-commit lane
+    deps: [check]
+
+  check:
+    desc: The fast pre-commit lane. Mirrors the `checks` workflow exactly.
+    env:
+      GOWORK: 'off'
+    cmds:
+      - node tools/check-gofmt.mjs
+      - npm run format:check
+      - npm run contracts:check
+      - npm run generated:check
+      - npm run dependencies:check
+      - npm run workflow:check
+      - npm run security:check
+      - npm run typecheck -w @guardianpot/web-console
+      - npm run lint -w @guardianpot/web-console
+      - npm run test -w @guardianpot/web-console
+      - npm run build -w @guardianpot/web-console
+      - npm run bundle:check -w @guardianpot/web-console
+      - go -C apps/control-plane vet ./...
+      - go -C apps/control-plane test ./...
+      # The Edge Agent's privileged package is Linux-only by design, so a
+      # Windows or macOS host can compile-check it but cannot run it. CI is
+      # Linux and runs the tests.
+      - cmd: go -C apps/edge-agent vet ./...
+        platforms: [linux]
+      - cmd: go -C apps/edge-agent test ./...
+        platforms: [linux]
+      - cmd: GOOS=linux go -C apps/edge-agent vet ./...
+        platforms: [windows, darwin]
+      - cmd: echo "note - Edge Agent tests are Linux-only and were not run here. CI runs them."
+        platforms: [windows, darwin]
 
   format:
     desc: Format Go and run repository formatting checks
@@ -229,7 +260,6 @@ tasks:
   policy:
     desc: Run repository policy checks
     cmds:
-      - npm run policy:check
       - npm run contracts:check
       - npm run security:check
       - npm run generated:check

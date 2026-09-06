@@ -370,19 +370,7 @@ readiness wording rule. Record
 7. `task web:check` and `task web:e2e` pass within budget.
 8. The security review is recorded.
 
-## 12. Evidence required
-
-- Full twelve-step onboarding browser evidence in all three engines.
-- `AC-ON-005` and `AC-ON-006` evidence from the coverage surface.
-- IP-conflict scenario evidence showing the address blocked.
-- Kill-process and remove-address scenarios showing coverage and runtime
-  health diverging.
-- Consent-cancelled evidence showing no request issued.
-- Source-level proof that no scanning capability is constructible.
-- Axe reports and viewport screenshots.
-- `security/wcx-16-placement-validation-review.md`.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -396,7 +384,7 @@ Stop and request owner review if any of the following occurs:
   the console;
 - an `ON-01` step has no backend condition to derive its state from.
 
-## 14. Deliverables
+## 13. Deliverables
 
 The twelve-step onboarding surface, consent-gated placement and reachability
 validation with per-address outcomes, the deterministic placement proposal

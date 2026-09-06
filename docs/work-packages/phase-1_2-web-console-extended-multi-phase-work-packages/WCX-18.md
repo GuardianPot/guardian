@@ -321,19 +321,7 @@ are taken only after explicit secret dismissal.
 7. `task web:check` and `task web:e2e` pass within budget.
 8. The security review is recorded.
 
-## 12. Evidence required
-
-- `AC-NT-002` and `AC-NT-003` browser evidence in all three engines.
-- Signature verification evidence at the disposable receiver, before and after
-  rotation.
-- Retry, backoff, and abandoned-delivery evidence.
-- Hostile receiver response rendering report.
-- Storage and cache assertions for the one-time secret.
-- Audit records for configuration changes and rotations.
-- Axe reports and viewport screenshots.
-- `security/wcx-18-notification-configuration-review.md`.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -347,7 +335,7 @@ Stop and request owner review if any of the following occurs:
 - SMTP credentials would have to be entered in the console, which `NT-02`
   leaves as deployment-specific and `SEC-02` constrains.
 
-## 14. Deliverables
+## 13. Deliverables
 
 Escalation contact management with verification, email channel configuration
 and verification, webhook endpoint configuration with one-time secret creation

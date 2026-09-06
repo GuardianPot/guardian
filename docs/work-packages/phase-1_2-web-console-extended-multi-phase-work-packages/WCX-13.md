@@ -397,19 +397,7 @@ Traces and video remain disabled for any step that renders credential content.
 8. `task web:check` and `task web:e2e` pass within the `WCX-12` budgets.
 9. The evidence rendering security review is recorded.
 
-## 12. Evidence required
-
-- North-Star scenario browser evidence in all three engines with the journey
-  rendered.
-- Hostile-corpus rendering report per evidence class.
-- Right-to-left override screenshot showing the filename unreordered.
-- Source-level and DOM-level proof that no download affordance exists.
-- Provenance table showing every attributed field and its rendered wording.
-- Partial-failure evidence.
-- Axe reports and viewport screenshots.
-- `security/wcx-13-evidence-rendering-review.md`.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -424,7 +412,7 @@ Stop and request owner review if any of the following occurs:
 - retention decisions make it unclear whether a captured credential may be
   displayed at all.
 
-## 14. Deliverables
+## 13. Deliverables
 
 Incident detail with all nine sections, the attacker journey timeline with its
 table equivalent and correlation summary, the incident-scoped evidence

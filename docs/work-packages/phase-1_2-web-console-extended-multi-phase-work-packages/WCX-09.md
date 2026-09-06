@@ -420,20 +420,7 @@ are taken only after explicit dismissal, matching existing practice.
    auth integration suite pass.
 9. The security review is recorded.
 
-## 12. Evidence required
-
-- Confirmation-level table test output.
-- Browser evidence for each scenario in 10.3 across all three engines, with
-  secrets dismissed before any capture.
-- Proof that a revoked device is refused on the device channel.
-- Audit records showing actor, time, object, and before-and-after references
-  for each destructive action.
-- Storage-empty assertions.
-- If `0003` is approved: endpoint tests, rate-limit evidence, audit evidence,
-  and confirmation that absolute session lifetime is unchanged.
-- `security/wcx-09-operator-completeness-review.md`.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -451,7 +438,7 @@ Stop and request owner review if any of the following occurs:
 - exposing any of these controls would require weakening the CSRF, session,
   or throttling model.
 
-## 14. Deliverables
+## 13. Deliverables
 
 Device lifecycle, enrollment-token, zone, session, and password screens with
 correct confirmation levels, the step-up reauthentication flow, the

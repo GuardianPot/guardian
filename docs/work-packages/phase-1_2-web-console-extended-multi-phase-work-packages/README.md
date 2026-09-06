@@ -144,13 +144,10 @@ capability and may run as soon as their structural dependency closes.
 
 ## Lifecycle
 
-1. The Product Owner promotes a package specification from `draft`.
-2. Its GitHub issue is created and added to `Guardian Delivery`.
-3. The issue becomes `READY` only after every hard dependency is accepted.
-4. One isolated branch or worktree executes the package.
-5. Merge moves the item to `AC-VALIDATION`; evidence acceptance moves it to
-   `DONE`.
-6. Only the Product Owner closes a phase gate.
+Pick a package whose dependencies are already delivered, build it, commit to
+`main`. There is no promotion step, issue state machine, acceptance record, or
+evidence hand-off; see `AGENTS.md`. The dependency order below is the only
+sequencing that still matters, because it is technical rather than procedural.
 
 ## Standing constraints
 

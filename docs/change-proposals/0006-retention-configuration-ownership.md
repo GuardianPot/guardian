@@ -87,7 +87,7 @@ storage must change shape later, the recovery path is reset and reseed of
 development data.
 
 If the backend cannot supply per-class bounds or modifiability,
-`WCX-21` section 13 already requires the implementer to stop and escalate
+`WCX-21` section 12 already requires the implementer to stop and escalate
 rather than render a value the console cannot qualify.
 
 ## Owner decision record

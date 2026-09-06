@@ -344,18 +344,7 @@ transport behaviour was preserved.
 6. `task web:check` and `task web:e2e` pass.
 7. Bundle growth is at most 1 percent.
 
-## 12. Evidence required
-
-- Generation command output and the committed generated file diff.
-- CI output showing the freshness check failing on a drift fixture and passing
-  on the committed state.
-- `task web:check` and `task web:e2e` results.
-- A table mapping every previously inline `catch` message to its new
-  `messageKey`, proving no operator-facing text changed.
-- Bundle size before and after.
-- Dependency admission record for `openapi-typescript`.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -369,7 +358,7 @@ Stop and request owner review if any of the following occurs:
 - the generated module cannot be produced without runtime code;
 - any security behaviour of `request()` would change.
 
-## 14. Deliverables
+## 13. Deliverables
 
 Committed generated OpenAPI types with a CI freshness gate, a single shared
 transport module, the `ConsoleError` taxonomy with an exhaustive mapping,

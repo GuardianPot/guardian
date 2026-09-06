@@ -366,22 +366,7 @@ of 9.5 with versioned results.
    hostile and prompt-injection corpora re-run against the final build.
 7. The console-side security review is recorded for `P5-W14`.
 
-## 12. Evidence required
-
-- Response header capture from a real TLS request.
-- Trusted Types enforcement evidence with no violation across the full path.
-- Contrast reports for both themes.
-- Diagnostic report sample plus the seeded-secret exclusion test output.
-- Visual regression baseline set and a demonstration diff.
-- Versioned benchmark results with comparison against the previous run and
-  against `PERF-05` and `PERF-07`.
-- Full browser path evidence in three engines and two themes.
-- Hostile and prompt-injection corpus results against the final build.
-- Storage-empty assertions across the full path.
-- Dependency and licence review for the final dependency set.
-- `security/wcx-15-web-console-hardening-review.md`.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -398,7 +383,7 @@ Stop and request owner review if any of the following occurs:
 - the security review surfaces a finding that cannot be closed inside this
   package.
 
-## 14. Deliverables
+## 13. Deliverables
 
 The completed security header set with enforced Trusted Types, the
 system-preference light theme with dual-theme contrast verification, the

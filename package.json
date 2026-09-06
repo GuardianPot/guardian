@@ -8,7 +8,6 @@
   ],
   "scripts": {
     "format:check": "node tools/check-markdown-format.mjs",
-    "policy:check": "node tools/check-repository-policy.mjs",
     "contracts:check": "node tools/check-contract-layout.mjs",
     "canonical-contracts:check": "node tools/check-canonical-contracts.mjs",
     "security:check": "node tools/check-secrets.mjs",
@@ -16,6 +15,7 @@
     "generated:check": "node tools/check-generated.mjs",
     "dependencies:check": "node tools/check-dependency-policy.mjs",
     "workflow:check": "node tools/check-workflow-pins.mjs",
+    "check": "task check",
     "validate": "task validate",
     "build": "task build",
     "test": "task test"

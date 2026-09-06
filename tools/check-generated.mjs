@@ -35,7 +35,11 @@ if (existsSync(committed)) {
       ],
       { stdio: "pipe", shell: process.platform === "win32", cwd: "apps/web-console" }
     );
-    if (readFileSync(committed, "utf8") !== readFileSync(candidate, "utf8")) {
+    // Normalise line endings: a Windows checkout gets CRLF for the committed
+    // file while the generator always emits LF, which would report every
+    // Windows run as stale.
+    const normalise = (path) => readFileSync(path, "utf8").replace(/\r\n/g, "\n");
+    if (normalise(committed) !== normalise(candidate)) {
       console.error(
         `${committed} is stale. Run "npm run generate:api -w @guardianpot/web-console" and commit the result.`
       );

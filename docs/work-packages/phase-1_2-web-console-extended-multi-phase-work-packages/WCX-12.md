@@ -352,18 +352,7 @@ owner review per `PERF-08`.
 7. The runtime interaction budget is established and enforced.
 8. `task web:check` and `task web:e2e` pass within all budgets.
 
-## 12. Evidence required
-
-- North-Star scenario browser evidence in all three engines.
-- Latency measurements with the ninety-fifth percentile against `PERF-05`.
-- Time-to-interactive measurement against `PERF-07`.
-- Interaction-latency baseline at 200 rows.
-- Negative-assertion test output proving no failure renders as empty.
-- URL state round-trip evidence.
-- Axe reports, screenshots at four viewport widths.
-- Dependency admission records for the table and virtualisation libraries.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -377,7 +366,7 @@ Stop and request owner review if any of the following occurs:
 - the dashboard would need to display an aggregate that reads as a safety
   verdict.
 
-## 14. Deliverables
+## 13. Deliverables
 
 Shared table primitives with virtualisation, URL-carried filter, sort, and
 column state, cursor pagination, the incident list satisfying `UX-02`, the

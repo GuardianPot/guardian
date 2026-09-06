@@ -5,22 +5,19 @@ Guardian is a private, security-focused deception platform under the
 
 ## Repository status
 
-The repository contains the approved product, architecture, MVP, roadmap, and
-engineering-governance baseline. Phase 0 technical evidence is recorded; its
-human gate remains pending. Phase 1 execution specifications are owner-approved
-but product implementation remains blocked by that Phase 0 human gate.
+Phase 0 and Phase 1 are delivered. Phase 2 — the Web Console extended packages
+`WCX-01` onward — is in progress.
 
 - Product and engineering source of truth: [`0-planning-documents/`](0-planning-documents/)
 - Roadmap: [`0-planning-documents/step-6-roadmap/`](0-planning-documents/step-6-roadmap/)
-- Repository and agent workflow: [`0-planning-documents/step-7-repository-and-ai-agent-workflow/`](0-planning-documents/step-7-repository-and-ai-agent-workflow/)
 - ADR index: [`docs/adr/`](docs/adr/)
-- Agent context map: [`docs/engineering/context-map.md`](docs/engineering/context-map.md)
+- Where things are written down: [`docs/engineering/context-map.md`](docs/engineering/context-map.md)
 - Work packages: [`docs/work-packages/`](docs/work-packages/)
-- Phase gates: [`docs/phase-gates/`](docs/phase-gates/)
 
-## Current execution rule
+## How work gets delivered
 
-All implementation work is performed through a scoped work package, a short-
-lived branch, a pull request, CI, and owner review. Agents may propose and
-implement changes, but they cannot merge, bypass protections, change
-repository settings, or access production secrets.
+One owner, one agent, direct to `main`. Run `task check` before committing;
+it is the same lane CI runs. `full.yml` covers integration, containers, and
+browser end-to-end nightly and on demand — locally that is `task validate`.
+
+The whole process is [`AGENTS.md`](AGENTS.md), and it is one page.

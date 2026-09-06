@@ -78,10 +78,5 @@ integration and its final acceptance evidence pass.
 
 ## Lifecycle
 
-1. The Markdown specification is reviewed and approved.
-2. Its GitHub issue is created and added to `Guardian Delivery`.
-3. The issue becomes `READY` only after every hard dependency is accepted.
-4. One isolated branch/worktree executes the package.
-5. Merge moves the item to `AC-VALIDATION`; evidence acceptance moves it to
-   `DONE`.
-6. Only the Product Owner closes the phase gate.
+Phase 1 is delivered. The specifications below are kept as the record of what
+was built and why. Current delivery process is in `AGENTS.md`.

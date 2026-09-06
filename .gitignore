@@ -14,9 +14,8 @@ bin/
 .env.*
 !.env.example
 
-# Lab state and local evidence
+# Lab state
 .lab/
-evidence/local/
 
 # Claude Code local settings (personal, not shared)
 .claude/settings.local.json

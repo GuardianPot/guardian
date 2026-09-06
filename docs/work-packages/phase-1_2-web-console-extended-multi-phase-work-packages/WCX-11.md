@@ -359,20 +359,7 @@ Secret-bearing steps keep traces, video, and screenshots disabled.
 7. Hostile decoy content is inert everywhere.
 8. `task web:check` and `task web:e2e` pass within budget.
 
-## 12. Evidence required
-
-- Browser evidence of four decoy families deployed, converged, and listed, in
-  all three engines.
-- Convergence timeline showing desired revision, observed revision, and
-  elapsed time.
-- Degraded-convergence evidence with the backend reason displayed.
-- Schema-derivation drift test output.
-- Hostile decoy content rendering report.
-- Storage-empty assertions.
-- Axe reports and narrow-viewport screenshots.
-- Dependency admission records for the form and validation libraries.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -386,7 +373,7 @@ Stop and request owner review if any of the following occurs:
 - change proposal `0004` is unapproved and form-level errors prove
   insufficient for a multi-field decoy configuration.
 
-## 14. Deliverables
+## 13. Deliverables
 
 The form and validation stack with schema derivation and the unsaved-changes
 guard, migrated existing forms, the decoy list satisfying `UX-06`, decoy

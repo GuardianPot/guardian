@@ -326,16 +326,7 @@ including the health degradation and reconnect steps, which exercise the new
 7. The measured transport trigger is recorded as data.
 8. `task web:check` and `task web:e2e` pass.
 
-## 12. Evidence required
-
-- Per-chunk size report, before and after.
-- Initial login and initial authenticated load measurements.
-- A recording or log demonstrating that a hidden tab issues no requests.
-- Router upgrade notes listing any changed API and its covering test.
-- Freshness class assignment table for every existing query.
-- Lint output for the interval-literal fixture.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -348,7 +339,7 @@ Stop and request owner review if any of the following occurs:
 - polling cadence would require a backend change such as `ETag` support;
 - splitting changes what an operator sees during navigation.
 
-## 14. Deliverables
+## 13. Deliverables
 
 The freshness policy module with class assignments and the recorded transport
 trigger, removal of every interval literal, visibility, focus, and

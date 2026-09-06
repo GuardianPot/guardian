@@ -373,20 +373,7 @@ the existing configuration.
 6. `task web:check`, `task web:e2e`, and the Control Plane test suite pass.
 7. The security review document is recorded.
 
-## 12. Evidence required
-
-- Fixture-by-fixture rendering test report.
-- Browser hostile-content run for all three engines, with no console error and
-  no network request triggered by fixture content.
-- MSW migration diff summary showing preserved assertions.
-- Response header capture from a real TLS request and from a plain-HTTP
-  request.
-- Production bundle inspection proving the absence of MSW, fixtures, and
-  workbench.
-- `security/wcx-06-hostile-content-review.md`.
-- Dependency admission records for MSW.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -399,7 +386,7 @@ Stop and request owner review if any of the following occurs:
 - MSW cannot preserve an existing security assertion;
 - the workbench cannot be proven absent from the production build.
 
-## 14. Deliverables
+## 13. Deliverables
 
 The untrusted rendering components with the branded type and lint enforcement,
 the permanent hostile fixture corpus, the MSW migration with preserved

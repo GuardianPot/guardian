@@ -341,16 +341,17 @@ buys the light theme in `WCX-15` as a reassignment rather than a rewrite.
 
 ## Continuous integration
 
-Two workflows, one job each, no conditions (change proposal `0007`).
+Two workflows, one job each, no conditions.
 
 | Workflow | Trigger | Contents |
 |---|---|---|
-| `pr.yml` | every pull request | repository policy, Markdown format, contract layout, generated freshness, dependency policy, workflow SHA pins, secret scan, the full Web Console gate, and Go vet, unit tests, and formatting |
-| `full.yml` | push to `main`, nightly 03:00 UTC, manual dispatch | everything above plus Go integration and race suites, both PostgreSQL integrations, contract tooling, container smoke build, Cowrie fixture, buf breaking checks, and the three-engine browser flow |
+| `checks.yml` | push to `main`, every pull request | Markdown format, contract layout, generated freshness, dependency policy, workflow SHA pins, secret scan, the full Web Console gate, and Go vet, unit tests, and formatting |
+| `full.yml` | nightly 03:00 UTC, manual dispatch | everything above plus Go integration and race suites, both PostgreSQL integrations, contract tooling, container smoke build, Cowrie fixture, buf breaking checks, and the three-engine browser flow |
 
-A pull request runs no Docker, no browser engines, and no generation tooling,
-so it needs neither `task` nor `buf`. The heavy half moved to post-merge and
-nightly; nothing was deleted.
+`checks.yml` is exactly `task check`, so running that locally before committing
+makes the remote run redundant — it exists to catch the times you skipped it,
+not to be waited on. `full.yml` needs Docker, browser engines, and generation
+tooling; its local equivalent is `task validate`.
 
 Run the browser flow locally against a subset with `GUARDIAN_E2E_PROJECTS`:
 

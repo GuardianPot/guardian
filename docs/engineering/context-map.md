@@ -1,23 +1,23 @@
 # Agent context map
 
-This map keeps agent context bounded. Read the root `AGENTS.md`, the current
-work package, and only the required sources listed here. Approved planning
-documents remain authoritative if a summary conflicts with them.
+A lookup table, not a gate. When a task touches an area, this points at the
+document that already answers the question, so you read one file instead of
+eighteen thousand lines. Nothing here is required reading and nothing needs to
+be cited. Planning documents stay authoritative on product and architecture.
 
 ## Global context
 
-| Concern | Required source |
+| Concern | Where it is written down |
 |---|---|
 | Product scope and acceptance | `0-planning-documents/step-5-mvp-scope-and-acceptance-criteria.md` |
 | Architecture and technology | `0-planning-documents/step-4-system-architecture-and-technology-decisions.md` |
 | Phase sequencing | `0-planning-documents/step-6-roadmap/00_Step_6_Roadmap_Master.md` |
-| Agent work-package governance | `0-planning-documents/step-7-repository-and-ai-agent-workflow/04_Agent_Context_and_Work_Package_Protocol.md` |
-| GitHub execution model | `0-planning-documents/step-7-repository-and-ai-agent-workflow/08_GitHub_Issues_Projects_and_Execution_Model.md` |
-| Architecture changes | `docs/adr/README.md` and `docs/change-proposals/README.md` |
+| Delivery process | `AGENTS.md` — it supersedes `0-planning-documents/step-7-repository-and-ai-agent-workflow/`, which describes a team process this project no longer runs |
+| Past architecture decisions | `docs/adr/README.md` |
 
 ## Phase 1 packages
 
-| Package | Required context | Primary accepted ADRs |
+| Package | Relevant context | Primary ADRs |
 |---|---|---|
 | P1-G0 | Step 7 sections CTX/WP/PM; Phase 1 roadmap | ADR 0001 |
 | P1-G1 | P1-G1; CP-02; WP-09/10 | ADR 0002, 0007 |
@@ -37,11 +37,10 @@ documents remain authoritative if a summary conflicts with them.
 
 `WCX-nn` packages live in
 `docs/work-packages/phase-1_2-web-console-extended-multi-phase-work-packages/`.
-Their governing decisions are closed in `00-master-decision-record.md`, which
-every `WCX` package requires as context in addition to the rows below. All of
-them carry `status: draft` until the Product Owner promotes them.
+Their governing decisions are closed in `00-master-decision-record.md`, worth
+reading alongside any row below.
 
-| Package | Phase | Required context | Primary ADRs |
+| Package | Phase | Relevant context | Primary ADRs |
 |---|---|---|---|
 | WCX-01 | 2 | WCX-01; WCX-000; CP-02; IA-06; TS-02/04 | ADR 0002, 0018 |
 | WCX-02 | 2 | WCX-02; WCX-000; RE-10; CP-04; TS-06 | ADR 0006, 0018 |
@@ -70,7 +69,9 @@ them carry `status: draft` until the Product Owner promotes them.
 - Phase 0: `docs/phase-gates/phase-0.md`
 - Phase 1: `docs/phase-gates/phase-1.md`
 
-An agent must stop if a package requires context outside this map that changes
-product behavior, architecture, security boundaries, privileges, or an
-acceptance criterion. Add context through owner-reviewed package revision or a
-change proposal; do not silently widen scope.
+Kept as the record of what each phase delivered. They no longer block the next
+phase from starting.
+
+Context outside this map is fine to read. What is not fine is silently widening
+product scope, a contract, or a trust boundary — see `AGENTS.md`, "Stop and
+ask".

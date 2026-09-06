@@ -324,20 +324,7 @@ that the console hardcodes no default. Record
 7. `task web:check` and `task web:e2e` pass within budget.
 8. The security review is recorded.
 
-## 12. Evidence required
-
-- Browser evidence of reading, increasing, and reducing a value in all three
-  engines, with the permanence confirmation captured.
-- Audit records for each retention change with actor, time, and before-and-
-  after values.
-- Purge failure evidence with the degraded wording.
-- Source-level proof that no individual-record deletion request is
-  constructible.
-- Fixture evidence proving no default is hardcoded.
-- Axe reports and viewport screenshots.
-- `security/wcx-21-retention-review.md`.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -352,7 +339,7 @@ Stop and request owner review if any of the following occurs:
 - the exact default day counts that `DATA-01` deferred are still undecided at
   implementation time, since the console displays but does not define them.
 
-## 14. Deliverables
+## 13. Deliverables
 
 The six-class retention surface with backend-supplied values, defaults, and
 bounds, editing with level-appropriate confirmations and the permanence

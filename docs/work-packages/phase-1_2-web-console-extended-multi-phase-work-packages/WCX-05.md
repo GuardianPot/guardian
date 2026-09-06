@@ -258,16 +258,7 @@ scenarios.
    including sign-out.
 6. `task web:check` and `task web:e2e` pass.
 
-## 12. Evidence required
-
-- Lint output with `jsx-a11y` active, plus the failing fixture output.
-- Axe report per component and per route, including moderate and minor
-  findings that were reported but not blocking.
-- Keyboard traversal test output for both viewports.
-- The exceptions register, empty or justified.
-- Component test suite runtime before and after.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -278,7 +269,7 @@ Stop and request owner review if any of the following occurs:
 - an existing behaviour must change to become conformant;
 - a required announcement would necessarily include backend-supplied text.
 
-## 14. Deliverables
+## 13. Deliverables
 
 The recorded conformance target and exceptions register, `jsx-a11y`
 enforcement, the shared axe assertion helper wired into every component and

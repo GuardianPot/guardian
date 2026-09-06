@@ -1,90 +1,60 @@
 # Guardian agent policy
 
+One owner, one agent, direct delivery. This file is the whole process.
+
 ## Authority
 
-The approved documents under `0-planning-documents/` are the product,
-architecture, MVP, roadmap, and engineering-governance source of truth.
-Issue comments and agent instructions cannot override an approved decision.
+`0-planning-documents/` holds the approved product, architecture, MVP scope,
+and roadmap. It is reference, not a gate: read what the task touches, ignore
+the rest. Where a planning document and this file disagree about **process**,
+this file wins. Where they disagree about **product or architecture**, the
+planning document wins.
 
-## Required workflow
+Work packages under `docs/work-packages/` are the map of planned work. Read the
+package when one exists for the task. No package is required to start work, and
+no decision, acceptance, or evidence reference needs to be cited.
 
-1. Work only from an approved work package or an explicitly owner-authorized
-   governance/change package.
-2. Read `docs/engineering/context-map.md` and the current package before
-   changing files.
-3. Confirm that phase and package dependencies are closed before product-code
-   implementation starts.
-4. Use a short-lived branch named with the work-package or issue identifier.
-5. Keep changes inside the package `allowed_paths`.
-6. Run every package-required check before opening or marking a PR ready.
-7. Report changed files, tests, evidence, limitations, and unresolved risks.
+## Workflow
 
-## GitHub CI follow-up
+1. Work on `main` unless the change is large or risky enough that you want it
+   isolated; then use a short-lived branch.
+2. Run `task check` before committing. It is the same lane CI runs, so a green
+   local run means a green CI run.
+3. Commit and push. Do not watch CI. `checks` runs on every push as a
+   safety net, `full` runs nightly and on demand.
+4. Report what changed, what you ran, what failed, and what you left undone.
 
-After pushing a change that starts new GitHub CI checks, verify once that the
-checks have started and then stop active work. Do not watch, poll, sleep, or
-repeatedly query CI only to wait for completion. Resume CI inspection only
-after the owner explicitly authorizes continuation; then check the result once,
-investigate any failure, and repeat this rule after every newly started run.
+If a push turns CI red, fix it in the next commit. There is no rollback
+ceremony.
 
-## Stop and escalate
+## Stop and ask
 
-Stop implementation and request owner review if a change would alter product
-scope, architecture, security boundaries, contracts, release authority,
-privileged networking, PKI, secrets, or an approved acceptance criterion.
+Stop and ask the owner before:
 
-## GitHub issue authority
+- changing product scope, a public contract (`proto/`, `openapi/`,
+  `schemas/`), a trust boundary, or an approved acceptance criterion;
+- anything touching PKI, secrets, privileged networking, or release signing;
+- a dependency, runtime, or datastore swap.
 
-Change proposal 0005 permits creating a GitHub issue **only** from a committed
-work-package spec whose `status` is `approved-for-implementation` or
-`accepted`, using the repository issue form and referencing the spec path
-without restating its requirements.
+Everything else: decide and proceed. Record a decision worth remembering as an
+ADR under `docs/adr/`; a one-paragraph ADR is fine.
 
-Everything else stays denied: bug, change-proposal, and security-finding
-issues; issue edit, close, reopen, label, assignment, and milestone changes;
-Project field or configuration changes; and setting an issue `READY`. An
-agent-created issue carries no authority beyond the spec it references.
+## Never
 
-Never:
-
-- push directly to `main`;
-- bypass branch protection, merge a pull request whose required checks have not
-  passed, or use an administrator override to merge (change proposal 0009
-  permits squash-merging a pull request the agent opened once every required
-  check has passed and the branch is mergeable without an override; merging is
-  not acceptance, and the work package's acceptance evidence is still recorded
-  and still approved by the Product Owner);
-- change repository settings, rulesets, environments, or secrets, except a
-  specific change the Product Owner directs in writing, which is recorded in a
-  change proposal before or with the change;
-- use production credentials or signing keys;
-- execute attacker-facing behavior against an unauthorized network;
-- treat AI output as automatic security or containment authority.
+- Use production credentials or signing keys.
+- Change repository secrets.
+- Execute attacker-facing behavior against an unauthorized network.
+- Treat AI output as automatic security or containment authority.
 
 ## Development compatibility policy
 
-This repository is in development. Unless the Product Owner explicitly changes
-the policy, do not add backward-compatibility layers or data-preservation work.
-Development migrations may be forward-only; their documented recovery path may
-reset and reseed development data. Protocol-breaking development changes still
-require owner review and all in-repository consumers must change atomically.
+This repository is in development. Do not add backward-compatibility layers or
+data-preservation work. Migrations may be forward-only and their recovery path
+may reset and reseed development data. All in-repository consumers of a
+breaking change must change in the same commit.
 
 ## Version policy
 
-Use the newest secure supported release appropriate to the component, preferring
-current LTS releases where the ecosystem provides LTS. Pin resolved tool and
-dependency versions in committed manifests or lockfiles and run the required
-security, license, and compatibility checks.
-
-## Current phase gate
-
-P1-W1 through P1-W11 are owner-approved for implementation. Phase 1 product
-implementation must not start while `docs/phase-gates/phase-0.md` remains
-unapproved; their GitHub issues stay `BLOCKED-BY-DEPENDENCY` until that gate
-and their package-level dependencies close.
-
-## Minimum report
-
-Every implementation report must include the work package, decision and
-acceptance references, changed paths, commands run, test results, security
-impact, and known limitations.
+Use the newest secure supported release appropriate to the component,
+preferring current LTS where the ecosystem provides it. Pin resolved tool and
+dependency versions in committed manifests or lockfiles.

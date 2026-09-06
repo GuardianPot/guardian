@@ -396,19 +396,7 @@ and the suppression approval wording. Record
 8. `task web:check` and `task web:e2e` pass within budget.
 9. The AI-surface security review is recorded.
 
-## 12. Evidence required
-
-- Full Phase 4 browser path in all three engines.
-- Provider-outage evidence showing an unaffected incident.
-- Prompt-injection corpus rendering report.
-- Request interception log proving no AI-derived value reaches a mutation.
-- Document-order assertion output for evidence primacy.
-- Suppression approval dialog screenshots with the scope statement.
-- AI latency measurement against the `PERF-06` target.
-- Axe reports and viewport screenshots.
-- `security/wcx-14-ai-surface-review.md`.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -423,7 +411,7 @@ Stop and request owner review if any of the following occurs:
 - an operator workflow appears to require a containment control, which `RG-02`
   and `RG-03` forbid.
 
-## 14. Deliverables
+## 13. Deliverables
 
 The AI explanation surface with citations, separated hypotheses, uncertainty,
 and disclosed metadata, the three curated guidance layers with no executable

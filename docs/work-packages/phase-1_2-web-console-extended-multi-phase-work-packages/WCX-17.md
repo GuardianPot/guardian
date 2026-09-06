@@ -326,19 +326,7 @@ correction-versus-disposition distinction. Record
 7. `task web:check` and `task web:e2e` pass within budget.
 8. The security review is recorded.
 
-## 12. Evidence required
-
-- `AC-CF-003`, `AC-CF-004`, and `AC-INC-004` browser evidence in all three
-  engines.
-- Evidence that suppressed activity remains retrievable.
-- Split reconciliation evidence, including the blocked non-reconciling case.
-- Audit records for every correction with actor, time, object, and
-  before-and-after references.
-- Negative-assertion output proving no deletion wording exists.
-- Axe reports and viewport screenshots.
-- `security/wcx-17-suppression-review.md`.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -351,7 +339,7 @@ Stop and request owner review if any of the following occurs:
   eligibility, which would contradict `CS-06`;
 - an operator workflow appears to require evidence deletion.
 
-## 14. Deliverables
+## 13. Deliverables
 
 Expected-source entry management, scoped suppression policy management with
 retention-first wording and an effect surface, incident merge and split with

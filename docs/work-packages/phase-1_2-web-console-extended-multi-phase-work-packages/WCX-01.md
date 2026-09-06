@@ -326,16 +326,7 @@ of behaviour preservation.
 7. Bundle size is within 2 percent of the pre-package measurement.
 8. No product behaviour, text, route, or API call changed.
 
-## 12. Evidence required
-
-- `task web:check` output including the bundle line, before and after.
-- `task web:e2e` result for all three browsers.
-- Lint output for the three boundary-violation fixtures showing failure.
-- A diff summary showing that no `.css` file and no user-visible string
-  changed.
-- Dependency admission table for each added ESLint plugin.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -348,7 +339,7 @@ Stop and request owner review if any of the following occurs:
 - an existing test's assertion, not merely its imports, must change;
 - the bundle grows by more than 2 percent.
 
-## 14. Deliverables
+## 13. Deliverables
 
 Restructured console source under the new layout, path aliases wired into all
 three toolchains, the capability seam with tests, hardened ESLint and

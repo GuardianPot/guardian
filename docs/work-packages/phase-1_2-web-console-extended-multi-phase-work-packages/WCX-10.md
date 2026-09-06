@@ -298,16 +298,7 @@ tree moved, and with no assertion weakened.
 5. Route focus, announcement, and title behaviour still hold.
 6. `task web:check` and `task web:e2e` pass within the `WCX-07` budget.
 
-## 12. Evidence required
-
-- Browser recordings or step logs for the narrow-viewport sign-out scenario in
-  all three engines.
-- Screenshots at 320, 375, 900, and 1440 pixels for each route.
-- Axe reports per route and viewport.
-- Redirect table with test output.
-- Bundle report showing the shell remained in the entry chunk.
-
-## 13. Stop and escalate
+## 12. Stop and escalate
 
 Stop and request owner review if any of the following occurs:
 
@@ -320,7 +311,7 @@ Stop and request owner review if any of the following occurs:
 - an old path cannot be preserved without an ambiguous redirect;
 - Phase 3 dashboard requirements appear to demand a different shell.
 
-## 14. Deliverables
+## 13. Deliverables
 
 The new route tree with redirects, the environment scope selector with strict
 validation and no silent fallback, the responsive shell with the `GAP-1` fix,

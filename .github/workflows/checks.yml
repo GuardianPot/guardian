@@ -1,24 +1,28 @@
-name: pr
+name: checks
 
-# Everything a pull request needs, in one job with no conditions.
+# The fast lane. Mirrors `task check`, so a green local run means a green run
+# here. Nobody is expected to wait on it: it is a safety net behind commits
+# that already passed locally.
 #
 # Heavy suites — Go integration, containers, browser end-to-end — live in
-# `full.yml` and run on every push to `main`, nightly, and on demand. The
-# trade is recorded in change proposal 0007.
+# `full.yml` and run nightly and on demand.
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pr-${{ github.ref }}
+  group: checks-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   checks:
-    name: PR checks
+    name: Fast checks
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -35,8 +39,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Repository policy
-        run: npm run policy:check
       - name: Markdown format
         run: npm run format:check
       - name: Contract layout
