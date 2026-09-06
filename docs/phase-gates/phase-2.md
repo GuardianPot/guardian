@@ -37,7 +37,7 @@ the date of that approval.
 |---|---|---|---|
 | WCX-01 | [#63](https://github.com/GuardianPot/guardian/issues/63) | [#85](https://github.com/GuardianPot/guardian/pull/85) | Accepted 2026-09-04 |
 | WCX-02 | [#64](https://github.com/GuardianPot/guardian/issues/64) | [#86](https://github.com/GuardianPot/guardian/pull/86) | Accepted 2026-09-05 |
-| WCX-03 | [#65](https://github.com/GuardianPot/guardian/issues/65) | [#87](https://github.com/GuardianPot/guardian/pull/87) | Accepted 2026-09-05 |
+| WCX-03 | [#65](https://github.com/GuardianPot/guardian/issues/65) | [#87](https://github.com/GuardianPot/guardian/pull/87), [#89](https://github.com/GuardianPot/guardian/pull/89) | Accepted 2026-09-06 |
 | WCX-04 through WCX-21 | [#66](https://github.com/GuardianPot/guardian/issues/66)–[#83](https://github.com/GuardianPot/guardian/issues/83) | — | Not started |
 
 ### WCX-01 — module boundaries and the capability seam
@@ -58,15 +58,31 @@ header is gone and a test asserts no request sets it.
 
 Two token layers with a lint-enforced boundary, colour meaning confined to
 three disjoint groups, neutral device and configuration states, total status
-encoding with an unknown fallback, and a 200 ms motion cap. Nineteen new
-tests; 68 tests pass. WCAG 2.2 AA contrast is computed over 29 enumerated
+encoding with an unknown fallback, and a 200 ms motion cap. Twenty-one new
+tests; 70 tests pass. WCAG 2.2 AA contrast is computed over 36 enumerated
 token pairings.
 
-CSS grew 10952 to 18461 bytes minified against a 32 KiB budget. The package
+CSS grew 10952 to 19500 bytes minified against a 32 KiB budget. The package
 estimated roughly 3 KiB, which was wrong: `var()` references cost more than
 the literals they replace, so tokenising has no offset to collect. The figures
 and the reasoning are in
 [`docs/runbooks/web-console/development.md`](../runbooks/web-console/development.md).
+
+Accepted in two steps, and the reason belongs in the evidence. The 2026-09-05
+approval covered [#87](https://github.com/GuardianPot/guardian/pull/87) alone,
+and the axe scan in `full.yml` then failed on that merge: the health badge
+measured 4.22 against the 4.5 threshold, because `.panelHeading > span`
+outranked the tone class and repainted it with the muted neutral. The unit
+table had not caught it and could not — it measured tones against the bare
+panel token, a background the browser never paints, which also reported
+severity high and critical as 4.96 and 5.05 when composited they were 4.30 and
+4.34. [#89](https://github.com/GuardianPot/guardian/pull/89) made the tone
+selectors compound, derived every tint from its primitive with `color-mix()`,
+lightened the three failing primitives, and measured the composited
+background. `full.yml` passed on `899bbb8`, the merged head. The Product Owner
+approved the corrected state on 2026-09-06, which is the date in the table
+above; the superseded 2026-09-05 approval is recorded here rather than
+overwritten.
 
 ## Gate authority
 
