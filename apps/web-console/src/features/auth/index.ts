@@ -2,6 +2,7 @@ import { lazy } from 'react';
 
 export { AuthProvider, useAuth } from './AuthContext';
 export { useCapability } from './useCapability';
+export { useStepUp, type StepUp } from './useStepUp';
 export { authKeys } from './api';
 
 /**

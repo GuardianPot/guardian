@@ -32,6 +32,12 @@ export type ButtonProps = {
   children: ReactNode;
   variant?: ButtonVariant;
   type?: 'button' | 'submit';
+  /**
+   * Associates a submit control with a form it is not nested inside. A
+   * dialog puts its action row outside the form body, so without this the
+   * submit button in a dialog would submit nothing.
+   */
+  form?: string;
   pending?: boolean;
   /** Present only when the control is unavailable. Rendered and associated. */
   disabledReason?: string;
@@ -47,6 +53,7 @@ export function Button({
   children,
   variant = 'secondary',
   type = 'button',
+  form,
   pending = false,
   disabledReason,
   onClick,
@@ -60,6 +67,7 @@ export function Button({
         ref={buttonRef}
         className={styles[VARIANT_CLASS[variant]]}
         type={type}
+        {...(form === undefined ? {} : { form })}
         disabled={unavailable || pending}
         aria-busy={pending || undefined}
         aria-describedby={unavailable ? reasonId : undefined}

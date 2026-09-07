@@ -102,6 +102,17 @@ const TECHNICAL_ATTRIBUTES = new Set([
   'r', 'points', 'preserveAspectRatio', 'focusable',
 ]);
 
+/**
+ * Props that carry a catalogue key rather than a sentence.
+ *
+ * The `Key` suffix is a convention this rule relies on, and the compiler backs
+ * it: every such prop is typed `PlainCatalogueKey`, so a sentence written
+ * there does not build. Without the suffix a component that forwards wording
+ * to a shared dialog would have to inline the text it is trying not to
+ * inline.
+ */
+const CATALOGUE_KEY_ATTRIBUTE = /Key$/;
+
 /** A run of characters an operator would read as words. */
 const READS_AS_WORDS = /\p{L}/u;
 
@@ -155,6 +166,7 @@ const noLiteralText = {
           ? node.name.name
           : `${node.name.namespace.name}:${node.name.name.name}`;
         if (name.startsWith('data-') || TECHNICAL_ATTRIBUTES.has(name)) return;
+        if (CATALOGUE_KEY_ATTRIBUTE.test(name)) return;
         const value = node.value?.type === 'JSXExpressionContainer'
           ? literalString(node.value.expression)
           : literalString(node.value);
@@ -271,10 +283,12 @@ export default tseslint.config(
   //   environments -> health  renders the backend health projection panel
   //   environments -> devices creating an enrollment secret changes the device
   //                           inventory, so the environment feature invalidates it
-  //   devices      -> health  renders the backend health projection panel
+  //   devices      -> auth    lifecycle actions need the CSRF proof, the
+//                           capability seam, and step-up reauthentication
+//   devices      -> health  renders the backend health projection panel
   featureBoundary('auth', []),
   featureBoundary('environments', ['auth', 'health', 'devices']),
-  featureBoundary('devices', ['health']),
+  featureBoundary('devices', ['auth', 'health']),
   featureBoundary('health', []),
   // Tests may reach the harness but still may not deep-import a feature.
   {

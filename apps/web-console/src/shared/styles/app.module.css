@@ -261,3 +261,13 @@
   .inlineForm { grid-template-columns: 1fr; }
   .brand small { display: none; }
 }
+
+/* Device lifecycle (WCX-09 section 9.4). Rows, not a toolbar: each transition
+   carries the sentence that says what it does, and a row keeps the two
+   together at every width. */
+.lifecycleList { display: grid; gap: var(--space-5); margin: 0; padding: 0; list-style: none; }
+.lifecycleRow { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; justify-content: space-between; padding: var(--space-5); border: 1px solid var(--line-subtle); border-radius: var(--radius-2); }
+.lifecycleRow > div { flex: 1 1 22rem; }
+.lifecycleRow strong { display: block; color: var(--text-primary); }
+.lifecycleRow p { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--font-size-2); line-height: var(--line-height-normal); }
+.stepUpForm { display: grid; gap: var(--space-5); }

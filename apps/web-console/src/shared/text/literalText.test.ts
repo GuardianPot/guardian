@@ -108,7 +108,7 @@ describe('the catalogue and the components agree', () => {
     // Wording left behind by a deleted screen is wording a reviewer spends
     // attention on for nothing, and it is indistinguishable from live text.
     const unused = (Object.keys(CATALOGUE) as CatalogueKey[]).filter((key) => {
-      if (sources.includes(`'${key}'`)) return false;
+      if (sources.includes(`'${key}'`) || sources.includes(`"${key}"`)) return false;
       // `plural('time.age.minute', n)` reaches `.one` and `.other`.
       const base = key.replace(/\.(one|other)$/, '');
       if (base !== key && sources.includes(`'${base}'`)) return false;

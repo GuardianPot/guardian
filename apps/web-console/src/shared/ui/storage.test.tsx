@@ -52,8 +52,15 @@ describe('browser storage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Revoke the device' }));
     await userEvent.type(await screen.findByLabelText('Object name'), 'edge-one');
+    // Confirming closes the dialog, so this is the whole level 3 path: step-up,
+    // typed name, and the confirm that spends the mark.
     await userEvent.click(screen.getByRole('button', { name: 'Revoke device' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    // One-time material is the case that most invites a "remember it for me"
+    // convenience, so it is exercised through display and dismissal.
+    await userEvent.click(screen.getByRole('button', { name: 'Show the one-time secret' }));
+    await screen.findByTestId('one-time-secret');
+    await userEvent.click(screen.getByRole('button', { name: 'I have stored it securely' }));
 
     expect(localStorage).toHaveLength(0);
     expect(sessionStorage).toHaveLength(0);

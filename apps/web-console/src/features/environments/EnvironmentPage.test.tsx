@@ -101,10 +101,10 @@ describe('EnvironmentPage', () => {
 
     await userEvent.type(await screen.findByLabelText('Device name'), 'edge-one');
     await userEvent.click(screen.getByRole('button', { name: 'Create one-time secret' }));
-    expect(await screen.findByTestId('enrollment-secret')).toHaveTextContent(secretToken);
+    expect(await screen.findByTestId('one-time-secret')).toHaveTextContent(secretToken);
 
     await userEvent.click(screen.getByRole('button', { name: 'I have stored it securely' }));
-    await waitFor(() => expect(screen.queryByTestId('enrollment-secret')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByTestId('one-time-secret')).not.toBeInTheDocument());
     expect(document.body.innerHTML).not.toContain(secretToken);
     expect(localStorage).toHaveLength(0);
     expect(sessionStorage).toHaveLength(0);

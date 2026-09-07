@@ -1,10 +1,12 @@
 import type { Capability } from '@shared/auth/capability';
+import type { PlainCatalogueKey } from '@shared/text';
 
 /**
  * The action-to-confirmation-level table (WCX-04 section 9.3, WC-D16).
  *
- * A table in code, not a per-call-site judgement. `WCX-09` and `WCX-11` extend
- * this table; neither invents a level, and a call site cannot pass one.
+ * A table in code, not a per-call-site judgement. `WCX-09` extended it and
+ * `WCX-11` will extend it again; neither invents a level, and a call site
+ * cannot pass one.
  *
  * | Level | Meaning | Interaction |
  * |---|---|---|
@@ -17,9 +19,11 @@ export type ConfirmationLevel = 1 | 2 | 3;
 export type ConfirmableAction =
   | 'device.enable'
   | 'device.disable'
+  | 'zone.rename'
   | 'zone.delete'
   | 'enrollment.revoke'
   | 'device.revoke'
+  | 'device.reenroll'
   | 'session.revoke'
   | 'account.password';
 
@@ -31,8 +35,13 @@ export type ActionConfirmation = {
    * carries the capability rather than leaving each call site to guess.
    */
   capability: Capability;
-  /** Names the effect. Becomes the confirm button label, never `OK`. */
-  effect: string;
+  /**
+   * Names the effect. Becomes the confirm button label, never `OK`.
+   *
+   * A catalogue key rather than a string since `WCX-08`: this table is read by
+   * components, so the words in it are components' words.
+   */
+  effect: PlainCatalogueKey;
 };
 
 export const ACTION_CONFIRMATION: Readonly<Record<ConfirmableAction, ActionConfirmation>> = {
@@ -40,19 +49,29 @@ export const ACTION_CONFIRMATION: Readonly<Record<ConfirmableAction, ActionConfi
   // backend supports it, an undo affordance is offered at the call site.
   // Enable shares the disable capability: it is the same gate, inverted, and
   // re-enabling is immediate. `WCX-14` adds disposition changes at this level.
-  'device.enable': { level: 1, capability: 'device.disable', effect: 'Enable device' },
-  'device.disable': { level: 1, capability: 'device.disable', effect: 'Disable device' },
+  'device.enable': { level: 1, capability: 'device.disable', effect: 'confirm.effect.deviceEnable' },
+  'zone.rename': { level: 1, capability: 'zone.update', effect: 'confirm.effect.zoneRename' },
 
   // L2 — destructive but recoverable. Modal, effect-named confirm, object named.
-  'zone.delete': { level: 2, capability: 'zone.delete', effect: 'Delete zone' },
-  'enrollment.revoke': { level: 2, capability: 'enrollment.revoke', effect: 'Revoke enrollment token' },
+  //
+  // `WCX-09` moved disable up from L1. It is reversible by re-enable, but it
+  // stops a live Edge from opening new authenticated sessions, and an
+  // operator who meant to disable a different device finds out from the
+  // network rather than from the console.
+  'device.disable': { level: 2, capability: 'device.disable', effect: 'confirm.effect.deviceDisable' },
+  'zone.delete': { level: 2, capability: 'zone.delete', effect: 'confirm.effect.zoneDelete' },
+  'enrollment.revoke': { level: 2, capability: 'enrollment.revoke', effect: 'confirm.effect.enrollmentRevoke' },
 
   // L3 — irreversible and security-relevant. Modal, typed object name, and
-  // step-up reauthentication. `WCX-09` implements the step-up; until then no
-  // screen exposes an L3 action, so none is reachable.
-  'device.revoke': { level: 3, capability: 'device.revoke', effect: 'Revoke device' },
-  'session.revoke': { level: 3, capability: 'session.revoke', effect: 'Revoke session' },
-  'account.password': { level: 3, capability: 'account.password', effect: 'Change password' },
+  // step-up reauthentication.
+  //
+  // Re-enrollment is L3 by Product Owner decision on 2026-09-04: it is the
+  // inverse of revocation and re-establishes the trust revocation removed, so
+  // it carries the same gate.
+  'device.revoke': { level: 3, capability: 'device.revoke', effect: 'confirm.effect.deviceRevoke' },
+  'device.reenroll': { level: 3, capability: 'device.reenroll', effect: 'confirm.effect.deviceReenroll' },
+  'session.revoke': { level: 3, capability: 'session.revoke', effect: 'confirm.effect.sessionRevoke' },
+  'account.password': { level: 3, capability: 'account.password', effect: 'confirm.effect.accountPassword' },
 };
 
 export function confirmationFor(action: ConfirmableAction): ActionConfirmation {
@@ -60,16 +79,36 @@ export function confirmationFor(action: ConfirmableAction): ActionConfirmation {
 }
 
 /**
- * Step-up reauthentication, as an interface only (section 9.3 rule 4).
+ * Step-up reauthentication (WCX-09 section 9.2, change proposal 0003).
  *
- * `WCX-09` implements this against approved change proposal `0003`. Until
- * then the only implementation is `stepUpUnavailable`, which refuses. A level
- * 3 confirmation therefore cannot complete, which is the intended state: no
- * screen exposes a level 3 action in this package.
+ * `WCX-04` declared this as a refusing interface. The implementation is
+ * `useStepUp` in the auth feature; the seam stays here so `@shared/ui` never
+ * imports a feature.
+ *
+ * Two operations rather than one, because the marker's lifetime is the point.
+ * `request` reauthenticates and marks *one* action; `consume` spends that mark
+ * and clears it. An action that never reaches `consume` leaves nothing behind,
+ * and a second action finds nothing to spend — which is what "scoped to a
+ * single action" has to mean if it is to be testable.
  */
-export type StepUpOutcome = { satisfied: true } | { satisfied: false; reason: 'not-implemented' };
+export type StepUpOutcome =
+  | { satisfied: true }
+  | { satisfied: false; reason: 'not-implemented' | 'cancelled' | 'denied' | 'rate-limited' };
 
-export type StepUpReauthentication = (action: ConfirmableAction) => Promise<StepUpOutcome>;
+export type StepUpReauthentication = {
+  /**
+   * Reauthenticates, then marks this one action as stepped up.
+   *
+   * Declared as a property holding a function rather than as a method, so it
+   * can be destructured and passed as an effect dependency without `this`
+   * ever entering the picture.
+   */
+  request: (action: ConfirmableAction) => Promise<StepUpOutcome>;
+  /** Spends the mark. True at most once per `request` that succeeded. */
+  consume: (action: ConfirmableAction) => boolean;
+};
 
-export const stepUpUnavailable: StepUpReauthentication = () =>
-  Promise.resolve({ satisfied: false, reason: 'not-implemented' });
+export const stepUpUnavailable: StepUpReauthentication = {
+  request: () => Promise.resolve({ satisfied: false, reason: 'not-implemented' }),
+  consume: () => false,
+};

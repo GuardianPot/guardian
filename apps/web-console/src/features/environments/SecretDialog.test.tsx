@@ -25,7 +25,7 @@ describe('SecretDialog', () => {
   it('removes the one-time secret from the DOM on explicit dismissal without browser storage', async () => {
     localStorage.clear(); sessionStorage.clear();
     render(<Harness />);
-    expect(screen.getByTestId('enrollment-secret')).toHaveTextContent(secret.token);
+    expect(screen.getByTestId('one-time-secret')).toHaveTextContent(secret.token);
     await userEvent.click(screen.getByRole('button', { name: 'I have stored it securely' }));
     expect(screen.queryByText(secret.token)).not.toBeInTheDocument();
     expect(localStorage).toHaveLength(0);

@@ -143,8 +143,8 @@ export const CATALOGUE = {
   'environment.secret.title': 'Enrollment secret — shown once',
   'environment.secret.description': 'Enter this value directly on the intended Edge host. It will leave this page when you dismiss this dialog.',
   'environment.secret.label': 'Enrollment token',
-  'environment.secret.expires': 'Expires {time}',
-  'environment.secret.dismiss': 'I have stored it securely',
+  'secret.expires': 'Expires {time}',
+  'secret.dismiss': 'I have stored it securely',
 
   // ─── devices ───────────────────────────────────────────────────────────
   'devices.back': '← Environment overview',
@@ -161,6 +161,27 @@ export const CATALOGUE = {
   'devices.recordUpdated': 'Record last updated',
   'devices.certificateExpiry': 'Active certificate expiry',
   'devices.noCertificate': 'No active certificate',
+
+  // Lifecycle. Each effect line states what happens in the operator’s terms
+  // before the control is used, not only inside the confirmation.
+  'devices.lifecycle.eyebrow': 'Trust decisions',
+  'devices.lifecycle.heading': 'Device lifecycle',
+  'devices.lifecycle.disableEffect': 'Blocks new authenticated sessions from this Edge. Its record, history, and certificates are kept.',
+  'devices.lifecycle.revokeEffect': 'Permanently withdraws trust and revokes every active certificate. The Edge is refused on the device channel and cannot return without re-enrollment.',
+  'devices.lifecycle.reenrollEffect': 'Issues one new 15-minute enrollment token for this same device record and permanently revokes its prior certificates and unused tokens. The device is not restored: it becomes active only after it completes enrollment.',
+  'devices.lifecycle.unavailablePending': 'This device has not completed enrollment, so there is no trust to withdraw.',
+  'devices.lifecycle.unavailableActive': 'The Control Plane offers no such transition from active.',
+  'devices.lifecycle.unavailableDisabled': 'The Control Plane offers no path from disabled back to active. Re-enrollment is the available recovery.',
+  'devices.lifecycle.unavailableRevoked': 'This device is revoked. Re-enrollment is the only path back, and it starts enrollment over.',
+  'devices.lifecycle.reauthenticate': 'Re-authenticate before changing this device.',
+  'devices.lifecycle.failed': '{effect} did not complete. Nothing changed on this device.',
+  'devices.lifecycle.conflict': 'Another change reached this device first, so nothing was applied. Reload to see its current state.',
+  'devices.lifecycle.revokedNotice': 'This device was revoked. The record is kept so the history stays readable. Inventory record last changed {time}.',
+  'devices.lifecycle.unmanagedDecoys': 'Any decoys on this Edge stay unmanaged until re-enrollment completes.',
+
+  'devices.reenrollSecret.title': 'Re-enrollment token — shown once',
+  'devices.reenrollSecret.description': 'Enter this value directly on the intended Edge host. It leaves this page when you dismiss this dialog and cannot be shown again. The device stays in its current state until enrollment completes.',
+  'devices.reenrollSecret.label': 'Re-enrollment token',
 
   // ─── health ────────────────────────────────────────────────────────────
   'health.eyebrow': 'Backend health projection',
@@ -233,7 +254,32 @@ export const CATALOGUE = {
   'confirm.irreversible': '{effect}: “{object}”. This cannot be undone.',
   'confirm.typeToConfirm': 'Type the exact name to continue: {object}',
   'confirm.typeLabel': 'Object name',
-  'confirm.stepUpRequired': 'Step-up reauthentication is required and is not available yet, so this action cannot be completed.',
+  // Names the mismatch without echoing what was typed (WCX-09 section 9.6.3).
+  'confirm.typeMismatch': 'That does not match the name above.',
+
+  // The action table's effect labels. Each becomes a confirm button, so each
+  // is a verb phrase naming what happens, never `OK`.
+  'confirm.effect.deviceEnable': 'Enable device',
+  'confirm.effect.deviceDisable': 'Disable device',
+  'confirm.effect.deviceRevoke': 'Revoke device',
+  'confirm.effect.deviceReenroll': 'Re-enroll device',
+  'confirm.effect.zoneRename': 'Rename zone',
+  'confirm.effect.zoneDelete': 'Delete zone',
+  'confirm.effect.enrollmentRevoke': 'Revoke enrollment token',
+  'confirm.effect.sessionRevoke': 'Revoke session',
+  'confirm.effect.accountPassword': 'Change password',
+
+  // Step-up refusals. Four reasons, four sentences: an operator who cancelled
+  // and an operator the Control Plane refused are in different situations and
+  // one message for both would tell neither of them what to do next.
+  'confirm.stepUpUnavailable': 'Step-up reauthentication is not available, so this action cannot be completed.',
+  'confirm.stepUpCancelled': 'Reauthentication was not completed, so nothing was changed.',
+  'confirm.stepUpDenied': 'Reauthentication was denied, so nothing was changed.',
+  'confirm.stepUpRateLimited': 'Too many reauthentication attempts. Wait before trying again. Nothing was changed.',
+
+  'stepUp.title': 'Confirm it is you',
+  'stepUp.description': 'This action cannot be undone, so Guardian asks for your password and a fresh MFA proof. A stored proof is not accepted.',
+  'stepUp.submit': 'Reauthenticate',
 
   // ─── untrusted content ─────────────────────────────────────────────────
   'untrusted.legend': 'Characters shown as \\xNN or \\uNNNN were control or invisible characters in the captured value. They are displayed, never interpreted.',

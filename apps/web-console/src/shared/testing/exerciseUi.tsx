@@ -19,6 +19,7 @@ import {
   PartialState,
   PendingOnObject,
   RouteErrorBoundary,
+  OneTimeSecretDialog,
   Skeleton,
   StaleState,
   StatusBadge,
@@ -58,6 +59,7 @@ export const EXERCISED_COMPONENTS = [
   'DescriptionList',
   'Skeleton',
   'Timestamp',
+  'OneTimeSecretDialog',
   'Banner',
   'InlineMessage',
   'ToastRegion',
@@ -77,6 +79,17 @@ export const EXERCISED_COMPONENTS = [
   'UntrustedBlock',
 ] as const;
 
+/**
+ * A step-up that always succeeds, so the level 3 confirmation body is
+ * reachable here. The real one reauthenticates; this page has no network and
+ * no session, and a refusing step-up would leave the typed-confirmation field
+ * unrendered and therefore unexercised by the hostile-content test.
+ */
+const ALWAYS_STEPPED_UP = {
+  request: () => Promise.resolve({ satisfied: true as const }),
+  consume: () => true,
+};
+
 /** Fixed at import so the exercise renders identically on every re-render. */
 const OBSERVED_AT = '2026-09-01T12:00:00.000Z';
 
@@ -85,6 +98,7 @@ export function ExerciseEveryComponent({ text }: { text: string }) {
   const cancel = useRef<HTMLButtonElement>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [secretOpen, setSecretOpen] = useState(false);
   const observedAt = OBSERVED_AT;
 
   return (
@@ -107,6 +121,7 @@ export function ExerciseEveryComponent({ text }: { text: string }) {
           <Button variant="quiet" onClick={() => toasts.show(text)}>Show a confirmation</Button>
           <Button variant="secondary" onClick={() => setDialogOpen(true)}>Open the dialog</Button>
           <Button variant="destructive" onClick={() => setConfirmOpen(true)}>Revoke the device</Button>
+          <Button variant="secondary" onClick={() => setSecretOpen(true)}>Show the one-time secret</Button>
         </Panel>
 
         {/*
@@ -158,8 +173,21 @@ export function ExerciseEveryComponent({ text }: { text: string }) {
           action="device.revoke"
           objectName={text}
           open={confirmOpen}
+          stepUp={ALWAYS_STEPPED_UP}
           onCancel={() => setConfirmOpen(false)}
           onConfirm={() => setConfirmOpen(false)}
+        />
+
+        {/*
+          The token is driven by the same string as everything else, so the
+          hostile-content test proves one-time material renders as text too.
+        */}
+        <OneTimeSecretDialog
+          secret={secretOpen ? { token: text, expires_at: observedAt } : null}
+          onDismiss={() => setSecretOpen(false)}
+          titleKey="environment.secret.title"
+          descriptionKey="environment.secret.description"
+          labelKey="environment.secret.label"
         />
 
         <ToastRegion toasts={toasts.toasts} onDismiss={toasts.dismiss} />

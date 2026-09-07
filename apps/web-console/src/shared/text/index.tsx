@@ -31,6 +31,21 @@ type Values<K extends CatalogueKey, V> = [Placeholder<Entry<K>>] extends [never]
   ? []
   : [values: Record<Placeholder<Entry<K>>, V>];
 
+/**
+ * The keys that need no values.
+ *
+ * A table mapping something to a catalogue key — the confirmation levels, the
+ * error taxonomy — is read with a key the compiler sees as a union, and `t`
+ * cannot then tell whether values are required. Typing the table's field as
+ * this rather than as `CatalogueKey` restores that: a key with a placeholder
+ * cannot be put in the table at all, which is the honest place for the
+ * failure. It is not that the call site forgot a value; it is that the entry
+ * is the wrong shape for a lookup table.
+ */
+export type PlainCatalogueKey = {
+  [K in CatalogueKey]: [Placeholder<Entry<K>>] extends [never] ? K : never;
+}[CatalogueKey];
+
 const fill = (template: string, values: Record<string, unknown>): string =>
   template.replace(/\{(\w+)\}/g, (whole, name: string) =>
     Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : whole,

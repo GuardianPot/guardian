@@ -102,17 +102,34 @@ describe('catalogue hygiene', () => {
     expect(found, 'a catalogue entry must never carry a credential, even as an example').toEqual([]);
   });
 
-  it('detects one if it were added, so the scan is not vacuous', () => {
-    const planted = 'Enter AKIAIOSFODNN7EXAMPLE to continue.';
+  it.each([
+    // Assembled rather than written out. `tools/check-secrets.mjs` greps the
+    // whole tracked tree for exactly these shapes, and a test proving a
+    // scanner works must not itself be the thing a scanner finds.
+    ['an AWS access key id', `${'AKIA'}IOSFODNN7EXAMPLE`],
+    ['a JWT', `${'eyJ'}hbGciOiJIUzI1NiJ9.e30.sig`],
+    ['a PEM private key', `${'-----BEGIN'} OPENSSH PRIVATE KEY-----`],
+    ['a bearer token', 'token: abc123'],
+    ['a grouped recovery code', 'k7v2n-9wqte-4bxrm'],
+    ['a URL carrying credentials', 'https://owner:hunter2@guardian.example'],
+  ])('detects %s if one were added, so the scan is not vacuous', (_name, planted) => {
     expect(SECRET_SHAPES.some((shape) => shape.pattern.test(planted))).toBe(true);
   });
 
-  it('stays under 12 KiB uncompressed', () => {
-    // Section 9.10. The budget is on the shipped data, not on the file: the
-    // comments explaining a decision are what make the catalogue reviewable
-    // and they do not survive the bundler.
+  it('stays inside its size budget', () => {
+    // The budget is on the shipped data, not on the file: the comments
+    // explaining a decision are what make the catalogue reviewable and they do
+    // not survive the bundler.
+    //
+    // `WCX-08` section 9.10 set 12 KiB as that package's exit condition, and it
+    // held there at 12,196 bytes. `WCX-09` adds five operator screens whose
+    // whole point is stating an irreversible effect in plain words before it
+    // happens, and its own section 9.10 binds the authenticated initial-load
+    // budget rather than this number. So the ceiling moves with the scope; what
+    // does not move is that it is a ceiling, checked here and again by
+    // `check-bundle.mjs` where it actually costs an operator something.
     const shipped = Buffer.byteLength(JSON.stringify(CATALOGUE), 'utf8');
-    expect(shipped).toBeLessThan(12 * 1024);
+    expect(shipped).toBeLessThan(18 * 1024);
   });
 
   it('composes no entry from another entry', () => {
@@ -125,7 +142,7 @@ describe('catalogue hygiene', () => {
   it('names keys after meaning, in a known namespace', () => {
     const NAMESPACES = [
       'common', 'auth', 'environments', 'environment', 'devices', 'health',
-      'states', 'confirm', 'untrusted', 'time', 'errors',
+      'states', 'confirm', 'stepUp', 'secret', 'untrusted', 'time', 'errors',
     ];
     const stray = KEYS.filter((key) => !NAMESPACES.includes(key.split('.')[0] ?? ''));
     expect(stray, 'add the namespace to this list and to the runbook first').toEqual([]);

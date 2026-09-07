@@ -42,13 +42,32 @@ export default defineConfig({
           }
 
           /*
-           * Sign-in is its own chunk even though it lives in the auth feature.
-           * The rest of that feature — the session context and the queries it
-           * wraps — is needed before any route renders, so leaving the
-           * unauthenticated screen in it would put sign-in into every
-           * authenticated load.
+           * The auth feature is split three ways, because its parts have three
+           * different lifetimes.
+           *
+           * Sign-in and the MFA method chooser are the unauthenticated screen.
+           * They travel together: step-up reauthentication offers the same
+           * proofs through the same control, and a signed-in operator already
+           * holds this chunk, whereas the reverse would make the sign-in
+           * screen pull authenticated code.
            */
-          if (/\/src\/features\/auth\/(LoginPage|text)\./.test(path)) return 'login';
+          if (/\/src\/features\/auth\/(LoginPage|MfaMethodField)\./.test(path)) return 'login';
+
+          /*
+           * The step-up prompt is loaded on demand. It brings Radix's dialog,
+           * and it is needed only when an operator reaches for an irreversible
+           * action — never on a first paint, authenticated or not.
+           */
+          if (/\/src\/features\/auth\/StepUpDialog\./.test(path)) return 'step-up';
+
+          /*
+           * Everything else in the feature — the session context, the
+           * capability seam, the session query — is needed before any route
+           * renders, including the sign-in route. It belongs with the shell.
+           * Left as `feature-auth` it became a chunk the login chunk imported,
+           * which is exactly the edge `check-bundle.mjs` forbids.
+           */
+          if (path.includes('/src/features/auth/')) return 'entry';
 
           const feature = /\/src\/features\/([^/]+)\//.exec(path);
           if (feature) return `feature-${feature[1]}`;
@@ -62,7 +81,7 @@ export default defineConfig({
            * the initial login load over its budget. Left unassigned, it
            * travels with the first feature chunk that actually opens one.
            */
-          if (/\/src\/shared\/ui\/(controls\/Dialog|confirm\/)/.test(path)) return undefined;
+          if (/\/src\/shared\/ui\/(controls\/Dialog|confirm\/|secret\/)/.test(path)) return undefined;
 
           /*
            * The rest of the shared layer and the app shell are named

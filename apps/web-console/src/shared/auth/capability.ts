@@ -21,6 +21,7 @@ export type Capability =
   | 'device.enroll'
   | 'device.disable'
   | 'device.revoke'
+  | 'device.reenroll'
   | 'enrollment.revoke'
   | 'session.revoke'
   | 'account.password';

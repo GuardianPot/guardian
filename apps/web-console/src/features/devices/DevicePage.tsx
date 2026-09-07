@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
 import { deviceEncoding } from '@shared/theme/statusEncoding';
 import { deviceQuery } from './api';
+import { DeviceLifecycle } from './DeviceLifecycle';
 import { clockQualityIsDegraded, deviceHealthQuery, HealthPanel } from '@features/health';
 import { DataBoundary, DescriptionList, StatusBadge, Timestamp, UntrustedText } from '@shared/ui';
 import styles from '@shared/styles/app.module.css';
@@ -50,6 +51,7 @@ export function DevicePage() {
                 },
               ]}
             />
+            <DeviceLifecycle device={record} />
             {/*
               Inventory above, health below, never merged. An `active` record
               is an inventory fact; it is not evidence that anything is

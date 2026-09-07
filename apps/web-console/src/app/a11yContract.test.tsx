@@ -63,7 +63,7 @@ const SCREENS: readonly {
 }[] = [
   { name: 'environments', entry: '/environments', heading: 'Environments', readOnlyControls: 2 },
   { name: 'environment', entry: `/environments/${environmentID}`, heading: 'Lab', readOnlyControls: 7 },
-  { name: 'device', entry: `/environments/${environmentID}/devices/${deviceID}`, heading: 'edge-one', readOnlyControls: 0 },
+  { name: 'device', entry: `/environments/${environmentID}/devices/${deviceID}`, heading: 'edge-one', readOnlyControls: 3 },
 ];
 
 describe('forms', () => {
