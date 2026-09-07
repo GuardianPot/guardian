@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router';
 import { configEncoding, deviceEncoding, healthEncoding, severityEncoding } from '@shared/theme/statusEncoding';
 import {
   Banner,
+  Breadcrumbs,
   Button,
   ConfidenceMeter,
   ConfirmationDialog,
@@ -59,6 +60,7 @@ export const EXERCISED_COMPONENTS = [
   'DescriptionList',
   'Skeleton',
   'Timestamp',
+  'Breadcrumbs',
   'OneTimeSecretDialog',
   'Banner',
   'InlineMessage',
@@ -132,6 +134,15 @@ export function ExerciseEveryComponent({ text }: { text: string }) {
         <Timestamp value={observedAt} />
         <Timestamp value={observedAt} precision="second" mode="absoluteWithRelative" uncertainClock />
         <Timestamp value={null} />
+
+        {/*
+          A trail whose last entry is backend text, so the hostile-content
+          test drives an attacker-shaped name through a navigation landmark.
+        */}
+        <Breadcrumbs trail={[
+          { label: text, to: '/environments' },
+          { label: <UntrustedText value={untrusted(text)} /> },
+        ]} />
 
         <UntrustedText value={untrusted(text)} />
         <UntrustedBlock value={untrusted(text)} label="Captured transcript" />

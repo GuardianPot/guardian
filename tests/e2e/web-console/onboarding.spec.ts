@@ -131,17 +131,50 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
   await expect(page.getByTestId('one-time-secret')).toHaveCount(0);
   await expect(page).not.toHaveURL(new RegExp(secretText!));
 
-  // WCX-06 section 10.3.2: every control is reachable by keyboard alone at a
-  // wide and a narrow viewport. Sign-out is the one that matters — an operator
-  // who cannot reach it cannot end a session — and it was unreachable below
-  // 900 pixels until `P1-W11` GAP-1 was fixed.
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 }]) {
+  // WCX-06 section 10.3.2 and WCX-10 sections 10.2.1, 10.2.2, and 10.2.6:
+  // every control is reachable by keyboard alone at every supported width.
+  //
+  // Sign-out is the one that matters — an operator who cannot reach it cannot
+  // end a session they suspect is stolen — and it was unreachable below 900
+  // pixels until `P1-W11` GAP-1 was fixed. `WCX-10` replaced that fix with a
+  // disclosure, so below the breakpoint "reachable" now means reachable
+  // *through* the disclosure, by keyboard, without a pointer.
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 375, height: 812 },
+    { width: 320, height: 568 },
+  ]) {
+    const at = `${viewport.width}px`;
     await page.setViewportSize(viewport);
-    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+
+    const disclosure = page.getByRole('button', { name: 'Open navigation' });
+    if (viewport.width <= 900) {
+      await expect(disclosure, `a disclosure at ${at}`).toBeVisible();
+      await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+      await disclosure.click();
+      await expect(disclosure).toHaveAttribute('aria-expanded', 'true');
+    } else {
+      await expect(disclosure, `no disclosure at ${at}`).toHaveCount(0);
+    }
+
+    const nav = page.getByRole('navigation', { name: 'Primary navigation' });
+    for (const entry of ['Home', 'Environments', 'Account']) {
+      await expect(nav.getByRole('link', { name: entry }), `${entry} at ${at}`).toBeVisible();
+    }
+    await expect(page.getByRole('button', { name: 'Sign out' }), `sign-out at ${at}`).toBeVisible();
+    await expect(page.getByLabel('Environment scope'), `scope at ${at}`).toBeVisible();
+
     const reached = await tabOrder(page);
-    expect(reached[0], `first tab stop at ${viewport.width}px`).toBe('Skip to content');
-    expect(reached, `sign-out at ${viewport.width}px`).toContain('Sign out');
-    expect(reached, `zone form at ${viewport.width}px`).toContain('Add zone');
+    expect(reached[0], `first tab stop at ${at}`).toBe('Skip to content');
+    expect(reached, `sign-out in the tab order at ${at}`).toContain('Sign out');
+
+    // Section 9.3.6: no horizontal page scroll at any supported width. Wide
+    // content scrolls inside its own container; the page never does.
+    const overflow = await page.evaluate(() =>
+      document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow, `horizontal page overflow at ${at}`).toBeLessThanOrEqual(0);
+
+    await expectNoSeriousAxeViolations(page, `the environment route at ${at}`);
   }
   await page.setViewportSize({ width: 1280, height: 800 });
 
@@ -265,6 +298,52 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
   await editedRow.getByRole('button', { name: `Delete ${editedName}` }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Delete zone' }).click();
   await expect(page.getByText(editedName)).toHaveCount(0);
+
+  // ── WCX-10 sections 10.2.3 and 10.2.4 ───────────────────────────────────
+  //
+  // A scoped link resolves the same way for whoever opens it, and a scope the
+  // console cannot resolve never falls back to one it can.
+  const environmentId = environmentPath.split('/').pop()!;
+  await page.goto(`/?env=${environmentId}`);
+  await expect(page.getByRole('heading', { name: 'Current environment' })).toBeVisible();
+  await expect(page.getByLabel('Environment scope')).toHaveValue(environmentId);
+
+  /*
+   * The same address in a fresh document: a pasted link resolves to the same
+   * view, which is the whole reason `WC-D14` puts scope in the URL.
+   *
+   * A new tab in this context rather than a second browser context, because a
+   * second context needs its own sign-in and every sign-in costs one of the
+   * ten one-time recovery codes bootstrap issues — six are spent by this flow
+   * and two by `operator-lifecycle.spec.ts`. A new tab is also the case an
+   * operator actually hits: there is one owner, so a shared link is opened by
+   * the same session.
+   */
+  const sharedPage = await context.newPage();
+  try {
+    await sharedPage.goto(`/?env=${environmentId}`);
+    await expect(sharedPage.getByLabel('Environment scope')).toHaveValue(environmentId);
+    await expect(sharedPage.getByRole('heading', { name: 'Current environment' })).toBeVisible();
+  } finally {
+    await sharedPage.close();
+  }
+
+  // A well-formed identifier for an environment that does not exist. There is
+  // one owner and no role model (`IA-06`), so a *denied* environment is not
+  // reachable in this deployment; `scope.test.tsx` covers the 403 against a
+  // mocked Control Plane. What matters equally here is the refusal to
+  // substitute: the environment this session can read is not shown.
+  await page.goto('/?env=018f1f7e-0000-7000-8000-0000000000ff');
+  await expect(page.getByRole('heading', { name: 'Current environment' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Current environment' })).not.toContainText(environmentName);
+
+  // A malformed one is not looked up at all, and says so.
+  await page.goto('/?env=../../admin');
+  await expect(page.getByRole('heading', { name: 'Page not found', level: 1 })).toBeVisible();
+  await expect(page.getByText(/deliberately not fallen back to a different environment/)).toBeVisible();
+  // Navigation stays mounted, so the operator is not stranded (section 9.7.3).
+  await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
+  await expectNoSeriousAxeViolations(page, 'the not-found route');
 
   expect(dialogs).toEqual([]);
 

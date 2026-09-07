@@ -38,6 +38,14 @@ export type ButtonProps = {
    * submit button in a dialog would submit nothing.
    */
   form?: string;
+  /**
+   * Disclosure plumbing (`WCX-10` section 9.3.4). A button that shows and
+   * hides a region has to say so and has to name the region; both belong on
+   * the control, so the shell does not reach around this component to set
+   * them.
+   */
+  expanded?: boolean;
+  controls?: string;
   pending?: boolean;
   /** Present only when the control is unavailable. Rendered and associated. */
   disabledReason?: string;
@@ -54,6 +62,8 @@ export function Button({
   variant = 'secondary',
   type = 'button',
   form,
+  expanded,
+  controls,
   pending = false,
   disabledReason,
   onClick,
@@ -68,6 +78,8 @@ export function Button({
         className={styles[VARIANT_CLASS[variant]]}
         type={type}
         {...(form === undefined ? {} : { form })}
+        {...(expanded === undefined ? {} : { 'aria-expanded': expanded })}
+        {...(controls === undefined ? {} : { 'aria-controls': controls })}
         disabled={unavailable || pending}
         aria-busy={pending || undefined}
         aria-describedby={unavailable ? reasonId : undefined}

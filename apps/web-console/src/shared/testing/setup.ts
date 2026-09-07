@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { Headers, Request, Response } from 'undici';
 import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { installMatchMedia, resetViewportWidth } from './viewport';
 
 /**
  * Hand the test environment Node's `Request`, `Response`, and `Headers`
@@ -20,4 +21,17 @@ import { cleanup } from '@testing-library/react';
  */
 Object.assign(globalThis, { Headers, Request, Response });
 
-afterEach(() => cleanup());
+/**
+ * A viewport the suite can set (WCX-10 section 10.1.6).
+ *
+ * jsdom supplies no `matchMedia`, so the shell would read 'wide' at every
+ * width and the responsive rules would be invisible to every test. That is
+ * how `P1-W11` GAP-1 survived a full suite: a media query removed sign-out
+ * below 900 pixels and nothing in the suite had a width at all.
+ */
+installMatchMedia();
+
+afterEach(() => {
+  cleanup();
+  resetViewportWidth();
+});

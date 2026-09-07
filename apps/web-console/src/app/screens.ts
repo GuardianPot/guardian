@@ -12,10 +12,12 @@
  */
 export const SCREEN = {
   signIn: 'Sign in',
+  home: 'Home',
   environments: 'Environments',
   environment: 'Environment',
   device: 'Edge device',
   account: 'Account',
+  notFound: 'Page not found',
 } as const;
 
 export type ScreenName = (typeof SCREEN)[keyof typeof SCREEN];

@@ -142,7 +142,13 @@ describe('EnvironmentPage', () => {
     expect(screen.getByText('pending')).toBeVisible();
     expect(await screen.findByRole('heading', { name: 'Eight-condition health' })).toBeVisible();
     expect(screen.getByText(/Blocking: Edge connection/)).toHaveTextContent('channel_disconnected');
-    expect(screen.getAllByRole('listitem')).toHaveLength(9);
+    // The eight conditions plus the one device. Scoped to the lists that hold
+    // them: `WCX-10` added breadcrumbs, whose entries are list items too, and
+    // a bare document-wide count would silently absorb any list added later.
+    expect(screen.getByRole('list', { name: 'Device health conditions' })
+      .querySelectorAll('li')).toHaveLength(8);
+    expect(screen.getByRole('list', { name: 'Edge devices' })
+      .querySelectorAll('li')).toHaveLength(1);
   });
 
   it('renders hostile backend text as inert content', async () => {

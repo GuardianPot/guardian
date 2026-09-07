@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { deviceEncoding } from '@shared/theme/statusEncoding';
 import { deviceQuery } from './api';
 import { DeviceLifecycle } from './DeviceLifecycle';
 import { clockQualityIsDegraded, deviceHealthQuery, HealthPanel } from '@features/health';
-import { DataBoundary, DescriptionList, StatusBadge, Timestamp, UntrustedText } from '@shared/ui';
+import { Breadcrumbs, DataBoundary, DescriptionList, StatusBadge, Timestamp, UntrustedText } from '@shared/ui';
 import styles from '@shared/styles/app.module.css';
 import { t } from '@shared/text';
 
@@ -16,7 +16,19 @@ export function DevicePage() {
   const degradedClock = clockQualityIsDegraded(health.data);
   return (
     <div>
-      <Link className={styles.backLink} to={`/environments/${environmentId}`}>{t('devices.back')}</Link>
+      {/*
+        Two levels up, both named. A single back link left the environment
+        unnamed, so an operator on this screen could not read their position.
+      */}
+      <Breadcrumbs trail={[
+        { label: t('environments.heading'), to: '/environments' },
+        { label: t('environment.eyebrow'), to: `/environments/${environmentId}` },
+        {
+          label: device.data
+            ? <UntrustedText value={device.data.display_name} />
+            : t('devices.eyebrow'),
+        },
+      ]} />
       <DataBoundary
         query={device}
         subject={{

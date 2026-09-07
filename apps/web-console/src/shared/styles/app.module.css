@@ -231,23 +231,28 @@
 .dialogActions { display: flex; justify-content: flex-end; gap: var(--space-4); }
 
 @media (max-width: 900px) {
-  .shell { grid-template-columns: 1fr; }
-  /* Wraps rather than overflows, so the operator block has somewhere to go. */
-  .sidebar { position: static; height: auto; padding: var(--space-6) 4vw; flex-flow: row wrap; align-items: center; gap: var(--space-4) var(--space-6); }
-  .sidebar nav { margin-left: auto; }
   /*
-   * `P1-W11` GAP-1. This rule was `display: none`, which removed sign-out and
-   * the re-authentication link from every viewport below 900 pixels: an
-   * operator on a narrow screen could not end their session. No operator
-   * control may be removed at any width. The block becomes a row in the bar
-   * instead of disappearing from it.
-   *
-   * This closes the defect, not the design. `WCX-10` owns the information
-   * architecture and replaces this with the disclosure pattern its section 9.3
-   * defines; the invariant that rule enforces is already in force here.
+   * The single breakpoint (WCX-10 section 9.3.1). It is 900 here and 900 in
+   * `useNarrowViewport.ts`; two that drift apart give a width at which the
+   * disclosure believes it is closed while the layout has already expanded,
+   * and at that width the operator block sits inside a panel nothing can
+   * open.
    */
-  .operator { margin-top: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
-  .operator a { margin-top: 0; }
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; padding: var(--space-6) 4vw; gap: var(--space-5); }
+  .sidebarBar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+  /*
+   * The panel holds navigation, scope, and the operator block together.
+   *
+   * `P1-W11` GAP-1 lived here as `display: none` on the operator block,
+   * which removed sign-out and the re-authentication link from every
+   * viewport below this width: an operator on a phone could not end a
+   * session they suspected was stolen. Nothing is removed now, it is
+   * disclosed, and `Shell.tsx` owns whether the panel is open. The rule is
+   * that at no width does an operator control cease to exist.
+   */
+  .sidebarPanel { gap: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--line-subtle); }
+  .operator { margin-top: 0; }
   .twoColumn, .loginPage { grid-template-columns: 1fr; }
   .loginIntro { display: none; }
   .loginPage { width: min(34rem, calc(100% - 2rem)); }
@@ -295,3 +300,38 @@
 .currentSession, .revokedSession { display: inline-block; margin-left: var(--space-3); padding: 0 var(--space-2); border: 1px solid var(--line-strong); border-radius: var(--radius-1); color: var(--text-muted); font-size: var(--font-size-1); font-weight: var(--weight-regular); text-transform: uppercase; }
 .revokedSession { border-style: dashed; }
 .rowNote { color: var(--text-muted); font-size: var(--font-size-2); }
+
+/* Shell navigation, scope, and breadcrumbs (WCX-10 sections 9.2-9.4).
+
+   Above the breakpoint the panel is simply the sidebar contents and the
+   disclosure trigger is not rendered at all, so there is nothing to hide. */
+.sidebarBar { display: grid; gap: var(--space-4); }
+.sidebarPanel { display: grid; gap: var(--space-8); }
+
+/* Section 9.4.3: the active entry is marked by more than colour. The weight
+   change and the leading rule carry it for anyone who cannot separate the
+   accent from the resting colour. */
+.navActive { position: relative; font-weight: var(--weight-heavy); }
+.navActive::before { content: ''; position: absolute; inset-block: 0; inset-inline-start: calc(var(--space-4) * -1); width: 2px; background: currentcolor; }
+
+.scope { display: grid; gap: var(--space-2); }
+.scopeLabel { color: var(--text-muted); font-size: var(--font-size-2); }
+.scopeSelect { width: 100%; padding: var(--space-3) var(--space-4); color: var(--text-primary); font: inherit; font-size: var(--font-size-3); background: var(--surface-inset); border: 1px solid var(--line-subtle); border-radius: var(--radius-2); }
+.scopeSelect:disabled { color: var(--text-muted); cursor: not-allowed; }
+.scopeReason { color: var(--text-muted); font-size: var(--font-size-2); line-height: var(--line-height-normal); }
+
+.breadcrumbs ol { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-6); padding: 0; list-style: none; color: var(--text-muted); font-size: var(--font-size-2); }
+.breadcrumbs li + li::before { content: '/'; margin-inline-end: var(--space-3); color: var(--line-strong); }
+.breadcrumbs a { color: var(--brand-accent); }
+.breadcrumbs [aria-current='page'] { color: var(--text-secondary); overflow-wrap: anywhere; }
+
+.homeLinks { display: flex; flex-wrap: wrap; gap: var(--space-5); margin-top: var(--space-6); }
+.homeLinks a { color: var(--brand-accent); }
+
+/* Section 9.3.6: 320 pixels with no horizontal page scroll. Wide content
+   scrolls inside its own container; the page itself never does. */
+@media (max-width: 400px) {
+  .sidebar { padding: var(--space-5); }
+  .main { padding-inline: var(--space-5); }
+  .lifecycleRow { flex-direction: column; align-items: stretch; }
+}

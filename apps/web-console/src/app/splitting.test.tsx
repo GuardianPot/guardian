@@ -66,15 +66,20 @@ describe('the route tree after the React Router 8 upgrade', () => {
     const shell = children.find((route) => route.children?.[0]?.children);
     const screens = shell?.children?.[0]?.children ?? [];
 
+    // WCX-10 section 9.1: the incident-first root, then everything that was
+    // already reachable, then the catch-all. Every path here is bookmarkable.
     expect(screens.map((route) => route.path)).toEqual([
+      '/',
       '/environments',
       '/environments/:environmentId',
       '/environments/:environmentId/devices/:deviceId',
       '/account',
+      '*',
     ]);
     expect(children.some((route) => route.path === '/login')).toBe(true);
-    // The catch-all still redirects rather than rendering a not-found screen.
-    expect(children.some((route) => route.path === '*')).toBe(true);
+    // The catch-all lives inside the authenticated shell, so a signed-out
+    // visitor still reaches sign-in rather than a not-found page.
+    expect(children.some((route) => route.path === '*')).toBe(false);
   });
 
   it.each([
@@ -87,10 +92,16 @@ describe('the route tree after the React Router 8 upgrade', () => {
     expect(await screen.findByRole('heading', { name: heading, level: 1 })).toBeVisible();
   });
 
-  it('still redirects an unknown path to the default screen', async () => {
+  it('renders not-found for an unknown path instead of hiding it', async () => {
+    // WCX-10 section 9.7.3. `P1-W11` redirected everything unmatched to the
+    // environment list, so an operator following a stale link landed on a
+    // working screen and concluded the link was right. The address is now
+    // reported as unresolvable and the address bar keeps what was asked for.
     const { router } = renderApp('/not-a-route');
-    await screen.findByRole('heading', { name: 'Environments', level: 1 });
-    expect(router.state.location.pathname).toBe('/environments');
+    expect(await screen.findByRole('heading', { name: 'Page not found', level: 1 })).toBeVisible();
+    expect(router.state.location.pathname).toBe('/not-a-route');
+    // Navigation stays mounted, so the operator is not stranded.
+    expect(screen.getByRole('navigation', { name: 'Primary navigation' })).toBeInTheDocument();
   });
 });
 

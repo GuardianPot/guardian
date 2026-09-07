@@ -121,18 +121,19 @@ describe('catalogue hygiene', () => {
     // explaining a decision are what make the catalogue reviewable and they do
     // not survive the bundler.
     //
-    // `WCX-08` section 9.10 set 12 KiB as that package's exit condition and it
-    // held there at 12,196 bytes. `WCX-09` adds five operator screens whose
-    // whole point is stating an irreversible effect in plain words before it
-    // happens — 19,592 bytes at the end of that package — and its own section
-    // 9.10 binds the authenticated initial-load budget rather than this
-    // number.
+    // This is a smoke ceiling, not the budget. `WCX-08` section 9.10 set 12
+    // KiB as that package's exit condition and it held there at 12,196 bytes;
+    // `WCX-09` took it to 19,592 and `WCX-10` to 21,263, because each adds
+    // screens whose whole point is saying something in plain words. Raising
+    // the number once per package is a treadmill that measures nothing, so it
+    // is set with room for the phase.
     //
-    // So the ceiling moves with the scope. What does not move is that it is a
-    // ceiling, and that the constraint an operator actually pays for is
-    // enforced by `check-bundle.mjs`, which measures the shipped chunk.
+    // What an operator actually pays for is enforced elsewhere:
+    // `check-bundle.mjs` measures the entry chunk this object ships in, and
+    // that budget has not moved. What this assertion is still worth keeping
+    // for is the runaway case — a generated or duplicated catalogue.
     const shipped = Buffer.byteLength(JSON.stringify(CATALOGUE), 'utf8');
-    expect(shipped).toBeLessThan(20 * 1024);
+    expect(shipped).toBeLessThan(32 * 1024);
   });
 
   it('composes no entry from another entry', () => {
@@ -145,7 +146,8 @@ describe('catalogue hygiene', () => {
   it('names keys after meaning, in a known namespace', () => {
     const NAMESPACES = [
       'common', 'auth', 'account', 'environments', 'environment', 'devices', 'health',
-      'states', 'confirm', 'stepUp', 'secret', 'untrusted', 'time', 'errors',
+      'home', 'scope', 'notFound', 'states', 'confirm', 'stepUp', 'secret',
+      'untrusted', 'time', 'errors',
     ];
     const stray = KEYS.filter((key) => !NAMESPACES.includes(key.split('.')[0] ?? ''));
     expect(stray, 'add the namespace to this list and to the runbook first').toEqual([]);

@@ -19,7 +19,7 @@ import { environmentHealthQuery, HealthPanel } from '@features/health';
 import { SecretDialog } from './SecretDialog';
 import { EnrollmentTokenPanel } from './EnrollmentTokenPanel';
 import { ZoneRow } from './ZoneRow';
-import { Banner, Button, DataBoundary, Panel, StatusBadge, TextField, UntrustedText } from '@shared/ui';
+import { Banner, Breadcrumbs, Button, DataBoundary, Panel, StatusBadge, TextField, UntrustedText } from '@shared/ui';
 import { reveal } from '@shared/api/untrusted';
 import styles from '@shared/styles/app.module.css';
 import { t } from '@shared/text';
@@ -115,7 +115,21 @@ export function EnvironmentPage() {
 
   return (
     <div>
-      <Link className={styles.backLink} to="/environments">{t('environment.back')}</Link>
+      {/*
+        Section 9.4.2. The trail names where the operator is, not only one
+        step out of it. The environment's own name is the last entry and is
+        untrusted, so it arrives as a node rather than as a string — and until
+        the read lands it is the generic screen name rather than a blank,
+        because an empty crumb reads as a missing record.
+      */}
+      <Breadcrumbs trail={[
+        { label: t('environments.heading'), to: '/environments' },
+        {
+          label: environment.data
+            ? <UntrustedText value={environment.data.display_name} />
+            : t('environment.eyebrow'),
+        },
+      ]} />
       <DataBoundary
         query={environment}
         subject={{
@@ -162,7 +176,7 @@ export function EnvironmentPage() {
                   }
                 >
                   {(list) => (
-                    <ul className={styles.deviceList}>
+                    <ul className={styles.deviceList} aria-label={t('environment.deviceCollection')}>
                       {list.map((device) => (
                         <li key={device.device_id}>
                           <Link to={`/environments/${environmentId}/devices/${device.device_id}`}>

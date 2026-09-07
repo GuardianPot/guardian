@@ -108,6 +108,15 @@ export default defineConfig({
            * shell's cost visible in the budget report instead of hiding it
            * inside a feature.
            */
+          /*
+           * The home placeholder and the not-found screen are screens, not
+           * shell. Section 9.9 keeps the shell in `entry`, and it is —
+           * these are what it renders into, and leaving them there put the
+           * incident placeholder in the chunk an unauthenticated visitor
+           * downloads.
+           */
+          if (/\/src\/app\/(HomePage|NotFoundPage)\./.test(path)) return 'home';
+
           if (/\/src\/(shared|app)\//.test(path)) return 'entry';
           return undefined;
         },

@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, lazy } from 'react';
 import { Navigate, Outlet, createBrowserRouter, type RouteObject } from 'react-router';
 import { LoginRoute, useAuth } from '@features/auth';
 import { DeviceRoute } from '@features/devices';
@@ -40,6 +40,15 @@ export function RequireAuth() {
  * That is the first of the three exclusion proofs; `check-bundle.mjs` and a
  * browser scenario are the other two.
  */
+/*
+ * Home and not-found are screens, so they split like every other screen
+ * (WC-D06). Section 9.9 keeps the *shell* in the entry chunk, and it is —
+ * these are what the shell renders into. Leaving them there put the incident
+ * placeholder into the chunk an unauthenticated visitor downloads.
+ */
+const HomeRoute = lazy(() => import('@app/HomePage').then((module) => ({ default: module.HomePage })));
+const NotFoundRoute = lazy(() => import('@app/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
+
 const workbenchRoutes: RouteObject[] = import.meta.env.DEV
   ? [{
     path: '/__components',
@@ -83,6 +92,7 @@ export const routes: RouteObject[] = [
         children: [{
           element: <Shell />,
           children: [
+            { path: '/', element: <HomeRoute />, handle: { screen: SCREEN.home } },
             { path: '/environments', element: <EnvironmentsRoute />, handle: { screen: SCREEN.environments } },
             { path: '/environments/:environmentId', element: <EnvironmentRoute />, handle: { screen: SCREEN.environment } },
             {
@@ -91,10 +101,19 @@ export const routes: RouteObject[] = [
               handle: { screen: SCREEN.device },
             },
             { path: '/account', element: <AccountRoute />, handle: { screen: SCREEN.account } },
+            /*
+             * An unknown address says so, inside the shell (section 9.7.3).
+             *
+             * `P1-W11` redirected everything unmatched to `/environments`,
+             * which hides the mistake: an operator following a stale link
+             * lands on a working screen and concludes the link was right. It
+             * sits inside `RequireAuth` so a signed-out visitor still reaches
+             * sign-in rather than a not-found page that tells them nothing.
+             */
+            { path: '*', element: <NotFoundRoute />, handle: { screen: SCREEN.notFound } },
           ],
         }],
       },
-      { path: '*', element: <Navigate to="/environments" replace /> },
     ],
   },
 ];

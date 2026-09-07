@@ -42,6 +42,12 @@ export const CATALOGUE = {
   'common.sessionReadOnlyFull':
     'Read-only session restored. {reauthenticate} before changing configuration or signing out.',
   'common.controlPlane': 'The Control Plane',
+  'common.breadcrumbs': 'Breadcrumb',
+  // The disclosure names the state it will move to, not the state it is in:
+  // a control labelled "Navigation" tells an operator nothing about what
+  // pressing it does (WCX-10 section 9.3.4).
+  'common.openNavigation': 'Open navigation',
+  'common.closeNavigation': 'Close navigation',
   'common.checkingSession': 'Checking your session',
   'common.loadingScreen': 'Loading this screen',
   'common.cancel': 'Cancel',
@@ -96,7 +102,6 @@ export const CATALOGUE = {
   'environments.doesNotWork': 'the environment list',
   'environments.staleReason': 'the last refresh of the environment list did not return',
 
-  'environment.back': '← All environments',
   'environment.eyebrow': 'Environment',
   'environment.loading': 'this environment',
   'environment.stillWorks': 'navigation and sign-out',
@@ -183,7 +188,6 @@ export const CATALOGUE = {
   'secret.dismiss': 'I have stored it securely',
 
   // ─── devices ───────────────────────────────────────────────────────────
-  'devices.back': '← Environment overview',
   'devices.eyebrow': 'Edge device',
   'devices.inventoryDimension': 'Inventory',
   'devices.subject': 'this device record',
@@ -258,6 +262,40 @@ export const CATALOGUE = {
   'account.sessions.stillWorks': 'navigation and sign-out',
   'account.sessions.doesNotWork': 'the session list',
   'account.sessions.staleReason': 'the last refresh of the session list did not return',
+
+  // ─── home, scope, and not-found (WCX-10) ───────────────────────────────
+  //
+  // Every sentence in `home.*` is about the console. None of them counts,
+  // summarises, or reassures — an operator must not be able to read this
+  // placeholder as "Guardian looked and found nothing" (section 9.4.1).
+  'home.eyebrow': 'Operations',
+  'home.heading': 'Home',
+  'home.pendingEyebrow': 'Not built yet',
+  'home.pendingHeading': 'The incident dashboard arrives in a later phase',
+  'home.pendingBody': 'This screen is a placeholder. Guardian is not reporting anything here, and the absence of content on this page is a fact about the console rather than about your network.',
+  'home.pendingScope': 'Detection, triage, and evidence surfaces are built in Phase 3. Until then, use the screens below.',
+  'home.entryPoints': 'Screens that are built',
+  'home.scopeEyebrow': 'Selected scope',
+  'home.scopeHeading': 'Current environment',
+  'home.scopeSubject': 'the selected environment',
+  'home.scopeStillWorks': 'navigation and every other screen',
+  'home.scopeDoesNotWork': 'the environment named in this link',
+  'home.scopeStaleReason': 'the last refresh of the selected environment did not return',
+
+  'scope.label': 'Environment scope',
+  'scope.unselected': 'No environment selected',
+  'scope.loading': 'Loading the environment list.',
+  'scope.unavailable': 'The environment list could not be read, so no scope can be chosen.',
+  'scope.none': 'No environments exist yet, so there is no scope to choose.',
+
+  'notFound.eyebrow': 'Nothing at this address',
+  'notFound.heading': 'Page not found',
+  'notFound.panelHeading': 'Where to go instead',
+  // Says what happened rather than redirecting. An operator who followed a
+  // stale link needs to know the link was stale (section 9.7.3).
+  'notFound.routeBody': 'Guardian has no screen at this address. Nothing was changed and nothing was hidden — the address itself does not resolve.',
+  'notFound.scopeBody': 'The environment in this link is not a valid identifier, so Guardian did not look it up. It has deliberately not fallen back to a different environment.',
+  'notFound.entryPoints': 'Screens that are built',
 
   // ─── health ────────────────────────────────────────────────────────────
   'health.eyebrow': 'Backend health projection',

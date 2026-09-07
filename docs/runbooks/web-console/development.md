@@ -1145,6 +1145,127 @@ description, not only in the `title`, because `title` is mouse-only. Age
 formatting (`formatAge`) lives in this module too, so the `stale` state and a
 relative timestamp cannot disagree about how long ago something was.
 
+## Navigation and scope
+
+The console's root is the incident dashboard, because `UX-01` says it is. The
+dashboard does not exist yet — Phase 3 builds it — so `/` renders a
+placeholder. Deciding the shell now means Phase 3 adds a screen instead of
+rebuilding the frame around one.
+
+### The route tree
+
+| Path | Screen | Chunk |
+|---|---|---|
+| `/login` | Sign in | `login` |
+| `/` | Home placeholder | `home` |
+| `/environments` | Environment list | `feature-environments` |
+| `/environments/:environmentId` | Environment detail | `feature-environments` |
+| `/environments/:environmentId/devices/:deviceId` | Device detail | `feature-devices` |
+| `/account` | Sessions and password | `feature-account` |
+| `/__components` | Component workbench | development only |
+| `*` | Not found | `home` |
+
+**No path moved in `WCX-10`.** Two behaviours changed: `/` was a redirect to
+`/environments` and is now a screen, and an unknown path was a redirect to
+`/environments` and is now a not-found screen.
+
+That second change is the one to understand. Redirecting an unknown address
+hides the mistake: an operator who followed a stale link lands on a working
+screen and concludes the link was right. In a console where the address
+carries the scope, silently arriving somewhere else is the same class of error
+as falling back to a different environment. So the address bar keeps what was
+asked for, the screen says it does not resolve, and navigation stays mounted.
+
+The catch-all sits *inside* `RequireAuth`, so a signed-out visitor still
+reaches sign-in rather than a not-found page that tells them nothing.
+
+A navigation entry exists only when its screen does. `Home`, `Environments`,
+`Account` — that is the list, and `navigation.test.tsx` fails if a catalogue
+label like `Incidents` or `Decoys` appears before its screen.
+
+### The `?env=` scope parameter
+
+`WC-D14` puts the environment scope in the URL rather than in memory or
+storage, so a link pasted into an incident channel resolves to the same view
+for whoever opens it.
+
+It is also untrusted input — anyone can type it, and it arrives from a link
+the console has never authenticated. `src/app/scope.ts` holds three rules and
+all three are about refusing to guess:
+
+1. It is validated against the UUID pattern **before** use, so a malformed
+   value never reaches a request path.
+2. An unknown or denied environment renders `not-found` or `denied` as the
+   Control Plane reports it.
+3. **There is no fallback.** Not to the first environment, not to the only
+   environment, not to the last one viewed.
+
+Rule 3 is the one worth being stubborn about. An operator who believes they
+are looking at environment A while seeing environment B will act on the wrong
+network, and nothing on the screen would tell them.
+
+The selector follows from it. With several environments and no parameter,
+nothing is selected — picking the first would put an operator in front of a
+network they did not ask for, and every screen after that would look correct.
+With exactly one environment there is no ambiguity, so it is preselected *and
+written to the URL*: a link that resolves differently depending on how many
+environments the reader can see is not a deterministic link.
+
+While the list is loading, refused, or empty, the selector is disabled with
+the reason, never hidden (`WC-D07`).
+
+Scope is absent when a screen already carries the environment in its path.
+Today the placeholder is its only consumer; Phase 3's incident surfaces are
+what it is really for, and their query keys take the environment as a scope
+segment following the `WCX-02` key shape.
+
+### The breakpoint and the disclosure
+
+One number: **900 pixels**, in `useNarrowViewport.ts` and in the stylesheet's
+media query, each naming the other. Two that drift apart give a width at which
+the disclosure believes it is closed while the layout has already expanded,
+and at that width the operator block sits inside a panel nothing can open.
+
+Above it: a persistent sidebar with navigation, the scope selector, and the
+operator block. At or below it: all three move into a disclosure — a real
+button with `aria-expanded` and `aria-controls`, closing on escape and on
+navigation and returning focus to its trigger.
+
+**No operator control is removed at any width, from 320 pixels upward.** This
+is the single most important rule in the shell and it is here because it was
+broken: `P1-W11` gave the operator block `display: none` below 900 pixels, so
+an operator who suspected a stolen session could not sign out from the device
+in their hand. `WCX-05` closed the defect by making the block wrap; `WCX-10`
+replaced that with the disclosure.
+
+The suite that shipped the original defect passed, because nothing in it had a
+width. jsdom has no layout and no `matchMedia`, so the shell reads the
+viewport through `matchMedia` and `shared/testing/viewport.ts` answers from a
+width the test sets. `shell.test.tsx` asserts the invariant at 320, 375, 900,
+and 1440; the browser suite proves it again at 375 and 320 by keyboard, with
+sign-out reached through the disclosure and no horizontal page scroll.
+
+If `matchMedia` is missing the shell treats the viewport as **wide**. That is
+the fail-safe direction on purpose: wide renders every operator control
+unconditionally, so an environment the console cannot measure gets the layout
+that hides nothing.
+
+### The home placeholder
+
+A blank incident dashboard is not neutral. An operator who glances at one and
+comes away believing Guardian looked and found nothing is worse off than one
+who never opened it — that is the exact failure this product exists to
+prevent, reproduced in its own shell.
+
+So the placeholder says what it is: the dashboard is not built, the absence of
+content is a fact about the console rather than about the network, and here
+are the two screens that work. `navigation.test.tsx` asserts the negative
+directly — no count, no empty list, no "all clear", no "secure", no list or
+table element at all.
+
+If you are the one adding the real dashboard, that test is the contract: it
+should be deleted deliberately, not edited into passing.
+
 ## Operator lifecycle actions
 
 Device disable and revoke, re-enrollment, enrollment-token revocation, zone

@@ -31,6 +31,8 @@ export { Timestamp, formatAge, parseInstant, type TimestampMode, type TimestampP
 
 export { OneTimeSecretDialog, type OneTimeSecret } from './secret/OneTimeSecretDialog';
 
+export { Breadcrumbs, type Crumb } from './nav/Breadcrumbs';
+
 export { Banner, type BannerTone } from './feedback/Banner';
 export { InlineMessage, type InlineTone } from './feedback/InlineMessage';
 export { PendingOnObject } from './feedback/PendingOnObject';
