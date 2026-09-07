@@ -1333,16 +1333,48 @@ asks that it not, but the contract offers no endpoint that verifies a password
 and a fresh MFA proof without creating a session. Recorded in
 `security/wcx-09-operator-completeness-review.md` with the follow-up.
 
-### Restore write access is not implemented
+### Restore write access
 
-Change proposal `0003` approved `POST /v1/auth/csrf` so a reload-restored
-session could regain write access without a full sign-in. It is **not built**.
-The endpoint has to issue a new CSRF proof for an existing session, which means
-updating that session's `csrf_hash`; `auth.Repository` has no such method and
-its only implementation is in `internal/storage/`, which `WCX-09` forbids.
+`W11-C3-A` keeps the synchronizer proof in browser memory, so a reload leaves
+a valid session that cannot change anything. `Restore write access` on the
+read-only banner exchanges the surviving cookie for a new proof through
+`POST /v1/auth/csrf`, which change proposal `0003` approved.
 
-So a reload still costs a full sign-in before any mutation, exactly as before.
-Level 3 actions are unaffected — step-up never depended on that endpoint.
+It is the one request in the console that deliberately carries **no** CSRF
+token, because not having one is the situation it exists to resolve. The
+Control Plane requires the session cookie and an exact origin match instead,
+and the cookie is `SameSite=Strict`, so a cross-site page never sends it.
+
+What it restores is level 1 and level 2. **Level 3 stays gated behind step-up
+whatever the proof's age**, and that separation is the whole shape of the
+change proposal: a fresh proof says the browser has a session, not that the
+operator is still the one holding it.
+
+Three refusals, deliberately different:
+
+| Response | What the console does |
+|---|---|
+| `401` | Ends the session and goes to sign-in. The cookie was not valid after all, and leaving an operator on a read-only banner for a session that no longer exists tells them something untrue |
+| `429` | Names the wait, stays read-only, and never retries |
+| anything else | Says write access could not be restored and offers full sign-in |
+
+Full sign-in stays on the banner beside the cheap path, because a refused
+re-issue must leave a way forward rather than a dead end.
+
+The endpoint does not extend the absolute session lifetime. `ReissueCSRF` in
+`internal/storage/auth.go` writes `csrf_hash` and nothing else — an
+`expires_at` written there would turn a re-issue into a session extension,
+which is the thing the proposal was approved on the condition of not doing.
+It is rate limited on the same persistent throttle the login path uses, and it
+emits an `auth.csrf.reissued` audit event against the session.
+
+**The trade this makes is stated in the proposal and is not reasoned away**:
+under an assumed script-execution foothold in the console origin, an attacker
+can call this and obtain a proof, so the CSRF token stops being an incidental
+second barrier. That is bounded by the approved CSP and by the `WCX-06`
+untrusted-content contract, under which such a foothold already implies a
+systemic failure — and it buys a step-up gate on irreversible actions that did
+not exist at all before.
 
 ### When a destructive action fails
 

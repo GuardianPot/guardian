@@ -420,6 +420,50 @@ UPDATE guardian_auth.sessions SET last_seen_at = $2 WHERE session_id = $1`, resu
 	return result, nil
 }
 
+// ReissueCSRF replaces one session's synchronizer proof in place.
+//
+// Change proposal 0003 constraint 2: the absolute lifetime is unchanged. The
+// UPDATE below touches `csrf_hash` and nothing else — not `expires_at`, not
+// `last_seen_at`, which `AuthenticateSession` has already advanced by the
+// normal amount any authorised request advances it. An `expires_at` written
+// here would turn a re-issue into a session extension, which is exactly the
+// thing the proposal was approved on the condition of not doing.
+//
+// The `revoked_at IS NULL` predicate is not redundant with the caller's
+// authentication: between that read and this write the session may have been
+// revoked from another tab, and an operator who just revoked a stolen session
+// must not have a fresh proof minted for it.
+func (s *Store) ReissueCSRF(ctx context.Context, reissue auth.ReissuedCSRF) error {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	command, err := tx.Exec(ctx, `
+UPDATE guardian_auth.sessions
+SET csrf_hash = $3
+WHERE user_id = $1 AND session_id = $2 AND revoked_at IS NULL`,
+		reissue.UserID, reissue.SessionID, reissue.CSRFHash[:])
+	if err != nil {
+		return fmt.Errorf("reissue session csrf proof: %w", err)
+	}
+	if command.RowsAffected() != 1 {
+		return auth.ErrSessionInvalid
+	}
+	// AUTH-06. The object is the session, so a re-issue is visible when an
+	// auditor reads that session's history rather than only the account's.
+	if err := appendAuthAudit(ctx, tx, audit.Event{
+		OccurredAt:    reissue.OccurredAt,
+		Actor:         audit.Actor{Type: audit.ActorTypeUser, ID: reissue.UserID},
+		Action:        audit.ActionCSRFReissued,
+		Object:        audit.ObjectRef{Type: audit.ObjectTypeSession, ID: reissue.SessionID},
+		CorrelationID: reissue.SessionID,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (s *Store) RevokeSession(ctx context.Context, userID, sessionID string, now time.Time, reason string) error {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {

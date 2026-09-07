@@ -242,6 +242,61 @@ func (s *Service) Logout(ctx context.Context, sessionToken, csrfToken, origin st
 	return s.repository.RevokeSession(ctx, session.UserID, session.SessionID, s.now().UTC(), "logout")
 }
 
+// ReissueCSRF issues a new synchronizer proof for an existing session.
+//
+// Change proposal 0003, Option B. `W11-C3-A` keeps the CSRF proof in browser
+// memory only, so a reload leaves a valid session that cannot mutate anything.
+// In Phase 1 that cost almost nothing; from Phase 2 on it costs a full
+// password and MFA entry every time an operator reloads during triage, and an
+// operator who finds reloading expensive stops reloading. Training that
+// behaviour into a detection product works directly against it.
+//
+// The four constraints the proposal attaches to this, in the order they are
+// enforced below:
+//
+//  1. A valid, unexpired, unrevoked session cookie and nothing else. No
+//     password, no MFA — that is the whole point — and no credential material
+//     comes back, only the new proof.
+//  2. The absolute lifetime is untouched. `AuthorizeRead` performs the same
+//     last-seen update any authorised request performs, and `ReissueCSRF`
+//     writes only `csrf_hash`. Nothing here moves `expires_at`.
+//  3. The same persistent account and source throttle the login path uses.
+//     It is checked *after* the session is authenticated, so an unauthenticated
+//     caller cannot burn an operator's budget by guessing.
+//  4. An audit event, under `AUTH-06`.
+//
+// The exchange this makes is stated plainly in the proposal and is not
+// reasoned away here: under an assumed script-execution foothold in the
+// console origin, an attacker can call this and obtain a proof, so the CSRF
+// token stops being an incidental second barrier. That is bounded by the
+// approved CSP and by `WCX-06`, under which such a foothold already implies a
+// systemic failure — and it is traded for a step-up gate on irreversible
+// actions that did not exist at all before.
+func (s *Service) ReissueCSRF(ctx context.Context, sessionToken, origin, source string) (string, error) {
+	if origin != s.publicOrigin {
+		return "", ErrOriginInvalid
+	}
+	session, err := s.AuthorizeRead(ctx, sessionToken)
+	if err != nil {
+		return "", err
+	}
+	now := s.now().UTC()
+	accountScope, sourceScope := authenticationScopes(session.Username, source)
+	if err := s.repository.AllowAuthentication(ctx, accountScope, sourceScope, now); err != nil {
+		return "", err
+	}
+	proof, proofHash, err := GenerateOpaqueSecret()
+	if err != nil {
+		return "", err
+	}
+	if err := s.repository.ReissueCSRF(ctx, ReissuedCSRF{
+		UserID: session.UserID, SessionID: session.SessionID, CSRFHash: proofHash, OccurredAt: now,
+	}); err != nil {
+		return "", err
+	}
+	return proof, nil
+}
+
 func (s *Service) Sessions(ctx context.Context, sessionToken string) ([]Session, error) {
 	current, err := s.AuthorizeRead(ctx, sessionToken)
 	if err != nil {

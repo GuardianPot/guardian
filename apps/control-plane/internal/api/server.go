@@ -100,6 +100,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /v1/auth/login", s.handleLogin)
 	mux.HandleFunc("GET /v1/auth/session", s.handleSession)
 	mux.HandleFunc("POST /v1/auth/logout", s.handleLogout)
+	mux.HandleFunc("POST /v1/auth/csrf", s.handleReissueCSRF)
 	mux.HandleFunc("GET /v1/auth/sessions", s.handleListSessions)
 	mux.HandleFunc("DELETE /v1/auth/sessions/{sessionId}", s.handleRevokeSession)
 	mux.HandleFunc("POST /v1/auth/password", s.handleChangePassword)

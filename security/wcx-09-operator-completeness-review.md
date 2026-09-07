@@ -2,8 +2,11 @@
 
 ## Review state
 
-Implementation review complete. Product Owner acceptance remains required, and
-one section of the package is **not delivered** — see "Not delivered" below.
+Implementation review complete. Product Owner acceptance remains required.
+
+Section 9.3, the CSRF-proof re-issue endpoint, was outside this package's
+allowed paths and was delivered in a follow-up commit under change proposal
+`0003`'s own authority. See "Delivered after the fact" below.
 
 Work package: `WCX-09`. Decisions: `WC-D31`, `WC-D08`, `WC-D16`, `WC-D07`,
 `W11-C3-A`, `IA-04`, `IA-05`, `IA-06`, `AUTH-01`, `AUTH-02`, `AUTH-06`,
@@ -132,36 +135,39 @@ so the console installs the rotated credentials, refetches the session list, and
 says the list "now shows which sessions survived" rather than naming a count
 nobody sent. A test asserts the success message contains no session count.
 
-## Not delivered: CSRF-proof re-issue (section 9.3)
+## Delivered after the fact: CSRF-proof re-issue (section 9.3)
 
-`Restore write access` is **not implemented**, and the `POST /v1/auth/csrf`
-endpoint is not added. This is a paths conflict, not a design objection.
+`WCX-09` could not build `POST /v1/auth/csrf`. The endpoint must write a new
+`csrf_hash` for an existing session; `auth.Repository` had no such method and
+its only implementation is `internal/storage/auth.go`, which that package
+lists under `forbidden_paths`. Level 3 actions were unaffected — step-up runs
+through the existing login endpoint — but a reload still cost a full sign-in,
+which is exactly the friction change proposal `0003` was written to remove.
 
-The endpoint must return a *new* CSRF proof for an existing session, which
-requires updating that session's `csrf_hash`. `auth.Repository` has no method
-that does so, and the only implementation of that interface is
-`internal/storage/auth.go`. `WCX-09` lists `apps/control-plane/internal/storage/**`
-under `forbidden_paths`, and its gated set names only `internal/auth/service.go`
-and its test. There is no way to build the endpoint inside the paths this
-package may write.
+It was delivered in a follow-up commit under the proposal's own authority.
+Every constraint in its Recommendation section is enforced and tested:
 
-Section 9.3.4 anticipates the section being skipped and says the rest of the
-package still delivers — but ties that to change proposal `0003` not being
-approved, which is not the case here. Two consequences worth separating:
+| Constraint | Where |
+|---|---|
+| Valid, unexpired, unrevoked cookie and nothing else | `Service.ReissueCSRF`; the `revoked_at IS NULL` predicate in the UPDATE closes the window between the read and the write |
+| Returns only a new proof, no credential material | The handler writes one field; the integration test fails if the body carries a second |
+| Does not extend the absolute lifetime | The UPDATE writes `csrf_hash` alone; the test compares `expires_at` across the call |
+| The same persistent throttle as login | `AllowAuthentication`, checked after the session authenticates so an anonymous caller cannot burn an operator's budget |
+| Audited under `AUTH-06` | `auth.csrf.reissued`, against the session, added to the closed vocabulary and its CHECK constraint by migration 8 |
+| The proof is held in memory exactly as today | `restoreWriteAccess` calls `setCsrf`; `restoreWriteAccess.test.tsx` asserts the value reaches no storage area, no URL, and no query cache |
 
-- **Level 3 actions are delivered.** Step-up runs through the existing login
-  endpoint and does not depend on the re-issue endpoint at all, so nothing in
-  section 9.2 was blocked.
-- **A reload still costs a full sign-in** before any mutation, exactly as
-  before this package. The operator friction change proposal `0003` was written
-  to remove is still present.
+One design point worth naming: this is the only mutation in the product that
+carries no CSRF token, because supplying one is precisely what the caller
+cannot do. Two things stand in for it. The session cookie is
+`SameSite=Strict`, so a cross-site page never sends it and cannot reach the
+endpoint with an operator session at all; and the exact-origin check runs in
+the service, where a handler cannot skip it. The integration suite asserts a
+cross-origin call and an anonymous call are both refused.
 
-Recommendation: a follow-up package whose allowed paths include the auth
-repository interface and its storage implementation. The endpoint's own
-requirements — valid unexpired session cookie, the existing persistent throttle,
-an audit event, no extension of absolute session lifetime, no credential
-material in the response — are unchanged and are recorded here so they do not
-have to be rediscovered.
+The residual risk the proposal named is unchanged and is not reasoned away:
+under an assumed script-execution foothold in the console origin, an attacker
+can call this and obtain a proof. That was accepted knowingly when Option B
+was approved.
 
 ## Residual risk accepted
 
@@ -171,8 +177,10 @@ have to be rediscovered.
   no dedicated step-up endpoint in the contract, login is the only mechanism
   that verifies a password and a fresh MFA proof together, and it is the same
   mechanism the console already used for post-reload reauthentication. The
-  alternative — accepting something weaker — would defeat the gate. Recorded
-  for the same follow-up package as the re-issue endpoint.
+  alternative — accepting something weaker — would defeat the gate. Still
+  open: the re-issue endpoint has since been delivered, and it deliberately
+  does *not* address this — it verifies no MFA at all, so it could not be the
+  step-up mechanism. Closing this needs a contract change of its own.
 - **The capability seam is presentation-only** and always will be until a role
   model exists. It is documented as such in `@shared/auth/capability` and every
   control it enables is still enforced server-side.

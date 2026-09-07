@@ -75,6 +75,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/csrf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a new synchronizer CSRF proof for the current session
+         * @description Change proposal 0003. The console keeps the CSRF proof in memory only, so a reload leaves a valid session that cannot mutate anything. This returns a replacement without requiring MFA.
+         *
+         *     It requires a valid, unexpired, unrevoked session cookie and an exact origin match, and nothing else. It carries no CSRF token because supplying one is precisely what the caller cannot do; the SameSite cookie and the origin check stand in for it. It does not extend the absolute session lifetime, is rate limited on the same persistent throttle the login path uses, is audited, and returns no credential material other than the new proof.
+         */
+        post: operations["reissueSessionCSRF"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/sessions": {
         parameters: {
             query?: never;
@@ -562,6 +584,9 @@ export interface components {
             current_password: string;
             new_password: string;
         };
+        AuthCSRFProof: {
+            csrf_token: string;
+        };
         AuthSessionCredentials: {
             csrf_token: string;
             session: components["schemas"]["AuthSession"];
@@ -1000,6 +1025,50 @@ export interface operations {
             };
             /** @description TLS is required. */
             426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reissueSessionCSRF: {
+        parameters: {
+            query?: never;
+            header: {
+                Origin: components["parameters"]["Origin"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A new synchronizer proof for the same session. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["NoStore"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthCSRFProof"];
+                };
+            };
+            /** @description Session or exact-origin validation failed. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TLS is required. */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The authentication throttle is engaged for this account or source. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

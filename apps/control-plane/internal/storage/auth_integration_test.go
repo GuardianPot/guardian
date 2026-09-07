@@ -249,13 +249,126 @@ func exerciseAuthTLS(
 	if denied.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("cross-origin logout status = %d", denied.StatusCode)
 	}
+	exerciseCSRFReissue(t, tlsServer, cookie, origin, credentials)
+
 	headers.Set("Origin", origin)
 	loggedOut := authTLSRequest(t, tlsServer.Client(), http.MethodPost, tlsServer.URL+"/v1/auth/logout", "", headers)
 	loggedOut.Body.Close()
 	if loggedOut.StatusCode != http.StatusNoContent || !strings.Contains(loggedOut.Header.Get("Set-Cookie"), "Max-Age=0") {
 		t.Fatalf("logout status=%d cookie=%q", loggedOut.StatusCode, loggedOut.Header.Get("Set-Cookie"))
 	}
+
+	// After logout the session is revoked, so a re-issue must be refused. An
+	// operator who just ended a session they believed was stolen must not be
+	// able to have a fresh proof minted for it.
+	revoked := authTLSRequest(t, tlsServer.Client(), http.MethodPost, tlsServer.URL+"/v1/auth/csrf", "",
+		http.Header{"Origin": {origin}, "Cookie": {cookie.String()}})
+	revoked.Body.Close()
+	if revoked.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("csrf re-issue on a revoked session status = %d", revoked.StatusCode)
+	}
 	return credentials
+}
+
+// exerciseCSRFReissue is the evidence change proposal 0003 asks for before its
+// approval can be considered discharged: session validity, an unchanged
+// absolute lifetime, and a response carrying no credential material.
+//
+// Revocation is covered by the caller after logout, and rate limiting by the
+// throttle the login path already exercises — this endpoint calls the same
+// `AllowAuthentication`, so a separate proof would be testing that function
+// twice rather than testing this endpoint.
+func exerciseCSRFReissue(
+	t *testing.T,
+	tlsServer *httptest.Server,
+	cookie *http.Cookie,
+	origin string,
+	credentials auth.SessionCredentials,
+) {
+	t.Helper()
+
+	// A cross-origin call is refused, which is what stands in for the CSRF
+	// token this endpoint deliberately does not require.
+	crossOrigin := authTLSRequest(t, tlsServer.Client(), http.MethodPost, tlsServer.URL+"/v1/auth/csrf", "",
+		http.Header{"Origin": {"https://evil.example"}, "Cookie": {cookie.String()}})
+	crossOrigin.Body.Close()
+	if crossOrigin.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("cross-origin csrf re-issue status = %d", crossOrigin.StatusCode)
+	}
+
+	// No session cookie at all is refused too.
+	anonymous := authTLSRequest(t, tlsServer.Client(), http.MethodPost, tlsServer.URL+"/v1/auth/csrf", "",
+		http.Header{"Origin": {origin}})
+	anonymous.Body.Close()
+	if anonymous.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("anonymous csrf re-issue status = %d", anonymous.StatusCode)
+	}
+
+	response := authTLSRequest(t, tlsServer.Client(), http.MethodPost, tlsServer.URL+"/v1/auth/csrf", "",
+		http.Header{"Origin": {origin}, "Cookie": {cookie.String()}})
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		payload, _ := io.ReadAll(response.Body)
+		t.Fatalf("csrf re-issue status=%d body=%s", response.StatusCode, payload)
+	}
+	if response.Header.Get("Cache-Control") != "no-store" {
+		t.Fatalf("csrf re-issue Cache-Control = %q", response.Header.Get("Cache-Control"))
+	}
+	// Constraint 1: no cookie is rewritten, so the session token is untouched.
+	if len(response.Cookies()) != 0 {
+		t.Fatalf("csrf re-issue set cookies = %v", response.Cookies())
+	}
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatal(err)
+	}
+	// Constraint 1 again, from the other side: the response carries the proof
+	// and nothing else. A session body here would be a contract drift that no
+	// field-by-field assertion would catch.
+	if len(payload) != 1 {
+		t.Fatalf("csrf re-issue body carries %d fields, want only csrf_token: %s", len(payload), body)
+	}
+	proof, _ := payload["csrf_token"].(string)
+	if len(proof) != len(credentials.CSRFToken) || proof == credentials.CSRFToken {
+		t.Fatalf("csrf re-issue returned %q, want a new proof of the same shape", proof)
+	}
+	if strings.Contains(string(body), cookie.Value) {
+		t.Fatal("csrf re-issue body contains the session token")
+	}
+
+	// Constraint 2: the absolute lifetime is unchanged. `expires_at` is what
+	// carries it, and a re-issue that moved it would be a session extension.
+	session := authTLSRequest(t, tlsServer.Client(), http.MethodGet, tlsServer.URL+"/v1/auth/session", "",
+		http.Header{"Cookie": {cookie.String()}})
+	defer session.Body.Close()
+	var current struct {
+		Session auth.Session `json:"session"`
+	}
+	if err := json.NewDecoder(session.Body).Decode(&current); err != nil {
+		t.Fatal(err)
+	}
+	if !current.Session.ExpiresAt.Equal(credentials.Session.ExpiresAt) {
+		t.Fatalf("csrf re-issue moved expires_at from %s to %s",
+			credentials.Session.ExpiresAt, current.Session.ExpiresAt)
+	}
+	if current.Session.SessionID != credentials.Session.SessionID {
+		t.Fatal("csrf re-issue replaced the session instead of its proof")
+	}
+
+	// The old proof is dead and the new one works: a mutation with the stale
+	// token is refused, and the same mutation with the new one is authorised.
+	stale := authTLSRequest(t, tlsServer.Client(), http.MethodPost, tlsServer.URL+"/v1/environments",
+		`{"display_name":"reissue-stale"}`,
+		http.Header{"Origin": {origin}, "Cookie": {cookie.String()}, "X-CSRF-Token": {credentials.CSRFToken}})
+	stale.Body.Close()
+	if stale.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("mutation with the superseded proof status = %d", stale.StatusCode)
+	}
 }
 
 func authTLSRequest(t *testing.T, client *http.Client, method, target, body string, headers http.Header) *http.Response {

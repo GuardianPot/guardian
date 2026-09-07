@@ -110,6 +110,10 @@ type Repository interface {
 	CompleteRecoveryLogin(context.Context, RecoveryCompletion) error
 	AuthenticateSession(context.Context, [sha256.Size]byte, time.Duration) (Session, error)
 	RevokeSession(context.Context, string, string, time.Time, string) error
+	// ReissueCSRF replaces one session synchronizer proof in place. It must not
+	// touch expires_at: change proposal 0003 constraint 2 requires the absolute
+	// lifetime to be unchanged by a re-issue.
+	ReissueCSRF(context.Context, ReissuedCSRF) error
 	ListSessions(context.Context, string, string, time.Time) ([]Session, error)
 	ChangePassword(context.Context, PasswordChange) error
 }
@@ -119,6 +123,14 @@ type BootstrapResult struct {
 	Username        string   `json:"username"`
 	ProvisioningURI string   `json:"provisioning_uri"`
 	RecoveryCodes   []string `json:"recovery_codes"`
+}
+
+// ReissuedCSRF is one in-place replacement of a session synchronizer proof.
+type ReissuedCSRF struct {
+	UserID     string
+	SessionID  string
+	CSRFHash   [sha256.Size]byte
+	OccurredAt time.Time
 }
 
 type SessionCredentials struct {

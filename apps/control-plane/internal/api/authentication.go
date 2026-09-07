@@ -19,6 +19,7 @@ type AuthService interface {
 	LoginRecovery(context.Context, string, string, string, string) (auth.SessionCredentials, error)
 	AuthorizeRead(context.Context, string) (auth.Session, error)
 	Logout(context.Context, string, string, string) error
+	ReissueCSRF(context.Context, string, string, string) (string, error)
 	Sessions(context.Context, string) ([]auth.Session, error)
 	RevokeSession(context.Context, string, string, string, string) error
 	ChangePassword(context.Context, string, string, string, string, string) (auth.SessionCredentials, error)
@@ -247,4 +248,36 @@ func writeAuthError(writer http.ResponseWriter, err error, denial string) {
 	default:
 		writeStatus(writer, http.StatusInternalServerError, "internal_error")
 	}
+}
+
+// handleReissueCSRF returns a new synchronizer proof for an existing session.
+//
+// Change proposal 0003. This is the one authenticated mutation that does not
+// carry a CSRF token, because supplying one is what the caller cannot do —
+// that is the situation it exists to resolve.
+//
+// Two things stand in for it. The session cookie is `SameSite=Strict`, so a
+// cross-site page never sends it and cannot reach this endpoint with an
+// operator's session at all; and the exact-origin check below is the same one
+// every other mutation performs, checked in the service where it cannot be
+// skipped by a handler.
+func (s *Server) handleReissueCSRF(writer http.ResponseWriter, request *http.Request) {
+	if !s.requireTLS(writer, request) {
+		return
+	}
+	sessionToken, ok := authCookie(request)
+	origin := request.Header.Get("Origin")
+	if !ok || len(origin) > 2048 || s.authService == nil {
+		writeStatus(writer, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	proof, err := s.authService.ReissueCSRF(request.Context(), sessionToken, origin, requestSource(request))
+	if err != nil {
+		writeAuthError(writer, err, "unauthorized")
+		return
+	}
+	// The proof only. No session body, no cookie rewrite, no credential
+	// material of any kind (constraint 1), and never cached.
+	writer.Header().Set("Cache-Control", "no-store")
+	writeJSON(writer, http.StatusOK, map[string]any{"csrf_token": proof})
 }

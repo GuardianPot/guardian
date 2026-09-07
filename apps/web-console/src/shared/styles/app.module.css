@@ -335,3 +335,9 @@
   .main { padding-inline: var(--space-5); }
   .lifecycleRow { flex-direction: column; align-items: stretch; }
 }
+
+/* The read-only banner carries a control since change proposal 0003. It wraps
+   below the sentence rather than beside it: the sentence is the explanation
+   and the control is the answer, and that order should survive a narrow
+   viewport. */
+.bannerActions { display: block; margin-top: var(--space-4); }

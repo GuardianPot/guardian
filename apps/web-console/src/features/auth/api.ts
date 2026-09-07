@@ -45,6 +45,23 @@ export function login(input: LoginInput): Promise<SessionCredentials> {
   });
 }
 
+/**
+ * Exchanges a valid session cookie for a new synchronizer proof.
+ *
+ * Change proposal 0003. A reload leaves the cookie intact and the proof gone,
+ * because `W11-C3-A` keeps the proof in memory only. This is how the console
+ * gets one back without a full sign-in — and it is the only request in the
+ * console that deliberately carries no CSRF token, because not having one is
+ * the situation it exists to resolve.
+ *
+ * The Control Plane requires the session cookie and an exact origin match, and
+ * the cookie is `SameSite=Strict`, so a cross-site page cannot reach this with
+ * an operator session at all.
+ */
+export async function reissueCsrf(): Promise<string> {
+  return (await request<{ csrf_token: string }>('/v1/auth/csrf', { method: 'POST' })).csrf_token;
+}
+
 export function logout(csrf: string): Promise<void> {
   return request<void>('/v1/auth/logout', { method: 'POST', csrf });
 }

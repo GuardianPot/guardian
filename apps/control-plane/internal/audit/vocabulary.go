@@ -18,16 +18,19 @@ const (
 type Action string
 
 const (
-	ActionBootstrapTokenCreated  Action = "auth.bootstrap_token.created"
-	ActionBootstrapSucceeded     Action = "auth.bootstrap.succeeded"
-	ActionBootstrapFailed        Action = "auth.bootstrap.failed"
-	ActionLoginSucceeded         Action = "auth.login.succeeded"
-	ActionLoginFailed            Action = "auth.login.failed"
-	ActionLogout                 Action = "auth.logout"
-	ActionPasswordChanged        Action = "auth.password.changed"
-	ActionMFAEnrolled            Action = "auth.mfa.enrolled"
-	ActionRecoveryCodeUsed       Action = "auth.recovery_code.used"
-	ActionSessionRevoked         Action = "auth.session.revoked"
+	ActionBootstrapTokenCreated Action = "auth.bootstrap_token.created"
+	ActionBootstrapSucceeded    Action = "auth.bootstrap.succeeded"
+	ActionBootstrapFailed       Action = "auth.bootstrap.failed"
+	ActionLoginSucceeded        Action = "auth.login.succeeded"
+	ActionLoginFailed           Action = "auth.login.failed"
+	ActionLogout                Action = "auth.logout"
+	ActionPasswordChanged       Action = "auth.password.changed"
+	ActionMFAEnrolled           Action = "auth.mfa.enrolled"
+	ActionRecoveryCodeUsed      Action = "auth.recovery_code.used"
+	ActionSessionRevoked        Action = "auth.session.revoked"
+	// Change proposal 0003. The object is the session whose synchronizer proof
+	// was replaced, so a re-issue appears in that session own history.
+	ActionCSRFReissued           Action = "auth.csrf.reissued"
 	ActionSecuritySettingChanged Action = "auth.security_setting.changed"
 	ActionEnrollmentTokenCreated Action = "device.enrollment_token.created"
 	ActionEnrollmentTokenRevoked Action = "device.enrollment_token.revoked"
@@ -80,6 +83,7 @@ var (
 		ActionMFAEnrolled:            ObjectTypeUser,
 		ActionRecoveryCodeUsed:       ObjectTypeUser,
 		ActionSessionRevoked:         ObjectTypeSession,
+		ActionCSRFReissued:           ObjectTypeSession,
 		ActionSecuritySettingChanged: ObjectTypeSecuritySetting,
 		ActionEnrollmentTokenCreated: ObjectTypeEnrollmentToken,
 		ActionEnrollmentTokenRevoked: ObjectTypeEnrollmentToken,
@@ -194,6 +198,7 @@ func Actions() []Action {
 		ActionMFAEnrolled,
 		ActionRecoveryCodeUsed,
 		ActionSessionRevoked,
+		ActionCSRFReissued,
 		ActionSecuritySettingChanged,
 		ActionEnrollmentTokenCreated,
 		ActionEnrollmentTokenRevoked,

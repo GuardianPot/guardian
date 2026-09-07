@@ -1,7 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { permitPolling } from '@shared/api/freshness';
-import { authKeys, login as loginRequest, logout as logoutRequest, sessionQuery, type LoginInput } from './api';
+import {
+  authKeys,
+  login as loginRequest,
+  logout as logoutRequest,
+  reissueCsrf,
+  sessionQuery,
+  type LoginInput,
+} from './api';
 import type { Session, SessionCredentials } from '@shared/api/types';
 
 type AuthValue = {
@@ -10,6 +17,18 @@ type AuthValue = {
   loading: boolean;
   login(input: LoginInput): Promise<void>;
   logout(): Promise<void>;
+  /**
+   * Exchanges the surviving session cookie for a new synchronizer proof.
+   *
+   * Change proposal 0003. `W11-C3-A` keeps the proof in memory only, so a
+   * reload leaves a valid session that cannot mutate anything. This restores
+   * level 1 and level 2 controls without a full sign-in.
+   *
+   * Level 3 stays gated behind step-up regardless of how fresh the proof is.
+   * A proof says the browser has a session; it is not evidence that the
+   * operator is still the one holding it.
+   */
+  restoreWriteAccess(): Promise<void>;
   /**
    * Installs credentials the Control Plane issued for an operation other than
    * sign-in. A password change rotates the session and returns a new proof,
@@ -66,6 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!csrf) throw new Error('Re-authentication is required before logout.');
       await logoutRequest(csrf);
       expire();
+    },
+    async restoreWriteAccess() {
+      // The proof goes to memory and nowhere else, exactly as the sign-in
+      // path does with its own. No storage, no URL, no query cache — change
+      // proposal 0003 constraint 4 keeps the `W11-C3-A` rules intact.
+      setCsrf(await reissueCsrf());
     },
     adopt(credentials) {
       setCsrf(credentials.csrf_token);

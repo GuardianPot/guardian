@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useId, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
+import { toConsoleError } from '@shared/api/error';
 import { useAuth, useCapability } from '@features/auth';
 import { Banner, Button, InlineMessage, LoadingState, RouteErrorBoundary } from '@shared/ui';
 import styles from '@shared/styles/app.module.css';
@@ -135,18 +136,7 @@ export function Shell() {
       </aside>
       <div className={styles.workspace}>
         {/* Section 9.3.5: present at every width, disclosure or not. */}
-        {!signOut.allowed && (
-          <Banner tone="restricted">
-            {/*
-              One catalogue entry, not three fragments around a link. A
-              sentence assembled at the call site cannot be reviewed as a
-              sentence (WCX-08 section 9.1.6).
-            */}
-            {tx('common.sessionReadOnlyFull', {
-              reauthenticate: <Link to="/login">{t('common.reauthenticate')}</Link>,
-            })}
-          </Banner>
-        )}
+        {!signOut.allowed && <ReadOnlyBanner />}
         <main id="main-content" className={styles.main} tabIndex={-1}>
           {/*
             One route boundary around the outlet rather than one per element:
@@ -168,6 +158,65 @@ export function Shell() {
         </main>
       </div>
     </div>
+  );
+}
+
+/**
+ * The reload-restored session, and the way out of it.
+ *
+ * `W11-C3-A` keeps the synchronizer proof in browser memory, so a reload
+ * leaves a valid session that cannot change anything. Until change proposal
+ * `0003` the only way forward was a full sign-in — password and MFA — every
+ * time. That cost almost nothing in Phase 1 and a great deal from Phase 2 on,
+ * and an operator who finds reloading expensive stops reloading, which in a
+ * detection product works directly against the product.
+ *
+ * `Restore write access` exchanges the surviving cookie for a new proof. It
+ * restores level 1 and level 2 controls and nothing else: level 3 is gated by
+ * step-up whatever the proof's age, because a proof says the browser has a
+ * session and not that the operator is still the one holding it.
+ *
+ * Full sign-in stays on the banner beside it. A refused re-issue must leave a
+ * way forward rather than a dead end.
+ */
+function ReadOnlyBanner() {
+  const auth = useAuth();
+  const [restoring, setRestoring] = useState(false);
+  const [failed, setFailed] = useState('');
+
+  async function restore() {
+    setFailed('');
+    setRestoring(true);
+    try {
+      await auth.restoreWriteAccess();
+    } catch (caught) {
+      // Rate limiting is the one refusal worth naming: it says to wait rather
+      // than to try something else, and the console never retries on its own.
+      setFailed(t(toConsoleError(caught).kind === 'rate-limited'
+        ? 'common.restoreRateLimited'
+        : 'common.restoreFailed'));
+    } finally {
+      setRestoring(false);
+    }
+  }
+
+  return (
+    <Banner tone="restricted">
+      {/*
+        One catalogue entry, not three fragments around a link. A sentence
+        assembled at the call site cannot be reviewed as a sentence
+        (WCX-08 section 9.1.6).
+      */}
+      {tx('common.sessionReadOnlyFull', {
+        reauthenticate: <Link to="/login">{t('common.reauthenticate')}</Link>,
+      })}
+      <span className={styles.bannerActions}>
+        <Button variant="secondary" pending={restoring} onClick={() => { void restore(); }}>
+          {t('common.restoreWriteAccess')}
+        </Button>
+      </span>
+      {failed !== '' && <InlineMessage tone="error">{failed}</InlineMessage>}
+    </Banner>
   );
 }
 

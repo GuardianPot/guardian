@@ -41,6 +41,9 @@ export const CATALOGUE = {
   // site. The browser suite matches on the opening clause, which is intact.
   'common.sessionReadOnlyFull':
     'Read-only session restored. {reauthenticate} before changing configuration or signing out.',
+  'common.restoreWriteAccess': 'Restore write access',
+  'common.restoreFailed': 'Write access could not be restored. Sign in again to continue.',
+  'common.restoreRateLimited': 'Too many attempts. Wait before trying again, or sign in.',
   'common.controlPlane': 'The Control Plane',
   'common.breadcrumbs': 'Breadcrumb',
   // The disclosure names the state it will move to, not the state it is in:

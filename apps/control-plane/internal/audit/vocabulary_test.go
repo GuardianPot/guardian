@@ -32,6 +32,7 @@ func TestClosedVocabularyAndActionObjectPairs(t *testing.T) {
 		"zone.updated":                     ObjectTypeZone,
 		"zone.removed":                     ObjectTypeZone,
 		"desired_state.revision.published": ObjectTypeDesiredStateRevision,
+		"auth.csrf.reissued":               ObjectTypeSession,
 		"security.action.denied":           ObjectTypeSecurityAction,
 	}
 

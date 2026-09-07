@@ -97,6 +97,43 @@ paths:
           description: Session, CSRF, or exact-origin validation failed.
         '426':
           description: TLS is required.
+  /v1/auth/csrf:
+    post:
+      operationId: reissueSessionCSRF
+      summary: Issue a new synchronizer CSRF proof for the current session
+      description: >-
+        Change proposal 0003. The console keeps the CSRF proof in memory only,
+        so a reload leaves a valid session that cannot mutate anything. This
+        returns a replacement without requiring MFA.
+
+
+        It requires a valid, unexpired, unrevoked session cookie and an exact
+        origin match, and nothing else. It carries no CSRF token because
+        supplying one is precisely what the caller cannot do; the SameSite
+        cookie and the origin check stand in for it. It does not extend the
+        absolute session lifetime, is rate limited on the same persistent
+        throttle the login path uses, is audited, and returns no credential
+        material other than the new proof.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+      responses:
+        '200':
+          description: A new synchronizer proof for the same session.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthCSRFProof'
+        '401':
+          description: Session or exact-origin validation failed.
+        '429':
+          description: The authentication throttle is engaged for this account or source.
+        '426':
+          description: TLS is required.
   /v1/auth/sessions:
     get:
       operationId: listLocalSessions
@@ -1267,6 +1304,14 @@ components:
           type: string
           minLength: 12
           maxLength: 1024
+    AuthCSRFProof:
+      type: object
+      additionalProperties: false
+      required:
+        - csrf_token
+      properties:
+        csrf_token:
+          type: string
     AuthSessionCredentials:
       type: object
       additionalProperties: false
