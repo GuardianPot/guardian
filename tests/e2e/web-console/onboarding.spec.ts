@@ -1,10 +1,56 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import process from 'node:process';
 import { spawn } from 'node:child_process';
 import { currentHealthTransitionTime, hostileHealthMessage, publishHealth } from './device-health';
+
+/**
+ * A hostile display name that the Control Plane accepts (WCX-06 section 10.3).
+ *
+ * `NormalizeName` rejects control characters, so an ANSI sequence never
+ * reaches a name. It does *not* reject markup, a right-to-left override, or a
+ * zero-width space — those are format characters, not control characters — so
+ * these are the classes that genuinely travel the real API into the console
+ * and the ones the browser has to render inertly.
+ *
+ * The override reverses everything after it, so an unprotected renderer shows
+ * `gnp.exe` as `exe.png`. Built from code points rather than typed, so this
+ * file stays reviewable.
+ */
+const RLO = String.fromCodePoint(0x202e);
+const ZWSP = String.fromCodePoint(0x200b);
+const hostileDisplayName = `Lab <img src=x onerror=alert(1)> ${RLO}gnp.exe pass${ZWSP}word`;
+
+/** Fails on any serious or critical finding, the WCX-05 threshold. */
+async function expectNoSeriousAxeViolations(page: Page, where: string) {
+  const results = await new AxeBuilder({ page }).analyze();
+  const serious = results.violations.filter((item) => ['critical', 'serious'].includes(item.impact ?? ''));
+  expect(serious.map((item) => `${item.id}: ${item.help}`), `axe on ${where}`).toEqual([]);
+}
+
+/**
+ * Walks the tab order from the top of the document and returns what it reached.
+ *
+ * Bounded so a broken focus trap fails the test instead of hanging it.
+ */
+async function tabOrder(page: Page, steps = 60): Promise<string[]> {
+  await page.evaluate(() => { (document.activeElement as HTMLElement | null)?.blur(); });
+  const reached: string[] = [];
+  for (let step = 0; step < steps; step += 1) {
+    await page.keyboard.press('Tab');
+    const name = await page.evaluate(() => {
+      const active = document.activeElement;
+      if (!active || active === document.body) return null;
+      return (active.textContent ?? '').trim() || active.getAttribute('aria-label') || active.tagName;
+    });
+    if (name === null) break;
+    if (reached.includes(name) && reached[0] === name) break;
+    reached.push(name);
+  }
+  return reached;
+}
 
 test('real owner onboarding, Edge enrollment, health degradation, and recovery', async ({ page, context }, testInfo) => {
   const projectIndex = ['chromium', 'firefox', 'webkit'].indexOf(testInfo.project.name);
@@ -36,11 +82,16 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
   }), { mode: 0o600 });
 
   await page.goto('/login');
+  // WCX-06 section 10.3.3: the axe scan covers every route, not only the last
+  // screen the flow happens to end on.
+  await expectNoSeriousAxeViolations(page, 'the sign-in route');
   await signIn(page, recoveryCodes[projectIndex * 2]);
+  await expectNoSeriousAxeViolations(page, 'the environments route');
   const environmentName = `Browser ${testInfo.project.name}`;
   await page.getByLabel('Display name').fill(environmentName);
   await page.getByRole('button', { name: 'Create environment' }).click();
   await page.getByRole('link', { name: new RegExp(environmentName) }).click();
+  await expectNoSeriousAxeViolations(page, 'the environment route');
 
   await page.reload();
   await expect(page.getByText('Read-only session restored.')).toBeVisible();
@@ -75,6 +126,38 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
   await page.getByRole('button', { name: 'I have stored it securely' }).click();
   await expect(page.getByTestId('enrollment-secret')).toHaveCount(0);
   await expect(page).not.toHaveURL(new RegExp(secretText!));
+
+  // WCX-06 section 10.3.2: every control is reachable by keyboard alone at a
+  // wide and a narrow viewport. Sign-out is the one that matters — an operator
+  // who cannot reach it cannot end a session — and it was unreachable below
+  // 900 pixels until `P1-W11` GAP-1 was fixed.
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 }]) {
+    await page.setViewportSize(viewport);
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+    const reached = await tabOrder(page);
+    expect(reached[0], `first tab stop at ${viewport.width}px`).toBe('Skip to content');
+    expect(reached, `sign-out at ${viewport.width}px`).toContain('Sign out');
+    expect(reached, `zone form at ${viewport.width}px`).toContain('Add zone');
+  }
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  // WCX-06 section 10.3.1: an attacker-shaped display name, written through
+  // the real API and read back through the real console. Markup, a
+  // right-to-left override, and a zero-width space all survive the backend —
+  // it rejects control characters, not these — so this is the class that
+  // genuinely arrives.
+  await page.getByLabel('Display name').fill(hostileDisplayName);
+  await page.getByRole('button', { name: 'Save name' }).click();
+  await expect(page.getByText('Environment name updated.')).toBeVisible();
+
+  const heading = page.getByRole('heading', { level: 1 });
+  // The markup is characters, not elements, and the override is shown as its
+  // escaped source rather than obeyed, so `.exe` is still the ending.
+  await expect(heading).toContainText('<img src=x onerror=alert(1)>');
+  await expect(heading).toContainText('\\u202e');
+  await expect(heading).toContainText('\\u200b');
+  expect(await heading.locator('img, svg, script, iframe, object, embed, a').count()).toBe(0);
+  expect(dialogs).toEqual([]);
 
   const healthySince = currentHealthTransitionTime();
   let connection = await publishHealth(identityDirectory, 1, healthySince);
@@ -125,6 +208,50 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
 
   await context.clearCookies();
   await page.reload();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+});
+
+/**
+ * Everything that can be checked without a session (WCX-06 sections 10.3.4 and
+ * 10.3.5).
+ *
+ * Kept separate from the onboarding flow because neither claim depends on a
+ * signed-in operator, and a failure here should name the header or the
+ * workbench rather than be buried in a twelve-step journey.
+ */
+test('browser security headers and a production build without the workbench', async ({ page }) => {
+  const response = await page.request.get('/livez');
+  expect(response.status()).toBe(200);
+  const headers = response.headers();
+
+  // Served over TLS, so the pin is expected. `preload` is deliberately absent:
+  // it is effectively irreversible and therefore an owner decision.
+  expect(headers['strict-transport-security']).toBe('max-age=31536000; includeSubDomains');
+  expect(headers['strict-transport-security']).not.toContain('preload');
+
+  for (const feature of ['camera=()', 'microphone=()', 'geolocation=()', 'payment=()', 'usb=()', 'serial=()']) {
+    expect(headers['permissions-policy'], feature).toContain(feature);
+  }
+
+  // The headers that were already there must be untouched.
+  expect(headers['content-security-policy']).toContain("frame-ancestors 'none'");
+  expect(headers['content-security-policy']).not.toContain('unsafe-inline');
+  expect(headers['content-security-policy']).not.toContain('unsafe-eval');
+  expect(headers['referrer-policy']).toBe('no-referrer');
+  expect(headers['x-content-type-options']).toBe('nosniff');
+
+  // The third exclusion proof for the workbench: this is a production build,
+  // served from `apps/web-console/dist`. The route must fall through to the
+  // ordinary SPA shell, and no chunk may carry the workbench or its fixtures.
+  const workbench = await page.request.get('/__components');
+  expect(workbench.status()).toBe(200);
+  const shell = await workbench.text();
+  expect(shell).toContain('<div id="root">');
+  expect(shell).not.toContain('guardian-component-workbench');
+  expect(shell).not.toContain('Component workbench');
+
+  await page.goto('/__components');
+  await expect(page.getByRole('heading', { name: 'Component workbench' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 });
 

@@ -657,6 +657,168 @@ proves the rules fire — but the stale metadata means a *new* `npm install` in
 this workspace needs `--legacy-peer-deps`. `npm ci` is unaffected, so CI is
 unaffected. Drop the flag once upstream ships a release that lists ESLint 10.
 
+## Hostile content rendering
+
+Guardian is a deception product. A large share of what this console displays
+was written by whoever attacked the network. React's text escaping is necessary
+and not sufficient: it stops a captured string *executing*, and does nothing
+about the attacks that forge what an operator sees.
+
+Three that survive escaping intact:
+
+| Attack | What the operator sees without the contract |
+|---|---|
+| right-to-left override | `report<RLO>gnp.exe` displays as `reportexe.png` — an executable reading as an image |
+| ANSI sequence | a transcript repainted so a denial reads as a grant |
+| zero-width characters | `pass<ZWSP>word` invisible to a reader and to a search |
+
+### Untrusted values are not strings
+
+`Untrusted` is an opaque type. At runtime it is the string it always was; to
+the compiler it is not a string at all, so it cannot reach JSX, an attribute,
+or a plain string. The only way to display one is `UntrustedText` (short
+single-line values) or `UntrustedBlock` (multi-line captured payloads).
+
+```ts
+const name = untrusted(raw.display_name);
+<span>{name}</span>                 // typecheck error
+<UntrustedText value={name} />      // the only way through
+```
+
+Routing is a typecheck failure rather than a review comment.
+`untrusted.test.tsx` proves each refusal with `@ts-expect-error`, so if the
+brand ever stops working those turn from passing assertions into build errors.
+String coercion — `'x' + value` and `` `${value}` `` — is not a TypeScript
+error, because both produce a string; it is caught by the type-aware lint rules
+`restrict-template-expressions`, `restrict-plus-operands`, and
+`no-base-to-string`, and the same test asserts those are configured as errors.
+
+`reveal()` is the single escape hatch. The renderer needs it, and the clipboard
+needs it to copy the original value. Nothing else should call it — the one
+other legitimate use in the console is the environment rename field, where the
+operator is editing the value and React sets an input value as a property
+rather than as parsed markup.
+
+### Where the boundary sits
+
+Once per feature API module, in `@shared/api/taint`. What is marked:
+
+- health condition `reason` and `message` — a compromised or emulated Edge
+  writes these directly;
+- device and source identifiers inside a projection — device-supplied strings,
+  not identifiers Guardian issued;
+- display names — the console cannot distinguish an operator's typing from an
+  attacker with a stolen session, so it does not try.
+
+What is **not** marked: values the backend validates into a shape it issued —
+UUIDs, CIDRs, timestamps, enum states. Marking those would make the brand mean
+"string" rather than "untrusted".
+
+The `taint*` functions rebuild the object rather than casting it. A cast would
+keep compiling when the contract gains a new free-text field; rebuilding means
+the new field arrives unmarked and someone has to decide which side of the
+boundary it belongs on.
+
+### What the renderer does
+
+In order: control characters, then directional formatting, then invisible
+characters, then the length bound. Each becomes visible escaped source —
+`\x1b`, `\u202e` — carrying an accessible description so a screen-reader user
+learns a character was present rather than hearing nothing.
+
+Two deliberate non-behaviours:
+
+- **Nothing is normalised.** Normalising would change the evidence an operator
+  is reading.
+- **Nothing is removed.** A removed character is a character the operator never
+  learns was there.
+
+Bounds are 512 code points for a single-line value and 65 536 for a block.
+Section 9.1.5 of `WCX-06` states the block bound as 64 KiB; it is applied in
+code points so a truncation can never split a character and invent a
+replacement glyph that was not in the evidence. Truncation always states the
+original length.
+
+`UntrustedBlock` keeps newline and tab, because they are structure an operator
+reads. `UntrustedText` escapes them: a single-line value containing a newline is
+not a single line, and would break the layout it was placed in.
+
+### The permanent corpus
+
+`@shared/hostile/corpus` holds 24 inert fixtures (`RE-12`). Every invisible
+character is built with `String.fromCodePoint` rather than typed, and a test
+asserts the file's own source contains no literal invisible byte — a corpus
+nobody can review is not evidence of anything.
+
+**The file only grows.** Every rendering defect found from here on adds a
+fixture, so the same defect cannot return unnoticed. Removing an entry means
+deciding a class of hostile content no longer needs proving, which is an owner
+decision rather than a cleanup.
+
+It lives in `shared/` rather than `shared/testing/` because the
+development-only workbench renders it, and a workbench is not a test.
+`check-bundle.mjs` asserts no production chunk contains a fixture id.
+
+### Forbidden APIs
+
+`test/check-unsafe-dom.mjs` runs on lint and forbids
+`dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `insertAdjacentHTML`,
+`document.write`, `eval`, `new Function`, and string-bodied timers across the
+whole console. `WCX-06` section 8.2 permits no suppression, which is why this
+is a repository check rather than an ESLint rule a directive could switch off
+line by line.
+
+### The component workbench
+
+`/__components` in a development build. Not Storybook: one file, no second
+toolchain, and it renders the same components from the same source, so it
+cannot drift from what ships. It exists because some states are hard to reach
+in the running product — a `partial` read needs one source to fail while
+another succeeds — and a state nobody can look at is a state nobody checks.
+
+Three independent proofs that it never ships:
+
+1. `router.tsx` mounts it behind `import.meta.env.DEV`, which Vite replaces
+   with `false` so Rollup drops the dynamic import and everything it reaches;
+2. `check-bundle.mjs` fails on its marker or any corpus fixture id in a
+   production chunk;
+3. a browser scenario asks a production build for `/__components` and asserts
+   it receives the ordinary SPA shell.
+
+Its styles are in `workbench.module.css`, not `app.module.css`, because CSS
+Modules does not tree-shake unused class rules: two classes in the shared
+stylesheet shipped 299 bytes in every production build. The measured CSS size
+is now byte-for-byte what it was before the workbench existed.
+
+### Network mocking
+
+MSW, with handlers keyed `METHOD /path` exactly as the old `stubFetch` was, so
+the migration moved the mechanism and left every assertion where it was.
+`onUnhandledRequest: 'error'` carries forward the guarantee the stub gave by
+answering 404, and makes it louder: an unmocked call throws rather than
+returning something plausible.
+
+**One finding worth remembering.** Under jsdom's `Request` class, MSW's
+interceptor rebuilt every intercepted request and dropped every header the
+console had set. The `X-CSRF-Token` and `If-Match` assertions would have passed
+against a console that sent neither — a security assertion silently turning
+into a no-op. `src/shared/testing/setup.ts` now hands the environment Node's
+`Request`, `Response`, and `Headers`, which is what MSW targets. `fetch` is
+left alone; overriding only the three classes keeps the blast radius as small
+as the problem.
+
+If a header assertion ever starts passing suspiciously easily, check that
+setup file first.
+
+### Browser security headers
+
+`Permissions-Policy` denies 26 features the console never uses, on every
+scheme. `Strict-Transport-Security` pins HTTPS for a year including subdomains,
+**only over TLS** — a development listener that pinned a plain-HTTP host would
+lock a developer out of their own machine for a year. `preload` is deliberately
+absent: it is effectively irreversible for months and is an owner decision, not
+a middleware default.
+
 ## Continuous integration
 
 Two workflows, one job each, no conditions.

@@ -9,7 +9,10 @@ if (!resultsDir) throw new Error('GUARDIAN_E2E_RESULTS_DIR is required');
 export default defineConfig({
   testDir: '.',
   testMatch: 'onboarding.spec.ts',
-  timeout: 90_000,
+  // `WCX-06` added the keyboard traversal at two viewports, three more axe
+  // scans, and the hostile display-name round trip to the onboarding flow.
+  // Each is real browser work on top of an already long journey.
+  timeout: 150_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
   workers: 1,
