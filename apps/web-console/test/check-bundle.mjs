@@ -16,7 +16,30 @@ for (const entry of entries) {
 
 // Test-only helpers and boundary fixtures must never reach a production build.
 // A bundled harness could stub fetch in front of a real operator session.
-const forbidden = ['stubFetch', 'loginHandlers', '__boundary__', 'establishing test session'];
+//
+// `WCX-06` adds three more classes. The component workbench renders every
+// state from fixtures and must not be reachable in production (section 9.5);
+// the hostile corpus is a catalogue of attack strings with no place in a
+// shipped bundle; and MSW would be a request interceptor sitting in front of a
+// real Control Plane (section 8.4). Each is identified by a marker that only
+// exists in the module it names, so a rename cannot silently pass this check.
+const forbidden = [
+  'mockApi',
+  'loginHandlers',
+  '__boundary__',
+  'establishing test session',
+  // Workbench (section 9.5, first of three exclusion proofs).
+  'guardian-component-workbench',
+  'Component workbench',
+  // Hostile corpus fixture ids (section 9.2).
+  'rtl-override-filename',
+  'zero-width-keyword',
+  'double-extension-filename',
+  // MSW (section 8.4).
+  'msw/browser',
+  'setupWorker',
+  'onUnhandledRequest',
+];
 for (const entry of entries.filter((name) => name.endsWith('.js'))) {
   const source = await readFile(join(directory, entry), 'utf8');
   for (const marker of forbidden) {

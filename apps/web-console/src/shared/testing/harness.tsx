@@ -2,7 +2,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { vi } from 'vitest';
 import { AuthProvider, useAuth } from '@features/auth';
 /**
  * Fixtures are the *wire* shape, not the domain shape (WCX-06 section 9.8).
@@ -26,40 +25,20 @@ export const environmentID = '018f1f7e-6d31-7cc5-8db8-17547f78e6c1';
 export const deviceID = '018f1f7e-6d31-7cc5-8db8-17547f78e6c2';
 export const csrfToken = 'cccccccccccccccccccccccccccccccccccccccccc1';
 
-export type StubHandler = (init?: RequestInit) => Response;
-
-/** Resolves the URL of a fetch input without stringifying an object. */
-export function requestURL(input: RequestInfo | URL): string {
-  if (typeof input === 'string') return input;
-  return input instanceof URL ? input.href : input.url;
-}
-
-/** Reads a recorded JSON request body. */
-export function requestBody(init: RequestInit | undefined): unknown {
-  return typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
-}
-
 /**
- * Routes stubbed responses by `METHOD /path`. An unmapped call answers 404 so a
- * missing stub can never be mistaken for an authorization or health outcome.
+ * Network mocking is MSW (WCX-06 section 9.3).
+ *
+ * The hand-written `stubFetch` this file used to export is gone. It replaced
+ * the global `fetch` and therefore only ever saw the arguments the console
+ * passed; MSW intercepts at the request layer and hands a test a real
+ * `Request`, so an assertion about a header checks the header that would
+ * actually travel. Re-exported here so a test keeps one import for its whole
+ * environment.
  */
-export function stubFetch(handlers: Record<string, StubHandler>) {
-  const calls: { key: string; init: RequestInit | undefined }[] = [];
-  const mock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-    const key = `${init?.method ?? 'GET'} ${requestURL(input)}`;
-    calls.push({ key, init });
-    return Promise.resolve(handlers[key]?.(init) ?? json({ error: 'unstubbed' }, 404));
-  });
-  vi.stubGlobal('fetch', mock);
-  return {
-    calls,
-    called: (key: string) => calls.filter((call) => call.key === key),
-    header: (key: string, name: string) => {
-      const call = calls.find((entry) => entry.key === key);
-      return call ? new Headers(call.init?.headers).get(name) : null;
-    },
-  };
-}
+export { mockApi, type MockApi, type RecordedCall } from './msw/server';
+import type { MockResponder } from './msw/server';
+
+export type { MockResponder };
 
 export function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -194,7 +173,7 @@ export function renderRoute(element: ReactNode, options: RenderRouteOptions) {
   return { ...view, queryClient };
 }
 
-export function loginHandlers(): Record<string, StubHandler> {
+export function loginHandlers(): Record<string, MockResponder> {
   return {
     'GET /v1/auth/session': () => json({ session: session() }),
     'POST /v1/auth/login': () => json({ csrf_token: csrfToken, session: session() }),

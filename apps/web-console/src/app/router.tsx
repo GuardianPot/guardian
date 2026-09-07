@@ -30,10 +30,27 @@ export function RequireAuth() {
  * screen inside the shell is covered by the boundary the shell wraps its
  * outlet in, which keeps navigation and sign-out reachable during a failure.
  */
+/**
+ * The development-only component workbench (WCX-06 section 9.5).
+ *
+ * `import.meta.env.DEV` is replaced with the literal `false` by Vite in a
+ * production build, so Rollup evaluates this to an empty array and drops the
+ * dynamic import, the workbench module, and the hostile corpus it pulls in.
+ * That is the first of the three exclusion proofs; `check-bundle.mjs` and a
+ * browser scenario are the other two.
+ */
+const workbenchRoutes: RouteObject[] = import.meta.env.DEV
+  ? [{
+    path: '/__components',
+    lazy: async () => ({ Component: (await import('@app/workbench/Workbench')).Workbench }),
+  }]
+  : [];
+
 export const routes: RouteObject[] = [
   {
     element: <AppLayout />,
     children: [
+      ...workbenchRoutes,
       {
         path: '/login',
         element: <RouteErrorBoundary><LoginPage /></RouteErrorBoundary>,

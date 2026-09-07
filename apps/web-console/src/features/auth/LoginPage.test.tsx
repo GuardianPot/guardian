@@ -4,41 +4,52 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from './AuthContext';
-import { requestBody, requestURL } from '@shared/testing/harness';
+import { json, mockApi, session, type MockResponder } from '@shared/testing/harness';
 import { expectNoAxeViolations } from '@shared/testing/axe';
 import { LoginPage } from './LoginPage';
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** No session yet, which is the state the sign-in screen exists for. */
+function signedOut(overrides: Record<string, MockResponder> = {}): Record<string, MockResponder> {
+  return {
+    'GET /v1/auth/session': () => json({ error: 'unauthorized' }, 401),
+    ...overrides,
+  };
+}
+
+function renderLogin() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}><AuthProvider><MemoryRouter><LoginPage /></MemoryRouter></AuthProvider></QueryClientProvider>,
+  );
+}
+
 describe('LoginPage', () => {
   it('sends credentials with one selected MFA proof and persists no secrets', async () => {
-    const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>((input) => {
-      if (requestURL(input) === '/v1/auth/session') return Promise.resolve(new Response('{}', { status: 401 }));
-      return Promise.resolve(new Response(JSON.stringify({
+    const api = mockApi(signedOut({
+      'POST /v1/auth/login': () => json({
         csrf_token: 'ccccccccccccccccccccccccccccccccccccccccccc',
-        session: {
-          session_id: '018f1f7e-6d31-7cc5-8db8-17547f78e6c3', user_id: '018f1f7e-6d31-7cc5-8db8-17547f78e6c4',
-          username: 'owner', role: 'owner', created_at: '2026-08-29T12:00:00Z', last_seen_at: '2026-08-29T12:00:00Z',
-          expires_at: '2026-08-29T13:00:00Z', current: true,
-        },
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
-    });
-    vi.stubGlobal('fetch', fetchMock);
+        session: session(),
+      }),
+    }));
     localStorage.clear(); sessionStorage.clear();
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(
-      <QueryClientProvider client={queryClient}><AuthProvider><MemoryRouter><LoginPage /></MemoryRouter></AuthProvider></QueryClientProvider>,
-    );
+    renderLogin();
+
     await userEvent.type(await screen.findByLabelText('Username'), 'owner');
     await userEvent.type(screen.getByLabelText('Password'), 'correct horse battery staple');
     await userEvent.type(screen.getByLabelText('6-digit authenticator code'), '123456');
     await userEvent.click(screen.getByRole('button', { name: 'Continue securely' }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    const loginCall = fetchMock.mock.calls[1];
-    if (!loginCall) throw new Error('the login request was not recorded');
-    expect(loginCall[0]).toBe('/v1/auth/login');
-    expect(loginCall[1]?.credentials).toBe('include');
-    expect(requestBody(loginCall[1])).toEqual({ username: 'owner', password: 'correct horse battery staple', totp_code: '123456' });
+
+    await waitFor(() => { expect(api.called('POST /v1/auth/login')).toHaveLength(1); });
+    const login = api.called('POST /v1/auth/login')[0];
+    // The session cookie rides on the credentials mode; MSW reports the mode
+    // the console asked for, not one a stub was handed.
+    expect(login?.credentials).toBe('include');
+    expect(login?.body).toEqual({ username: 'owner', password: 'correct horse battery staple', totp_code: '123456' });
+    // Exactly one proof travels: the recovery field the operator did not use
+    // must not be sent as an empty string alongside the one they did.
+    expect(login?.body).not.toHaveProperty('recovery_code');
     expect(localStorage).toHaveLength(0);
     expect(sessionStorage).toHaveLength(0);
   });
@@ -47,11 +58,8 @@ describe('LoginPage', () => {
     // The headline used to be the `h1` and sits in a column hidden below 900
     // pixels, so the sign-in screen lost its only heading on a narrow viewport
     // and route-change focus had nothing to land on (WCX-05).
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('{}', { status: 401 }))));
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const { container } = render(
-      <QueryClientProvider client={queryClient}><AuthProvider><MemoryRouter><LoginPage /></MemoryRouter></AuthProvider></QueryClientProvider>,
-    );
+    mockApi(signedOut());
+    const { container } = renderLogin();
 
     const heading = await screen.findByRole('heading', { name: 'Sign in', level: 1 });
     expect(heading).toHaveAttribute('tabindex', '-1');
@@ -64,11 +72,8 @@ describe('LoginPage', () => {
     // Section 9.5.3. A segmented control that only responds to Tab and click
     // is operable but not idiomatic; an operator reaching it with the keyboard
     // expects the arrows to move between the options.
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('{}', { status: 401 }))));
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(
-      <QueryClientProvider client={queryClient}><AuthProvider><MemoryRouter><LoginPage /></MemoryRouter></AuthProvider></QueryClientProvider>,
-    );
+    mockApi(signedOut());
+    renderLogin();
 
     const authenticator = await screen.findByRole('button', { name: 'Authenticator' });
     const recovery = screen.getByRole('button', { name: 'Recovery code' });
@@ -95,14 +100,8 @@ describe('LoginPage', () => {
   it('marks required fields programmatically and names the correction on failure', async () => {
     // Sections 9.6.4 and 9.6.5. `required` is the programmatic marker; the
     // message says what to do, not only that something went wrong.
-    const fetchMock = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(() =>
-      Promise.resolve(new Response('{}', { status: 401 })),
-    );
-    vi.stubGlobal('fetch', fetchMock);
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(
-      <QueryClientProvider client={queryClient}><AuthProvider><MemoryRouter><LoginPage /></MemoryRouter></AuthProvider></QueryClientProvider>,
-    );
+    mockApi(signedOut({ 'POST /v1/auth/login': () => json({ error: 'unauthorized' }, 401) }));
+    renderLogin();
 
     for (const label of ['Username', 'Password', '6-digit authenticator code']) {
       expect(await screen.findByLabelText(label), label).toBeRequired();
@@ -126,14 +125,8 @@ describe('LoginPage', () => {
   });
 
   it('renders a generic denied state without reflecting submitted secrets', async () => {
-    const fetchMock = vi.fn<(input: RequestInfo | URL) => Promise<Response>>((input) =>
-      Promise.resolve(new Response('{}', { status: requestURL(input) === '/v1/auth/session' ? 401 : 401 })),
-    );
-    vi.stubGlobal('fetch', fetchMock);
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(
-      <QueryClientProvider client={queryClient}><AuthProvider><MemoryRouter><LoginPage /></MemoryRouter></AuthProvider></QueryClientProvider>,
-    );
+    mockApi(signedOut({ 'POST /v1/auth/login': () => json({ error: 'unauthorized' }, 401) }));
+    renderLogin();
     await userEvent.type(await screen.findByLabelText('Username'), 'owner');
     await userEvent.type(screen.getByLabelText('Password'), 'never-reflect-this-password');
     await userEvent.type(screen.getByLabelText('6-digit authenticator code'), '654321');

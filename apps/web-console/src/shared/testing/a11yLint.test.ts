@@ -27,7 +27,9 @@ const REQUIRED_RULES = [
 ];
 
 describe('jsx-a11y configuration', () => {
-  it('is active as errors for every component file', async () => {
+  // Builds a TypeScript program for the type-aware config, which is real work
+  // and slow under a parallel run. The default five seconds is not enough.
+  it('is active as errors for every component file', { timeout: 60_000 }, async () => {
     const eslint = new ESLint();
     const config = (await eslint.calculateConfigForFile('src/app/Shell.tsx')) as {
       rules?: Record<string, unknown>;
@@ -41,7 +43,7 @@ describe('jsx-a11y configuration', () => {
     }
   });
 
-  it('rejects an unlabelled input and a positive tabIndex', async () => {
+  it('rejects an unlabelled input and a positive tabIndex', { timeout: 60_000 }, async () => {
     // Linted as text against a standalone instance carrying the same rule
     // block: the repository config is type-aware, and a file that does not
     // exist on disk has no TypeScript program to be aware of.

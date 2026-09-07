@@ -14,8 +14,8 @@ import {
   healthView,
   json,
   loginHandlers,
-  stubFetch,
-  type StubHandler,
+  mockApi,
+  type MockResponder,
 } from '@shared/testing/harness';
 import { routes } from './router';
 
@@ -28,7 +28,7 @@ import { routes } from './router';
  */
 afterEach(() => vi.unstubAllGlobals());
 
-function handlers(): Record<string, StubHandler> {
+function handlers(): Record<string, MockResponder> {
   return {
     ...loginHandlers(),
     'GET /v1/environments?limit=200': () => json({ environments: [environment()] }),
@@ -42,7 +42,7 @@ function handlers(): Record<string, StubHandler> {
 }
 
 function renderApp(entry: string) {
-  stubFetch(handlers());
+  mockApi(handlers());
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createMemoryRouter(routes, { initialEntries: [entry] });
   return render(

@@ -9,9 +9,9 @@ import {
   json,
   loginHandlers,
   renderRoute,
-  stubFetch,
+  mockApi,
   zone,
-  type StubHandler,
+  type MockResponder,
 } from '@shared/testing/harness';
 import { authKeys } from '@features/auth';
 import { expectNoAxeViolations } from '@shared/testing/axe';
@@ -22,7 +22,7 @@ afterEach(() => vi.unstubAllGlobals());
 const entry = `/environments/${environmentID}`;
 const routePath = '/environments/:environmentId';
 
-function readHandlers(overrides: Record<string, StubHandler> = {}): Record<string, StubHandler> {
+function readHandlers(overrides: Record<string, MockResponder> = {}): Record<string, MockResponder> {
   return {
     ...loginHandlers(),
     [`GET /v1/environments/${environmentID}`]: () => json({ environment: environment() }),
@@ -35,7 +35,7 @@ function readHandlers(overrides: Record<string, StubHandler> = {}): Record<strin
 
 describe('EnvironmentPage', () => {
   it('keeps a reload-restored session read-only until the operator reauthenticates', async () => {
-    const stub = stubFetch(readHandlers());
+    const stub = mockApi(readHandlers());
     renderRoute(<EnvironmentPage />, { path: routePath, entry, authenticated: false });
 
     expect(await screen.findByRole('heading', { name: 'Lab' })).toBeVisible();
@@ -49,7 +49,7 @@ describe('EnvironmentPage', () => {
   });
 
   it('reports a rejected zone without claiming success or leaking the submitted values', async () => {
-    const stub = stubFetch(readHandlers({
+    const stub = mockApi(readHandlers({
       [`POST /v1/environments/${environmentID}/zones`]: () => json({ error: 'invalid_cidr' }, 422),
     }));
     renderRoute(<EnvironmentPage />, { path: routePath, entry });
@@ -69,7 +69,7 @@ describe('EnvironmentPage', () => {
   });
 
   it('confirms an accepted zone only after the backend records it', async () => {
-    stubFetch(readHandlers({
+    mockApi(readHandlers({
       [`POST /v1/environments/${environmentID}/zones`]: () => json({ zone: zone() }, 201),
       [`GET /v1/environments/${environmentID}/zones?limit=200`]: () => json({ zones: [zone()] }),
     }));
@@ -85,7 +85,7 @@ describe('EnvironmentPage', () => {
 
   it('shows the one-time enrollment secret once and removes it from the DOM, storage, and query cache', async () => {
     const secretToken = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-    stubFetch(readHandlers({
+    mockApi(readHandlers({
       [`POST /v1/environments/${environmentID}/enrollment-tokens`]: () => json({
         token_id: '018f1f7e-6d31-7cc5-8db8-17547f78e6c6',
         device_id: device().device_id,
@@ -113,7 +113,7 @@ describe('EnvironmentPage', () => {
   });
 
   it('never renders an unavailable health projection as healthy', async () => {
-    stubFetch(readHandlers({
+    mockApi(readHandlers({
       [`GET /v1/environments/${environmentID}/health`]: () => json({ error: 'unavailable' }, 503),
     }));
     renderRoute(<EnvironmentPage />, { path: routePath, entry, authenticated: false });
@@ -128,7 +128,7 @@ describe('EnvironmentPage', () => {
   });
 
   it('separates inventory state from the backend health projection', async () => {
-    stubFetch(readHandlers({
+    mockApi(readHandlers({
       [`GET /v1/environments/${environmentID}/devices`]: () => json({
         devices: [device({ state: 'pending', display_name: 'edge-pending' })],
       }),
@@ -147,7 +147,7 @@ describe('EnvironmentPage', () => {
 
   it('renders hostile backend text as inert content', async () => {
     const hostile = '<img src=x onerror=alert(1)>';
-    stubFetch(readHandlers({
+    mockApi(readHandlers({
       [`GET /v1/environments/${environmentID}`]: () => json({ environment: environment({ display_name: hostile }) }),
       [`GET /v1/environments/${environmentID}/devices`]: () => json({ devices: [device({ display_name: hostile })] }),
     }));
@@ -159,7 +159,7 @@ describe('EnvironmentPage', () => {
   });
 
   it('presents an authorization failure as refused rather than empty configuration', async () => {
-    stubFetch(readHandlers({
+    mockApi(readHandlers({
       [`GET /v1/environments/${environmentID}`]: () => json({ error: 'forbidden' }, 403),
     }));
     renderRoute(<EnvironmentPage />, { path: routePath, entry, authenticated: false });
@@ -174,7 +174,7 @@ describe('EnvironmentPage', () => {
   });
 
   it('reports no serious or critical axe violation with health present or absent', async () => {
-    stubFetch(readHandlers({
+    mockApi(readHandlers({
       [`GET /v1/environments/${environmentID}/devices`]: () => json({ devices: [device()] }),
       [`GET /v1/environments/${environmentID}/health`]: () => json(healthView()),
       [`GET /v1/environments/${environmentID}/zones?limit=200`]: () => json({ zones: [zone()] }),
@@ -186,7 +186,7 @@ describe('EnvironmentPage', () => {
 
     // The read-only session renders every control disabled with a reason, which
     // is the state most likely to leave a control unnamed.
-    stubFetch(readHandlers());
+    mockApi(readHandlers());
     const withoutHealth = renderRoute(<EnvironmentPage />, { path: routePath, entry, authenticated: false });
     await screen.findByRole('heading', { name: 'Lab' });
     await expectNoAxeViolations(withoutHealth.container);
@@ -194,7 +194,7 @@ describe('EnvironmentPage', () => {
 
   it('drops the memory-only CSRF proof when a mutation is rejected as unauthorized', async () => {
     const patch = `PATCH /v1/environments/${environmentID}`;
-    const stub = stubFetch(readHandlers({ [patch]: () => json({ error: 'unauthorized' }, 401) }));
+    const stub = mockApi(readHandlers({ [patch]: () => json({ error: 'unauthorized' }, 401) }));
     const { queryClient } = renderRoute(<EnvironmentPage />, { path: routePath, entry });
 
     await userEvent.click(await screen.findByRole('button', { name: 'Save name' }));

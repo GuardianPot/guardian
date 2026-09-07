@@ -7,7 +7,7 @@ import {
   FORBIDDEN_ATTRIBUTES,
   FORBIDDEN_ELEMENTS,
   HOSTILE_CORPUS,
-} from '@shared/testing/hostile/corpus';
+} from '@shared/hostile/corpus';
 import { expectNoAxeViolations } from '@shared/testing/axe';
 import { UntrustedText } from './UntrustedText';
 import { UntrustedBlock } from './UntrustedBlock';
@@ -57,7 +57,7 @@ describe('every fixture in the corpus', () => {
   it('keeps the corpus source reviewable', () => {
     // A fixture file containing literal invisible bytes cannot be reviewed,
     // and an unreviewable corpus is not evidence of anything.
-    const source = readFileSync('src/shared/testing/hostile/corpus.ts', 'utf8');
+    const source = readFileSync('src/shared/hostile/corpus.ts', 'utf8');
     const offending = [...source].filter((character) => {
       const code = character.codePointAt(0) ?? 0;
       if (code === 0x0a || code === 0x0d || code === 0x09) return false;
@@ -271,7 +271,7 @@ describe('compiler enforcement', () => {
     expect(plain).toBeDefined();
   });
 
-  it('leaves string coercion to the type-aware lint rules, which are active', async () => {
+  it('leaves string coercion to the type-aware lint rules, which are active', { timeout: 60_000 }, async () => {
     // TypeScript itself permits `'x' + anObject` and `` `${anObject}` `` — both
     // produce a string, so `tsc` has nothing to complain about and a
     // `@ts-expect-error` there would be an unused directive. The rules that do

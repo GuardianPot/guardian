@@ -15,7 +15,12 @@
  * Every control, directional, and invisible character is built with `cp()`
  * rather than typed literally. A corpus containing literal invisible bytes is
  * a corpus nobody can review, and reviewing it is the entire point —
- * `corpus.test.ts` asserts this file's own source contains none of them.
+ * `untrusted.test.tsx` asserts this file's own source contains none of them.
+ *
+ * It sits in `shared/` rather than `shared/testing/` because the
+ * development-only component workbench renders it, and a workbench is not a
+ * test. Nothing in a production build may reach it: `check-bundle.mjs` asserts
+ * that no production chunk contains a fixture id.
  */
 export type HostileFixture = {
   /** Stable id. Test failures name it, so it must not be renamed casually. */

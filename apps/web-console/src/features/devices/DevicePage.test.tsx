@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { device, deviceID, environmentID, healthView, json, loginHandlers, renderRoute, stubFetch, type StubHandler } from '@shared/testing/harness';
+import { device, deviceID, environmentID, healthView, json, loginHandlers, renderRoute, mockApi, type MockResponder } from '@shared/testing/harness';
 import { expectNoAxeViolations } from '@shared/testing/axe';
 import { DevicePage } from './DevicePage';
 
@@ -9,7 +9,7 @@ afterEach(() => vi.unstubAllGlobals());
 const entry = `/environments/${environmentID}/devices/${deviceID}`;
 const routePath = '/environments/:environmentId/devices/:deviceId';
 
-function handlers(overrides: Record<string, StubHandler> = {}): Record<string, StubHandler> {
+function handlers(overrides: Record<string, MockResponder> = {}): Record<string, MockResponder> {
   return {
     ...loginHandlers(),
     [`GET /v1/environments/${environmentID}/devices/${deviceID}`]: () => json({ device: device() }),
@@ -18,8 +18,8 @@ function handlers(overrides: Record<string, StubHandler> = {}): Record<string, S
   };
 }
 
-function renderDevice(overrides: Record<string, StubHandler> = {}) {
-  stubFetch(handlers(overrides));
+function renderDevice(overrides: Record<string, MockResponder> = {}) {
+  mockApi(handlers(overrides));
   return renderRoute(<DevicePage />, { path: routePath, entry, authenticated: false });
 }
 

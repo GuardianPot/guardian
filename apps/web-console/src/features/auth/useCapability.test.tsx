@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EnvironmentsPage } from '@features/environments';
 import { MemoryRouter } from 'react-router-dom';
-import { json, loginHandlers, SignedIn, stubFetch } from '@shared/testing/harness';
+import { json, loginHandlers, SignedIn, mockApi } from '@shared/testing/harness';
 import { AuthProvider } from './AuthContext';
 import { useCapability } from './useCapability';
 import type { Capability } from '@shared/auth/capability';
@@ -50,7 +50,7 @@ function renderProbe(authenticated: boolean) {
 
 describe('useCapability', () => {
   it('allows every capability once the operator holds a mutation proof', async () => {
-    stubFetch(loginHandlers());
+    mockApi(loginHandlers());
     renderProbe(true);
     const decisions = await screen.findByTestId('decisions');
     for (const capability of CAPABILITIES) {
@@ -60,7 +60,7 @@ describe('useCapability', () => {
 
   it('denies every capability on a reload-restored read-only session', async () => {
     // The cookie restores the session but the memory-only CSRF proof is gone.
-    stubFetch({ 'GET /v1/auth/session': loginHandlers()['GET /v1/auth/session']! });
+    mockApi({ 'GET /v1/auth/session': loginHandlers()['GET /v1/auth/session']! });
     renderProbe(false);
     const decisions = await screen.findByTestId('decisions');
     for (const capability of CAPABILITIES) {
@@ -71,7 +71,7 @@ describe('useCapability', () => {
   it('renders a denied control as present and disabled rather than hiding it', async () => {
     // A missing control reads as a broken product; a disabled one with its
     // reason tells the operator what to do. WC-D07 requires the latter.
-    stubFetch({
+    mockApi({
       'GET /v1/auth/session': loginHandlers()['GET /v1/auth/session']!,
       'GET /v1/environments?limit=200': () => json({ environments: [] }),
     });

@@ -1,0 +1,12 @@
+/*
+ * Workbench layout (WCX-06 section 9.5). Development only.
+ *
+ * A separate module rather than two more classes in `app.module.css`, because
+ * CSS Modules does not tree-shake unused class rules: rules living in the
+ * shared stylesheet would ship in every production build even though the
+ * component that uses them is dropped. Imported only by `Workbench.tsx`, this
+ * file is dropped with it, which is what section 9.11's "zero production
+ * bytes" actually requires.
+ */
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6); }
+.fixture { display: grid; gap: var(--space-3); margin-bottom: var(--space-6); padding: var(--space-6); border: 1px solid var(--line-subtle); border-radius: var(--radius-3); }

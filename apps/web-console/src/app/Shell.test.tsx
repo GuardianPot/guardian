@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RequireAuth } from '@app/router';
 import { AuthProvider } from '@features/auth';
-import { SignedIn, csrfToken, json, loginHandlers, stubFetch, type StubHandler } from '@shared/testing/harness';
+import { SignedIn, csrfToken, json, loginHandlers, mockApi, type MockResponder } from '@shared/testing/harness';
 import { expectNoAxeViolations } from '@shared/testing/axe';
 import { Shell } from './Shell';
 
@@ -17,10 +17,10 @@ function Explode(): never {
 
 function renderShell(options: {
   authenticated: boolean;
-  handlers?: Record<string, StubHandler>;
+  handlers?: Record<string, MockResponder>;
   entry?: string;
 }) {
-  const stub = stubFetch({ ...loginHandlers(), ...options.handlers });
+  const stub = mockApi({ ...loginHandlers(), ...options.handlers });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const tree = (
     <MemoryRouter initialEntries={[options.entry ?? '/environments']}>
@@ -64,7 +64,9 @@ describe('Shell', () => {
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeVisible();
     expect(stub.called('POST /v1/auth/logout')).toHaveLength(1);
     expect(stub.header('POST /v1/auth/logout', 'X-CSRF-Token')).toBe(csrfToken);
-    expect(stub.calls.find((call) => call.key === 'POST /v1/auth/logout')?.init?.credentials).toBe('include');
+    // The session cookie rides on the credentials mode, and MSW reports the
+    // mode the console actually asked for rather than what a stub was handed.
+    expect(stub.calls.find((call) => call.key === 'POST /v1/auth/logout')?.credentials).toBe('include');
     expect(screen.queryByText('Environment workspace')).not.toBeInTheDocument();
   });
 

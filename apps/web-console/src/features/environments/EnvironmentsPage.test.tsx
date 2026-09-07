@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { environment, json, loginHandlers, renderRoute, stubFetch, type StubHandler } from '@shared/testing/harness';
+import { environment, json, loginHandlers, renderRoute, mockApi, type MockResponder } from '@shared/testing/harness';
 import { expectNoAxeViolations } from '@shared/testing/axe';
 import { EnvironmentsPage } from './EnvironmentsPage';
 
@@ -9,7 +9,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 const routePath = '/environments';
 
-function handlers(overrides: Record<string, StubHandler> = {}): Record<string, StubHandler> {
+function handlers(overrides: Record<string, MockResponder> = {}): Record<string, MockResponder> {
   return {
     ...loginHandlers(),
     'GET /v1/environments?limit=200': () => json({ environments: [] }),
@@ -19,7 +19,7 @@ function handlers(overrides: Record<string, StubHandler> = {}): Record<string, S
 
 describe('EnvironmentsPage', () => {
   it('lists environments with configuration state, never with a health claim', async () => {
-    stubFetch(handlers({
+    mockApi(handlers({
       'GET /v1/environments?limit=200': () => json({
         environments: [
           environment({ display_name: 'Lab', zone_count: 1, status: 'zones_defined' }),
@@ -41,7 +41,7 @@ describe('EnvironmentsPage', () => {
   });
 
   it('offers the creating action on an empty list and calls it a confirmed count', async () => {
-    stubFetch(handlers());
+    mockApi(handlers());
     renderRoute(<EnvironmentsPage />, { path: routePath, entry: routePath });
 
     expect(await screen.findByText('No environments recorded')).toBeVisible();
@@ -51,7 +51,7 @@ describe('EnvironmentsPage', () => {
   });
 
   it('hides the creating action from a read-only session but never the control itself', async () => {
-    stubFetch(handlers());
+    mockApi(handlers());
     renderRoute(<EnvironmentsPage />, { path: routePath, entry: routePath, authenticated: false });
 
     expect(await screen.findByText('No environments recorded')).toBeVisible();
@@ -66,7 +66,7 @@ describe('EnvironmentsPage', () => {
   });
 
   it('presents a refused list as refused, not as an empty organization', async () => {
-    stubFetch(handlers({
+    mockApi(handlers({
       'GET /v1/environments?limit=200': () => json({ error: 'forbidden' }, 403),
     }));
     renderRoute(<EnvironmentsPage />, { path: routePath, entry: routePath, authenticated: false });
@@ -77,7 +77,7 @@ describe('EnvironmentsPage', () => {
   });
 
   it('confirms a created environment with a toast and reports a failure inline', async () => {
-    stubFetch(handlers({
+    mockApi(handlers({
       'POST /v1/environments': () => json({ environment: environment({ display_name: 'Lab' }) }, 201),
     }));
     renderRoute(<EnvironmentsPage />, { path: routePath, entry: routePath });
@@ -90,7 +90,7 @@ describe('EnvironmentsPage', () => {
   });
 
   it('never leaves an error on the toast surface alone', async () => {
-    stubFetch(handlers({
+    mockApi(handlers({
       'POST /v1/environments': () => json({ error: 'validation_failed' }, 422),
     }));
     renderRoute(<EnvironmentsPage />, { path: routePath, entry: routePath });
@@ -107,7 +107,7 @@ describe('EnvironmentsPage', () => {
   });
 
   it('reports no serious or critical axe violation, listed or empty', async () => {
-    const listed = stubFetch(handlers({
+    const listed = mockApi(handlers({
       'GET /v1/environments?limit=200': () => json({ environments: [environment()] }),
     }));
     expect(listed.calls).toEqual([]);
@@ -116,7 +116,7 @@ describe('EnvironmentsPage', () => {
     await expectNoAxeViolations(view.container);
     view.unmount();
 
-    stubFetch(handlers());
+    mockApi(handlers());
     const empty = renderRoute(<EnvironmentsPage />, { path: routePath, entry: routePath });
     await screen.findByText('No environments recorded');
     await expectNoAxeViolations(empty.container);
@@ -125,7 +125,7 @@ describe('EnvironmentsPage', () => {
   it('writes nothing to browser storage while listing and creating', async () => {
     localStorage.clear();
     sessionStorage.clear();
-    stubFetch(handlers({
+    mockApi(handlers({
       'POST /v1/environments': () => json({ environment: environment() }, 201),
     }));
     renderRoute(<EnvironmentsPage />, { path: routePath, entry: routePath });

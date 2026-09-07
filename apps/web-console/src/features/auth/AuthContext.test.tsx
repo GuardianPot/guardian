@@ -6,15 +6,15 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RequireAuth } from '@app/router';
 import { EnvironmentsPage } from '@features/environments';
-import { SignedIn, environment, json, loginHandlers, stubFetch, type StubHandler } from '@shared/testing/harness';
+import { SignedIn, environment, json, loginHandlers, mockApi, type MockResponder } from '@shared/testing/harness';
 import { environmentKeys } from '@features/environments';
 import { authKeys } from './api';
 import { AuthProvider, useAuth } from './AuthContext';
 
 afterEach(() => vi.unstubAllGlobals());
 
-function renderConsole(options: { authenticated: boolean; handlers?: Record<string, StubHandler>; children?: ReactNode }) {
-  const stub = stubFetch({
+function renderConsole(options: { authenticated: boolean; handlers?: Record<string, MockResponder>; children?: ReactNode }) {
+  const stub = mockApi({
     ...loginHandlers(),
     'GET /v1/environments?limit=200': () => json({ environments: [environment()] }),
     ...options.handlers,

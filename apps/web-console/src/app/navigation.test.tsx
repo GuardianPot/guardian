@@ -12,8 +12,8 @@ import {
   healthView,
   json,
   loginHandlers,
-  stubFetch,
-  type StubHandler,
+  mockApi,
+  type MockResponder,
 } from '@shared/testing/harness';
 import { expectNoAxeViolations } from '@shared/testing/axe';
 import { routes } from './router';
@@ -31,7 +31,7 @@ beforeEach(() => {
   document.title = 'Guardian Console';
 });
 
-function handlers(overrides: Record<string, StubHandler> = {}): Record<string, StubHandler> {
+function handlers(overrides: Record<string, MockResponder> = {}): Record<string, MockResponder> {
   return {
     ...loginHandlers(),
     'GET /v1/environments?limit=200': () => json({ environments: [environment()] }),
@@ -45,8 +45,8 @@ function handlers(overrides: Record<string, StubHandler> = {}): Record<string, S
   };
 }
 
-function renderApp(entry: string, overrides: Record<string, StubHandler> = {}) {
-  stubFetch(handlers(overrides));
+function renderApp(entry: string, overrides: Record<string, MockResponder> = {}) {
+  mockApi(handlers(overrides));
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createMemoryRouter(routes, { initialEntries: [entry] });
   const view = render(
