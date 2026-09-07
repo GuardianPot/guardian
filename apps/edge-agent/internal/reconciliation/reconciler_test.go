@@ -16,6 +16,7 @@ const (
 	edgeDeviceID       = "0198f7c4-7b30-7f11-8a44-111111111111"
 	edgeEnvironmentID  = "0198f7c4-7b30-7f11-8a44-222222222222"
 	edgeZoneID         = "0198f7c4-7b30-7f11-8a44-333333333333"
+	edgeDecoyID        = "0198f7c4-7b30-7f11-8a44-aaaaaaaaaaaa"
 	messageOne         = "0198f7c4-7b30-7f11-8a44-444444444444"
 	messageThree       = "0198f7c4-7b30-7f11-8a44-555555555555"
 	messageConflict    = "0198f7c4-7b30-7f11-8a44-666666666666"
@@ -218,7 +219,70 @@ func desired(revision uint64, messageID string) *devicev1.DesiredStateSnapshot {
 		Zones: []*devicev1.NetworkZoneMetadata{{
 			ZoneId: edgeZoneID, DisplayName: "Primary", Cidr: "10.20.0.0/24", SourceRevision: 1,
 		}},
-		PlaceholderDecoys: []*devicev1.PlaceholderDecoyDesiredObject{},
+		Decoys: []*devicev1.DecoyDesiredObject{},
+	}
+}
+
+func edgeDecoy() *devicev1.DecoyDesiredObject {
+	return &devicev1.DecoyDesiredObject{
+		DecoyId: edgeDecoyID, ZoneId: edgeZoneID, DisplayName: "Finance file server",
+		Family:           devicev1.DecoyFamily_DECOY_FAMILY_SMB,
+		Persona:          devicev1.DecoyPersona_DECOY_PERSONA_WINDOWS_FILE_SERVICE_HOST,
+		InteractionLevel: devicev1.DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_LOW,
+		Address:          "10.20.0.40", Pack: "smb-fileshare", PackVersion: "0.1.0",
+		DesiredState:   devicev1.DecoyDesiredLifecycle_DECOY_DESIRED_LIFECYCLE_DEPLOYED,
+		SourceRevision: 2,
+	}
+}
+
+func TestValidateSnapshotAcceptsACanonicalDecoy(t *testing.T) {
+	snapshot := desired(3, messageOne)
+	snapshot.Decoys = []*devicev1.DecoyDesiredObject{edgeDecoy()}
+	if reason := validateSnapshot(snapshot, edgeDeviceID); reason != "" {
+		t.Fatalf("validateSnapshot() = %q", reason)
+	}
+}
+
+// A decoy placed outside the zone it names must not be applied. The Control
+// Plane rejects it too; the Edge repeats the check rather than trusting it.
+func TestValidateSnapshotRejectsADecoyOutsideItsZone(t *testing.T) {
+	snapshot := desired(3, messageOne)
+	decoy := edgeDecoy()
+	decoy.Address = "10.21.0.40"
+	snapshot.Decoys = []*devicev1.DecoyDesiredObject{decoy}
+	if reason := validateSnapshot(snapshot, edgeDeviceID); reason != "invalid_snapshot" {
+		t.Fatalf("out-of-zone decoy reason = %q", reason)
+	}
+}
+
+// An unrecognised vocabulary is refused with its own reason code, so an
+// operator can tell "this Edge does not understand this decoy" apart from
+// "this snapshot is malformed".
+func TestValidateSnapshotRejectsAnUnsupportedDecoyVocabulary(t *testing.T) {
+	cases := map[string]func(*devicev1.DecoyDesiredObject){
+		"unspecified family": func(d *devicev1.DecoyDesiredObject) {
+			d.Family = devicev1.DecoyFamily_DECOY_FAMILY_UNSPECIFIED
+		},
+		"unspecified persona": func(d *devicev1.DecoyDesiredObject) {
+			d.Persona = devicev1.DecoyPersona_DECOY_PERSONA_UNSPECIFIED
+		},
+		"interaction level disagrees with family": func(d *devicev1.DecoyDesiredObject) {
+			d.InteractionLevel = devicev1.DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_MEDIUM
+		},
+		"unspecified lifecycle": func(d *devicev1.DecoyDesiredObject) {
+			d.DesiredState = devicev1.DecoyDesiredLifecycle_DECOY_DESIRED_LIFECYCLE_UNSPECIFIED
+		},
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			snapshot := desired(3, messageOne)
+			decoy := edgeDecoy()
+			mutate(decoy)
+			snapshot.Decoys = []*devicev1.DecoyDesiredObject{decoy}
+			if reason := validateSnapshot(snapshot, edgeDeviceID); reason != "unsupported_object" {
+				t.Fatalf("validateSnapshot() = %q, want unsupported_object", reason)
+			}
+		})
 	}
 }
 

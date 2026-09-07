@@ -61,9 +61,25 @@ ORDER BY zone_id`, environmentID)
 	rows.Close()
 	sort.Slice(zones, func(i, j int) bool { return zones[i].ZoneID < zones[j].ZoneID })
 
+	desired, err := s.desiredDecoys(ctx, tx, environmentID)
+	if err != nil {
+		return reconciliation.Snapshot{}, err
+	}
+	decoys := make([]reconciliation.Decoy, 0, len(desired))
+	for _, entry := range desired {
+		decoys = append(decoys, reconciliation.Decoy{
+			DecoyID: entry.DecoyID, ZoneID: entry.ZoneID, DisplayName: entry.DisplayName,
+			Family: entry.Family, Persona: entry.Persona, InteractionLevel: entry.InteractionLevel,
+			Address: entry.Address, Pack: entry.Pack, PackVersion: entry.PackVersion,
+			PackDigest: entry.PackDigest, DesiredState: entry.DesiredState,
+			SourceRevision: entry.SourceRevision,
+		})
+	}
+	sort.Slice(decoys, func(i, j int) bool { return decoys[i].DecoyID < decoys[j].DecoyID })
+
 	candidate := reconciliation.Snapshot{
 		EdgeConfiguration: reconciliation.EdgeConfiguration{DeviceID: deviceID, EnvironmentID: environmentID},
-		Zones:             zones, PlaceholderDecoys: []reconciliation.PlaceholderDecoy{},
+		Zones:             zones, Decoys: decoys,
 	}
 	digest, err := reconciliation.ContentDigest(candidate)
 	if err != nil {
@@ -112,7 +128,7 @@ INSERT INTO guardian_reconciliation.desired_state_revisions (
 	after, err := audit.NewSnapshot(map[string]any{
 		"device_id": deviceID, "environment_id": environmentID,
 		"revision": candidate.Revision, "content_sha256": reconciliation.DigestHex(digest),
-		"zone_count": len(candidate.Zones), "placeholder_decoy_count": len(candidate.PlaceholderDecoys),
+		"zone_count": len(candidate.Zones), "decoy_count": len(candidate.Decoys),
 	})
 	if err != nil {
 		return reconciliation.Snapshot{}, fmt.Errorf("build desired-state audit snapshot: %w", err)

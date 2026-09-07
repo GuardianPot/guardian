@@ -16,11 +16,16 @@ import (
 )
 
 const (
-	MaxZones               = 200
-	MaxPlaceholderDecoys   = 64
+	MaxZones = 200
+	// MaxDecoys keeps the bound P1-W6 reserved for placeholder objects, so the
+	// device-channel message-size guarantee is unchanged now that the object
+	// carries a real decoy.
+	MaxDecoys              = 64
 	MaxDisplayNameBytes    = 512
 	MaxReasonCodeBytes     = 64
 	MaxReconciliationTries = 6
+	MaxPackNameBytes       = 64
+	MaxPackVersionBytes    = 32
 )
 
 var (
@@ -41,18 +46,31 @@ type Zone struct {
 	SourceRevision uint64 `json:"source_revision"`
 }
 
-type PlaceholderDecoy struct {
-	ObjectID    string `json:"object_id"`
-	ZoneID      string `json:"zone_id"`
-	DisplayName string `json:"display_name"`
+// Decoy is one decoy the Control Plane asked this Edge to place. It has no
+// key, certificate, credential, image reference, command, mount, or capability
+// field, and the Edge resolves runtime detail from the pack the (Pack,
+// PackVersion) pair names rather than from anything in this struct.
+type Decoy struct {
+	DecoyID          string `json:"decoy_id"`
+	ZoneID           string `json:"zone_id"`
+	DisplayName      string `json:"display_name"`
+	Family           string `json:"family"`
+	Persona          string `json:"persona"`
+	InteractionLevel string `json:"interaction_level"`
+	Address          string `json:"address"`
+	Pack             string `json:"pack"`
+	PackVersion      string `json:"pack_version"`
+	PackDigest       string `json:"pack_digest"`
+	DesiredState     string `json:"desired_state"`
+	SourceRevision   uint64 `json:"source_revision"`
 }
 
 type Snapshot struct {
-	MessageID         string             `json:"message_id"`
-	Revision          uint64             `json:"revision"`
-	EdgeConfiguration EdgeConfiguration  `json:"edge_configuration"`
-	Zones             []Zone             `json:"zones"`
-	PlaceholderDecoys []PlaceholderDecoy `json:"placeholder_decoys"`
+	MessageID         string            `json:"message_id"`
+	Revision          uint64            `json:"revision"`
+	EdgeConfiguration EdgeConfiguration `json:"edge_configuration"`
+	Zones             []Zone            `json:"zones"`
+	Decoys            []Decoy           `json:"decoys"`
 }
 
 type ConditionStatus string
@@ -89,10 +107,10 @@ func ValidateSnapshot(snapshot Snapshot) error {
 	if !validUUIDv7(snapshot.MessageID) || snapshot.Revision == 0 ||
 		!validUUIDv7(snapshot.EdgeConfiguration.DeviceID) ||
 		!validUUID(snapshot.EdgeConfiguration.EnvironmentID) ||
-		len(snapshot.Zones) > MaxZones || len(snapshot.PlaceholderDecoys) > MaxPlaceholderDecoys {
+		len(snapshot.Zones) > MaxZones || len(snapshot.Decoys) > MaxDecoys {
 		return ErrInvalidSnapshot
 	}
-	zoneIDs := make(map[string]struct{}, len(snapshot.Zones))
+	zoneCIDRs := make(map[string]string, len(snapshot.Zones))
 	previous := ""
 	for _, zone := range snapshot.Zones {
 		if !validUUID(zone.ZoneID) || !validDisplayName(zone.DisplayName) ||
@@ -101,21 +119,128 @@ func ValidateSnapshot(snapshot Snapshot) error {
 			return ErrInvalidSnapshot
 		}
 		previous = zone.ZoneID
-		zoneIDs[zone.ZoneID] = struct{}{}
+		zoneCIDRs[zone.ZoneID] = zone.CIDR
 	}
 	previous = ""
-	for _, decoy := range snapshot.PlaceholderDecoys {
-		if !validUUID(decoy.ObjectID) || !validUUID(decoy.ZoneID) ||
-			!validDisplayName(decoy.DisplayName) ||
-			(previous != "" && decoy.ObjectID <= previous) {
+	for _, decoy := range snapshot.Decoys {
+		if !validUUIDv7(decoy.DecoyID) || !validUUID(decoy.ZoneID) ||
+			!validDisplayName(decoy.DisplayName) || decoy.SourceRevision == 0 ||
+			(previous != "" && decoy.DecoyID <= previous) {
 			return ErrInvalidSnapshot
 		}
-		if _, ok := zoneIDs[decoy.ZoneID]; !ok {
+		if !validDecoyFamily(decoy.Family) || !validDecoyPersona(decoy.Persona) ||
+			!validInteractionLevel(decoy.Family, decoy.InteractionLevel) ||
+			!validDesiredDecoyState(decoy.DesiredState) ||
+			!validPackName(decoy.Pack) || !validPackVersion(decoy.PackVersion) ||
+			!validPackDigest(decoy.PackDigest) {
 			return ErrInvalidSnapshot
 		}
-		previous = decoy.ObjectID
+		cidr, ok := zoneCIDRs[decoy.ZoneID]
+		if !ok || !addressInPrefix(decoy.Address, cidr) {
+			return ErrInvalidSnapshot
+		}
+		previous = decoy.DecoyID
 	}
 	return nil
+}
+
+func validDecoyFamily(value string) bool {
+	switch value {
+	case "ssh", "http", "postgres", "smb":
+		return true
+	default:
+		return false
+	}
+}
+
+func validDecoyPersona(value string) bool {
+	switch value {
+	case "linux_admin_server", "internal_admin_web_app", "database_server", "windows_file_service_host":
+		return true
+	default:
+		return false
+	}
+}
+
+// validInteractionLevel enforces INT-01 on the wire as well as in the domain,
+// so a decoy cannot arrive at an Edge claiming an interaction level its family
+// is not approved for.
+func validInteractionLevel(family, level string) bool {
+	switch family {
+	case "ssh":
+		return level == "medium"
+	case "http", "smb":
+		return level == "low"
+	case "postgres":
+		return level == "low" || level == "medium"
+	default:
+		return false
+	}
+}
+
+// validDesiredDecoyState omits `removed`: a removed decoy leaves the snapshot
+// rather than travelling to the Edge as a tombstone.
+func validDesiredDecoyState(value string) bool {
+	return value == "deployed" || value == "disabled"
+}
+
+func validPackName(value string) bool {
+	if len(value) < 1 || len(value) > MaxPackNameBytes {
+		return false
+	}
+	for index, character := range value {
+		if index == 0 && (character < 'a' || character > 'z') {
+			return false
+		}
+		if (character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') || character == '-' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func validPackVersion(value string) bool {
+	if len(value) < 5 || len(value) > MaxPackVersionBytes {
+		return false
+	}
+	segments := strings.Split(value, ".")
+	if len(segments) != 3 {
+		return false
+	}
+	for _, segment := range segments {
+		if len(segment) < 1 || len(segment) > 6 || (len(segment) > 1 && segment[0] == '0') {
+			return false
+		}
+		for _, character := range segment {
+			if character < '0' || character > '9' {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// validPackDigest accepts an empty digest. P2-W4 has not defined a manifest to
+// hash, so the honest value today is "no digest", not an invented one.
+func validPackDigest(value string) bool {
+	if value == "" {
+		return true
+	}
+	if len(value) != len("sha256:")+64 || !strings.HasPrefix(value, "sha256:") {
+		return false
+	}
+	decoded, err := hex.DecodeString(value[len("sha256:"):])
+	return err == nil && len(decoded) == sha256.Size
+}
+
+func addressInPrefix(address, cidr string) bool {
+	parsed, err := netip.ParseAddr(address)
+	if err != nil || !parsed.Is4() || parsed.String() != address {
+		return false
+	}
+	prefix, err := netip.ParsePrefix(cidr)
+	return err == nil && prefix.Contains(parsed)
 }
 
 func ValidateObserved(observed ObservedState) error {
@@ -161,10 +286,10 @@ func ParseSnapshot(payload []byte) (Snapshot, error) {
 
 func ContentDigest(snapshot Snapshot) ([sha256.Size]byte, error) {
 	content := struct {
-		EdgeConfiguration EdgeConfiguration  `json:"edge_configuration"`
-		Zones             []Zone             `json:"zones"`
-		PlaceholderDecoys []PlaceholderDecoy `json:"placeholder_decoys"`
-	}{snapshot.EdgeConfiguration, snapshot.Zones, snapshot.PlaceholderDecoys}
+		EdgeConfiguration EdgeConfiguration `json:"edge_configuration"`
+		Zones             []Zone            `json:"zones"`
+		Decoys            []Decoy           `json:"decoys"`
+	}{snapshot.EdgeConfiguration, snapshot.Zones, snapshot.Decoys}
 	payload, err := json.Marshal(content)
 	if err != nil {
 		return [sha256.Size]byte{}, fmt.Errorf("marshal desired-state content: %w", err)

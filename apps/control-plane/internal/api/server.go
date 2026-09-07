@@ -33,6 +33,7 @@ type Server struct {
 	deviceAuthorizer       DeviceAdminAuthorizer
 	environmentService     EnvironmentService
 	environmentAuth        EnvironmentAuthorizer
+	decoyService           DecoyService
 	healthService          HealthService
 	authService            AuthService
 	logger                 *slog.Logger
@@ -115,6 +116,13 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /v1/environments/{environmentId}/zones/{zoneId}", s.handleGetZone)
 	mux.HandleFunc("PATCH /v1/environments/{environmentId}/zones/{zoneId}", s.handleUpdateZone)
 	mux.HandleFunc("DELETE /v1/environments/{environmentId}/zones/{zoneId}", s.handleDeleteZone)
+	mux.HandleFunc("GET /v1/environments/{environmentId}/decoys", s.handleListDecoys)
+	mux.HandleFunc("POST /v1/environments/{environmentId}/decoys", s.handleCreateDecoy)
+	mux.HandleFunc("GET /v1/environments/{environmentId}/decoys/{decoyId}", s.handleGetDecoy)
+	mux.HandleFunc("PATCH /v1/environments/{environmentId}/decoys/{decoyId}", s.handleUpdateDecoy)
+	mux.HandleFunc("DELETE /v1/environments/{environmentId}/decoys/{decoyId}", s.handleDeleteDecoy)
+	mux.HandleFunc("POST /v1/environments/{environmentId}/decoys/{decoyId}/enable", s.handleEnableDecoy)
+	mux.HandleFunc("POST /v1/environments/{environmentId}/decoys/{decoyId}/disable", s.handleDisableDecoy)
 	mux.HandleFunc("POST /v1/environments/{environmentId}/enrollment-tokens", s.handleCreateEnrollmentToken)
 	mux.HandleFunc("GET /v1/environments/{environmentId}/enrollment-tokens", s.handleListEnrollmentTokens)
 	mux.HandleFunc("DELETE /v1/environments/{environmentId}/enrollment-tokens/{tokenId}", s.handleRevokeEnrollmentToken)

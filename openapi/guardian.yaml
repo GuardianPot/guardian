@@ -454,6 +454,217 @@ paths:
           description: TLS is required.
         '428':
           description: A strong If-Match revision ETag is required.
+  /v1/environments/{environmentId}/decoys:
+    get:
+      operationId: listEnvironmentDecoys
+      summary: List decoys in one environment
+      description: >-
+        Every entry carries the desired object and the observed record as two
+        separate fields. They are never merged: a decoy nothing has reported on
+        is `unknown`, never `deployed` and never `absent`.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/EnvironmentListLimit'
+      responses:
+        '200':
+          description: A deterministic bounded decoy list.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecoyPage'
+        '400':
+          description: The list query is invalid.
+        '401':
+          description: A valid Guardian owner session is required.
+        '404':
+          description: The environment does not exist in the implicit organization.
+        '426':
+          description: TLS is required.
+    post:
+      operationId: createEnvironmentDecoy
+      summary: Place one decoy in a zone
+      description: >-
+        The request names a pack by `(pack, pack_version)`. Interaction level
+        and digest are resolved from the server-side pack index, and no request
+        field accepts a container image reference, command, mount, or
+        capability. The address must lie inside the referenced zone's CIDR.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecoyWriteRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/DecoyResponse'
+        '400':
+          description: >-
+            The request is invalid, the pack version is not in the index, or the
+            address is outside the zone.
+        '401':
+          description: Session, CSRF, or exact-origin validation failed.
+        '404':
+          description: The environment or zone does not exist.
+        '409':
+          description: >-
+            The normalized name or address conflicts in this environment, or the
+            environment already holds the 64 decoys the device channel can carry.
+        '426':
+          description: TLS is required.
+  /v1/environments/{environmentId}/decoys/{decoyId}:
+    get:
+      operationId: getEnvironmentDecoy
+      summary: Read one decoy and its observed record
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/DecoyId'
+      responses:
+        '200':
+          $ref: '#/components/responses/DecoyResponse'
+        '401':
+          description: A valid Guardian owner session is required.
+        '404':
+          description: The decoy does not exist in the requested environment.
+        '426':
+          description: TLS is required.
+    patch:
+      operationId: updateEnvironmentDecoy
+      summary: Update one decoy's configuration with optimistic concurrency
+      description: >-
+        Configuration only. Enable and disable are separate operations, and
+        observed state cannot be written through this or any other REST path.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/DecoyId'
+        - $ref: '#/components/parameters/IfMatchRevision'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecoyWriteRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/DecoyResponse'
+        '400':
+          description: The strict bounded request, pack reference, placement, or ETag is invalid.
+        '401':
+          description: Session, CSRF, or exact-origin validation failed.
+        '404':
+          description: The decoy or zone does not exist in the requested environment.
+        '409':
+          description: The normalized name or address conflicts in this environment.
+        '412':
+          description: The strong revision ETag is stale.
+        '426':
+          description: TLS is required.
+        '428':
+          description: A strong If-Match revision ETag is required.
+    delete:
+      operationId: deleteEnvironmentDecoy
+      summary: Remove one decoy from the active list
+      description: >-
+        Removal retires the decoy. It is not a deletion of history: the audit
+        trail and every interaction already attributed to this decoy identity
+        survive it.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/DecoyId'
+        - $ref: '#/components/parameters/IfMatchRevision'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      responses:
+        '204':
+          description: The decoy was removed and the mutation was audited atomically.
+        '400':
+          description: The ETag is invalid.
+        '401':
+          description: Session, CSRF, or exact-origin validation failed.
+        '404':
+          description: The decoy does not exist in the requested environment.
+        '412':
+          description: The strong revision ETag is stale.
+        '426':
+          description: TLS is required.
+        '428':
+          description: A strong If-Match revision ETag is required.
+  /v1/environments/{environmentId}/decoys/{decoyId}/enable:
+    post:
+      operationId: enableEnvironmentDecoy
+      summary: Ask for this decoy to be deployed
+      description: >-
+        A separate operation rather than a PATCH field, because WC-D16 assigns
+        confirmation levels to operations. Success means the desired state
+        changed; it says nothing about what the network is doing.
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/DecoyId'
+        - $ref: '#/components/parameters/IfMatchRevision'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      responses:
+        '200':
+          $ref: '#/components/responses/DecoyResponse'
+        '400':
+          description: The ETag is invalid.
+        '401':
+          description: Session, CSRF, or exact-origin validation failed.
+        '404':
+          description: The decoy does not exist in the requested environment.
+        '412':
+          description: The strong revision ETag is stale.
+        '426':
+          description: TLS is required.
+        '428':
+          description: A strong If-Match revision ETag is required.
+  /v1/environments/{environmentId}/decoys/{decoyId}/disable:
+    post:
+      operationId: disableEnvironmentDecoy
+      summary: Ask for this decoy to stop
+      security:
+        - guardianSession: []
+      parameters:
+        - $ref: '#/components/parameters/EnvironmentId'
+        - $ref: '#/components/parameters/DecoyId'
+        - $ref: '#/components/parameters/IfMatchRevision'
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/Origin'
+      responses:
+        '200':
+          $ref: '#/components/responses/DecoyResponse'
+        '400':
+          description: The ETag is invalid.
+        '401':
+          description: Session, CSRF, or exact-origin validation failed.
+        '404':
+          description: The decoy does not exist in the requested environment.
+        '412':
+          description: The strong revision ETag is stale.
+        '426':
+          description: TLS is required.
+        '428':
+          description: A strong If-Match revision ETag is required.
   /v1/environments/{environmentId}/enrollment-tokens:
     post:
       operationId: createEnrollmentToken
@@ -912,6 +1123,15 @@ components:
         type: string
         format: uuid
         pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    DecoyId:
+      name: decoyId
+      in: path
+      required: true
+      description: Canonical UUIDv7 decoy identity.
+      schema:
+        type: string
+        format: uuid
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
     EnvironmentListLimit:
       name: limit
       in: query
@@ -1004,6 +1224,20 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ZoneResponse'
+    DecoyResponse:
+      description: One decoy, its observed record, and its strong revision ETag.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+        ETag:
+          required: true
+          schema:
+            type: string
+            pattern: '^"[1-9][0-9]*"$'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DecoyView'
     AuthSessionCredentialsResponse:
       description: >-
         A rotated opaque Secure, HttpOnly, SameSite=Strict __Host- session
@@ -1214,6 +1448,258 @@ components:
           type: string
           format: date-time
         updated_at:
+          type: string
+          format: date-time
+    DecoyWriteRequest:
+      type: object
+      additionalProperties: false
+      required: [zone_id, display_name, family, persona, address, pack, pack_version]
+      description: >-
+        The complete set of fields an operator may supply. There is deliberately
+        no image, command, argument, mount, capability, port, digest, or
+        interaction-level field: runtime detail is resolved from the server-side
+        pack index, so this contract has nowhere to put one. Unknown properties
+        are rejected rather than ignored.
+      properties:
+        zone_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: >-
+            Operator-supplied, trimmed NFC text bounded to 128 Unicode code
+            points. It round-trips through the API and must be treated as
+            untrusted by any renderer.
+        family:
+          $ref: '#/components/schemas/DecoyFamily'
+        persona:
+          $ref: '#/components/schemas/DecoyPersona'
+        address:
+          type: string
+          minLength: 7
+          maxLength: 15
+          pattern: '^(10|172|192)\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
+          description: >-
+            A canonical private IPv4 host address that must lie inside the
+            referenced zone's CIDR, and may be neither its network nor its
+            broadcast address.
+        pack:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z][a-z0-9-]{0,63}$'
+        pack_version:
+          type: string
+          minLength: 5
+          maxLength: 32
+          pattern: '^[0-9]{1,6}\.[0-9]{1,6}\.[0-9]{1,6}$'
+    DecoyFamily:
+      type: string
+      enum: [ssh, http, postgres, smb]
+      description: The closed DC-01 family set. A closed token, never free text.
+    DecoyPersona:
+      type: string
+      enum:
+        - linux_admin_server
+        - internal_admin_web_app
+        - database_server
+        - windows_file_service_host
+      description: >-
+        The closed DC-11 curated persona set. There is no generative persona
+        builder, so a console may render this as a category.
+    DecoyInteractionLevel:
+      type: string
+      enum: [low, medium]
+      description: >-
+        INT-01. Resolved from the pack index rather than supplied: SSH is
+        medium, HTTP and SMB are low, a database surface may be either, and high
+        interaction is out of the MVP.
+    DecoyDesiredState:
+      type: string
+      enum: [deployed, disabled, removed]
+      description: What the operator asked for. Never what the network reported.
+    DecoyObservedState:
+      type: string
+      enum: [unknown, deployed, degraded, absent, unmanaged]
+      description: >-
+        What was reported. `unknown` is the value for a decoy no Edge has
+        reported on and is never replaced by a favourable default. `unmanaged`
+        means the reporting device is disabled or revoked (SEC-06): the decoy
+        may still be running, but Guardian has lost the ability to manage it.
+    DecoyConditionType:
+      type: string
+      enum:
+        - runtime_healthy
+        - address_applied
+        - port_responding
+        - telemetry_reporting
+        - policy_applied
+        - version_matches_desired
+    DecoyView:
+      type: object
+      additionalProperties: false
+      required: [decoy, observed]
+      description: >-
+        Desired and observed state as two sibling objects. There is no combined
+        field at any level, because the moment one exists a reader will treat it
+        as the truth about coverage.
+      properties:
+        decoy:
+          $ref: '#/components/schemas/Decoy'
+        observed:
+          $ref: '#/components/schemas/DecoyObservation'
+    DecoyPage:
+      type: object
+      additionalProperties: false
+      required: [decoys]
+      properties:
+        decoys:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/DecoyView'
+    Decoy:
+      type: object
+      additionalProperties: false
+      required:
+        - decoy_id
+        - environment_id
+        - zone_id
+        - display_name
+        - family
+        - persona
+        - interaction_level
+        - address
+        - pack
+        - pack_version
+        - pack_digest
+        - desired_state
+        - revision
+        - created_at
+        - updated_at
+      properties:
+        decoy_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        environment_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        zone_id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: >-
+            Operator-supplied and therefore untrusted. Every other string in
+            this object is a closed token the console may treat as a category;
+            this one is not.
+        family:
+          $ref: '#/components/schemas/DecoyFamily'
+        persona:
+          $ref: '#/components/schemas/DecoyPersona'
+        interaction_level:
+          $ref: '#/components/schemas/DecoyInteractionLevel'
+        address:
+          type: string
+          minLength: 7
+          maxLength: 15
+        pack:
+          type: string
+          minLength: 1
+          maxLength: 64
+        pack_version:
+          type: string
+          minLength: 5
+          maxLength: 32
+        pack_digest:
+          type: [string, 'null']
+          pattern: '^sha256:[0-9a-f]{64}$'
+          description: >-
+            DC-12. Null until P2-W4 defines a manifest and a pack exists to
+            hash; a placeholder digest would assert an artifact identity nothing
+            has verified. Recorded, not verified: signature enforcement is the
+            Phase 5 gate AC-SEC-004.
+        desired_state:
+          $ref: '#/components/schemas/DecoyDesiredState'
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    DecoyObservation:
+      type: object
+      additionalProperties: false
+      required: [observed_state, reporting_device_id, reported_at, last_interaction_at, desired_revision, conditions]
+      description: >-
+        Written only by the device channel. No REST operation can set any field
+        here, so an operator cannot assert that a decoy is healthy.
+      properties:
+        observed_state:
+          $ref: '#/components/schemas/DecoyObservedState'
+        reporting_device_id:
+          type: [string, 'null']
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        reported_at:
+          type: [string, 'null']
+          format: date-time
+        last_interaction_at:
+          type: [string, 'null']
+          format: date-time
+          description: >-
+            A timestamp only. It is not a finding, an incident, or evidence;
+            those belong to the packages that own event intelligence.
+        desired_revision:
+          type: [integer, 'null']
+          format: int64
+          minimum: 1
+        conditions:
+          type: array
+          minItems: 6
+          maxItems: 6
+          description: >-
+            The complete ordered dimension set. A dimension nothing reported is
+            Unknown, never absent and never favourable, so that killing a
+            process, removing an address, and breaking telemetry produce
+            distinct degraded states.
+          items:
+            $ref: '#/components/schemas/DecoyCondition'
+    DecoyCondition:
+      type: object
+      additionalProperties: false
+      required: [type, status, reason, message, observed_revision, last_transition_time]
+      properties:
+        type:
+          $ref: '#/components/schemas/DecoyConditionType'
+        status:
+          $ref: '#/components/schemas/HealthStatus'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z][a-z0-9_]{0,63}$'
+        message:
+          type: string
+          maxLength: 512
+          description: Bounded Edge-supplied detail. Untrusted to any renderer.
+        observed_revision:
+          type: [integer, 'null']
+          format: int64
+          minimum: 0
+        last_transition_time:
           type: string
           format: date-time
     AuthBootstrapRequest:

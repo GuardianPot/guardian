@@ -271,10 +271,10 @@ func validateSnapshot(snapshot *devicev1.DesiredStateSnapshot, deviceID string) 
 	if snapshot.EdgeConfiguration.DeviceId != deviceID {
 		return "identity_mismatch"
 	}
-	if !validUUID(snapshot.EdgeConfiguration.EnvironmentId) || len(snapshot.Zones) > 200 || len(snapshot.PlaceholderDecoys) > 64 {
+	if !validUUID(snapshot.EdgeConfiguration.EnvironmentId) || len(snapshot.Zones) > 200 || len(snapshot.Decoys) > 64 {
 		return "invalid_snapshot"
 	}
-	zones := make(map[string]struct{}, len(snapshot.Zones))
+	zones := make(map[string]string, len(snapshot.Zones))
 	previous := ""
 	for _, zone := range snapshot.Zones {
 		if zone == nil || !validUUID(zone.ZoneId) || !validText(zone.DisplayName, 512) || zone.SourceRevision == 0 ||
@@ -282,20 +282,66 @@ func validateSnapshot(snapshot *devicev1.DesiredStateSnapshot, deviceID string) 
 			return "invalid_snapshot"
 		}
 		previous = zone.ZoneId
-		zones[zone.ZoneId] = struct{}{}
+		zones[zone.ZoneId] = zone.Cidr
 	}
 	previous = ""
-	for _, decoy := range snapshot.PlaceholderDecoys {
-		if decoy == nil || !validUUID(decoy.ObjectId) || !validUUID(decoy.ZoneId) || !validText(decoy.DisplayName, 512) ||
-			(previous != "" && decoy.ObjectId <= previous) {
+	for _, decoy := range snapshot.Decoys {
+		if decoy == nil || !validUUIDv7(decoy.DecoyId) || !validUUID(decoy.ZoneId) ||
+			!validText(decoy.DisplayName, 512) || decoy.SourceRevision == 0 ||
+			(previous != "" && decoy.DecoyId <= previous) {
 			return "invalid_snapshot"
 		}
-		if _, ok := zones[decoy.ZoneId]; !ok {
+		if !validDecoyVocabulary(decoy) {
+			return "unsupported_object"
+		}
+		cidr, ok := zones[decoy.ZoneId]
+		if !ok || !addressInPrefix(decoy.Address, cidr) {
 			return "invalid_snapshot"
 		}
-		previous = decoy.ObjectId
+		previous = decoy.DecoyId
 	}
 	return ""
+}
+
+// validDecoyVocabulary keeps the Edge from applying a decoy whose family,
+// persona, interaction level, or lifecycle it does not recognise. An
+// unrecognised object is refused rather than partially applied, which is what
+// the distinct `unsupported_object` reason code reports.
+func validDecoyVocabulary(decoy *devicev1.DecoyDesiredObject) bool {
+	switch decoy.DesiredState {
+	case devicev1.DecoyDesiredLifecycle_DECOY_DESIRED_LIFECYCLE_DEPLOYED,
+		devicev1.DecoyDesiredLifecycle_DECOY_DESIRED_LIFECYCLE_DISABLED:
+	default:
+		return false
+	}
+	switch decoy.Persona {
+	case devicev1.DecoyPersona_DECOY_PERSONA_LINUX_ADMIN_SERVER,
+		devicev1.DecoyPersona_DECOY_PERSONA_INTERNAL_ADMIN_WEB_APP,
+		devicev1.DecoyPersona_DECOY_PERSONA_DATABASE_SERVER,
+		devicev1.DecoyPersona_DECOY_PERSONA_WINDOWS_FILE_SERVICE_HOST:
+	default:
+		return false
+	}
+	switch decoy.Family {
+	case devicev1.DecoyFamily_DECOY_FAMILY_SSH:
+		return decoy.InteractionLevel == devicev1.DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_MEDIUM
+	case devicev1.DecoyFamily_DECOY_FAMILY_HTTP, devicev1.DecoyFamily_DECOY_FAMILY_SMB:
+		return decoy.InteractionLevel == devicev1.DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_LOW
+	case devicev1.DecoyFamily_DECOY_FAMILY_POSTGRES:
+		return decoy.InteractionLevel == devicev1.DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_LOW ||
+			decoy.InteractionLevel == devicev1.DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_MEDIUM
+	default:
+		return false
+	}
+}
+
+func addressInPrefix(address, cidr string) bool {
+	parsed, err := netip.ParseAddr(address)
+	if err != nil || !parsed.Is4() || parsed.String() != address {
+		return false
+	}
+	prefix, err := netip.ParsePrefix(cidr)
+	return err == nil && prefix.Contains(parsed)
 }
 
 func desiredContentDigest(snapshot *devicev1.DesiredStateSnapshot) ([sha256.Size]byte, error) {
@@ -322,7 +368,7 @@ func hasUnknown(snapshot *devicev1.DesiredStateSnapshot) bool {
 			return true
 		}
 	}
-	for _, decoy := range snapshot.PlaceholderDecoys {
+	for _, decoy := range snapshot.Decoys {
 		if decoy != nil && len(decoy.ProtoReflect().GetUnknown()) != 0 {
 			return true
 		}

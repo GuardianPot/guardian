@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://guardianpot.dev/schemas/decoy/v1/decoy-observed-state.schema.json",
+  "title": "Guardian decoy observed state v1",
+  "description": "One decoy's observed truth, stored and served beside the desired object and never merged into it. Absence of a report is 'unknown', never 'deployed' and never 'absent'.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decoy_id", "observed_state", "conditions"],
+  "properties": {
+    "decoy_id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "observed_state": {
+      "description": "'unmanaged' is projected by the Control Plane from device state (SEC-06); an Edge never reports it about itself.",
+      "enum": ["unknown", "deployed", "degraded", "absent", "unmanaged"]
+    },
+    "reporting_device_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "reported_at": { "type": ["string", "null"], "format": "date-time" },
+    "last_interaction_at": {
+      "description": "A timestamp only. It is not a finding, an incident, or evidence.",
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "desired_revision": { "type": ["integer", "null"], "minimum": 1 },
+    "conditions": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "status", "reason", "message", "last_transition_time"],
+        "properties": {
+          "type": {
+            "enum": [
+              "runtime_healthy",
+              "address_applied",
+              "port_responding",
+              "telemetry_reporting",
+              "policy_applied",
+              "version_matches_desired"
+            ]
+          },
+          "status": { "enum": ["True", "False", "Unknown"] },
+          "reason": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+          "message": { "type": "string", "maxLength": 512 },
+          "observed_revision": { "type": ["integer", "null"], "minimum": 0 },
+          "last_transition_time": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}

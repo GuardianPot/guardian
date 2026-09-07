@@ -49,6 +49,14 @@ type HealthHandler interface {
 	HealthReport(context.Context, DeviceIdentity, *devicev1.HealthReport) error
 }
 
+// DecoyHandler owns only P2-W15 observed decoy state. It is a separate seam
+// from reconciliation for the same reason health is: an installed reconciler
+// must not be able to discard, acknowledge, or overwrite observed decoy truth,
+// and this handler must not be able to publish desired state.
+type DecoyHandler interface {
+	DecoyStateReport(context.Context, DeviceIdentity, *devicev1.DecoyStateReport) error
+}
+
 type HealthDisconnectHandler interface {
 	ChannelClosed(context.Context, DeviceIdentity) error
 }
@@ -66,6 +74,7 @@ type Config struct {
 	Verifier           CertificateVerifier
 	Reconciliation     ReconciliationHandler
 	Health             HealthHandler
+	Decoy              DecoyHandler
 	Logger             *slog.Logger
 }
 
@@ -76,6 +85,7 @@ type Server struct {
 	verifier        CertificateVerifier
 	reconciliation  ReconciliationHandler
 	health          HealthHandler
+	decoy           DecoyHandler
 	logger          *slog.Logger
 	grpc            *grpc.Server
 	errors          chan error
@@ -85,7 +95,8 @@ type Server struct {
 	stopped         chan struct{}
 	startErr        error
 	sessions        sessionRegistry
-	healthRate      healthRateLimiter
+	healthRate      reportRateLimiter
+	decoyRate       reportRateLimiter
 	helloTimeout    time.Duration
 	recheckInterval time.Duration
 	staleAfter      time.Duration
@@ -111,12 +122,13 @@ func NewServer(config Config) (*Server, error) {
 	}
 	server := &Server{
 		address: config.Address, verifier: config.Verifier, reconciliation: config.Reconciliation,
-		health: config.Health,
+		health: config.Health, decoy: config.Decoy,
 		logger: config.Logger, errors: make(chan error, 1), stopped: make(chan struct{}),
 		helloTimeout: HelloTimeout, recheckInterval: HeartbeatInterval, staleAfter: StaleAfter,
 	}
 	server.sessions.active = make(map[string]*activeSession)
 	server.healthRate.devices = make(map[string]*tokenBucket)
+	server.decoyRate.devices = make(map[string]*tokenBucket)
 	server.grpc = grpc.NewServer(
 		grpc.Creds(credentials.NewTLS(tlsConfig)),
 		grpc.MaxRecvMsgSize(MaxMessageBytes),
@@ -337,6 +349,32 @@ func (s *Server) receiveLoop(session *activeSession, certificate *x509.Certifica
 			if err := session.enqueueAck(payload.HealthReport.ReportId, devicev1.AcknowledgementKind_ACKNOWLEDGEMENT_KIND_HEALTH_REPORT, payload.HealthReport.Sequence); err != nil {
 				return status.Error(codes.ResourceExhausted, "device channel is saturated")
 			}
+		case *devicev1.ConnectRequest_DecoyState:
+			if err := s.reverify(stream.Context(), certificate); err != nil {
+				return err
+			}
+			if err := validateDecoyStateReport(payload.DecoyState); err != nil {
+				return status.Error(codes.InvalidArgument, "decoy state report is invalid")
+			}
+			if !s.decoyRate.allow(session.identity.DeviceID, now) {
+				return status.Error(codes.ResourceExhausted, "decoy report rate exceeded")
+			}
+			if session.duplicates.seen(payload.DecoyState.ReportId) {
+				if err := session.enqueueAck(payload.DecoyState.ReportId, devicev1.AcknowledgementKind_ACKNOWLEDGEMENT_KIND_DECOY_STATE_REPORT, 0); err != nil {
+					return status.Error(codes.ResourceExhausted, "device channel is saturated")
+				}
+				continue
+			}
+			if s.decoy == nil {
+				return status.Error(codes.Unimplemented, "decoy-report handler is unavailable")
+			}
+			if err := s.decoy.DecoyStateReport(stream.Context(), session.identity, payload.DecoyState); err != nil {
+				return status.Error(codes.Internal, "decoy-report ingest failed")
+			}
+			session.duplicates.add(payload.DecoyState.ReportId)
+			if err := session.enqueueAck(payload.DecoyState.ReportId, devicev1.AcknowledgementKind_ACKNOWLEDGEMENT_KIND_DECOY_STATE_REPORT, 0); err != nil {
+				return status.Error(codes.ResourceExhausted, "device channel is saturated")
+			}
 		case *devicev1.ConnectRequest_Acknowledgement:
 			if err := s.reverify(stream.Context(), certificate); err != nil {
 				return err
@@ -505,12 +543,12 @@ type tokenBucket struct {
 	lastSeen time.Time
 }
 
-type healthRateLimiter struct {
+type reportRateLimiter struct {
 	mu      sync.Mutex
 	devices map[string]*tokenBucket
 }
 
-func (l *healthRateLimiter) allow(deviceID string, now time.Time) bool {
+func (l *reportRateLimiter) allow(deviceID string, now time.Time) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	for key, bucket := range l.devices {

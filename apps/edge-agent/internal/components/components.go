@@ -40,6 +40,15 @@ type HealthReporter interface {
 	lifecycle.Component
 }
 
+// DecoyManager is the P2-W15 decoy boundary: it converges desired decoys and
+// reports what it observed. It is deliberately not given the privileged-helper
+// client, so the component that manages decoys cannot mutate the network or
+// reach device identity.
+type DecoyManager interface {
+	lifecycle.Component
+	Report(context.Context) error
+}
+
 // TelemetrySpool exposes durable queue statistics without payload content.
 type TelemetrySpool interface {
 	lifecycle.Component
@@ -64,21 +73,27 @@ type Graph struct {
 	TelemetrySpool         TelemetrySpool
 	Channel                Channel
 	Reconciler             Reconciler
+	DecoyManager           DecoyManager
 	PrivilegedHelperClient PrivilegedHelperClient
 	HealthReporter         HealthReporter
 }
 
-// Ordered returns enrollment, local durability, network/reconciliation,
-// privileged-client, and health boundaries in dependency order.
+// Ordered returns enrollment, local durability, network/reconciliation, decoy,
+// privileged-client, and health boundaries in dependency order. The decoy
+// manager starts after the reconciler because desired decoys reach it through
+// reconciliation, and before health so its own condition is recorded when the
+// first report is assembled.
 func (g Graph) Ordered() []lifecycle.Component {
-	return []lifecycle.Component{
+	ordered := []lifecycle.Component{
 		g.Enrollment,
 		g.TelemetrySpool,
 		g.Channel,
 		g.Reconciler,
-		g.PrivilegedHelperClient,
-		g.HealthReporter,
 	}
+	if g.DecoyManager != nil {
+		ordered = append(ordered, g.DecoyManager)
+	}
+	return append(ordered, g.PrivilegedHelperClient, g.HealthReporter)
 }
 
 // NewFoundation creates truthful boundaries. P1-W8 supplies the active typed

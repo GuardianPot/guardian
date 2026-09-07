@@ -4,7 +4,7 @@
   "title": "Guardian desired-state snapshot v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["message_id", "revision", "edge_configuration", "zones", "placeholder_decoys"],
+  "required": ["message_id", "revision", "edge_configuration", "zones", "decoys"],
   "properties": {
     "message_id": {
       "type": "string",
@@ -40,17 +40,46 @@
         }
       }
     },
-    "placeholder_decoys": {
+    "decoys": {
       "type": "array",
       "maxItems": 64,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["object_id", "zone_id", "display_name"],
+        "required": [
+          "decoy_id",
+          "zone_id",
+          "display_name",
+          "family",
+          "persona",
+          "interaction_level",
+          "address",
+          "pack",
+          "pack_version",
+          "pack_digest",
+          "desired_state",
+          "source_revision"
+        ],
         "properties": {
-          "object_id": { "type": "string", "format": "uuid" },
+          "decoy_id": { "type": "string", "format": "uuid" },
           "zone_id": { "type": "string", "format": "uuid" },
-          "display_name": { "type": "string", "minLength": 1, "maxLength": 512 }
+          "display_name": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "family": { "enum": ["ssh", "http", "postgres", "smb"] },
+          "persona": {
+            "enum": [
+              "linux_admin_server",
+              "internal_admin_web_app",
+              "database_server",
+              "windows_file_service_host"
+            ]
+          },
+          "interaction_level": { "enum": ["low", "medium"] },
+          "address": { "type": "string", "minLength": 7, "maxLength": 15 },
+          "pack": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" },
+          "pack_version": { "type": "string", "pattern": "^[0-9]{1,6}\\.[0-9]{1,6}\\.[0-9]{1,6}$" },
+          "pack_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+          "desired_state": { "enum": ["deployed", "disabled"] },
+          "source_revision": { "type": "integer", "minimum": 1 }
         }
       }
     }

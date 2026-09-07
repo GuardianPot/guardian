@@ -136,6 +136,12 @@ tasks:
     cmds:
       - bash tests/integration/environment/run.sh
 
+  decoy:integration:
+    desc: Run P2-W15 decoy domain, placement, lifecycle, audit, observed-state, and boundary evidence
+    deps: [control-plane:generated]
+    cmds:
+      - bash tests/integration/decoy/run.sh
+
   edge:tools:
     desc: Verify the Edge Agent module dependency graph
     env:
@@ -332,7 +338,7 @@ tasks:
 
   validate:
     desc: Run all local quality checks
-    deps: [format:check, go:check, web:e2e, policy, contracts, container:check, control-plane:integration, enrollment:integration, auth:integration, environment:integration, device-channel:integration, health:integration]
+    deps: [format:check, go:check, web:e2e, policy, contracts, container:check, control-plane:integration, enrollment:integration, auth:integration, environment:integration, device-channel:integration, health:integration, decoy:integration]
 
   build:
     desc: Build all skeleton applications

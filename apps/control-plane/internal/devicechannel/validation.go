@@ -17,6 +17,15 @@ const (
 	ProtocolMinor        = 0
 	MaxAgentVersionBytes = 64
 	MaxHealthReportBytes = 16 << 10
+	// MaxDecoys is the P1-W6 desired-object bound, unchanged now that the
+	// object is a real decoy.
+	MaxDecoys = 64
+	// MaxDecoyReportBytes bounds one encoded Edge decoy report, matching the
+	// health report bound so one hostile peer cannot spend more on decoys.
+	MaxDecoyReportBytes = 16 << 10
+	// DecoyConditionCount is the complete P2-W15 section 9.4 dimension set. A
+	// partial report is rejected rather than silently completed.
+	DecoyConditionCount = 6
 )
 
 func validateHello(hello *devicev1.EdgeHello) error {
@@ -36,10 +45,10 @@ func protocolCompatible(version *devicev1.ProtocolVersion) bool {
 func validateDesiredState(desired *devicev1.DesiredStateSnapshot, deviceID string) error {
 	if desired == nil || desired.Revision == 0 || !validUUIDv7(desired.MessageId) || desired.EdgeConfiguration == nil ||
 		desired.EdgeConfiguration.DeviceId != deviceID || !validUUID(desired.EdgeConfiguration.EnvironmentId) ||
-		len(desired.Zones) > 200 || len(desired.PlaceholderDecoys) > 64 {
+		len(desired.Zones) > 200 || len(desired.Decoys) > MaxDecoys {
 		return errors.New("desired state is invalid")
 	}
-	zones := make(map[string]struct{}, len(desired.Zones))
+	zones := make(map[string]string, len(desired.Zones))
 	previous := ""
 	for _, zone := range desired.Zones {
 		if zone == nil || !validUUID(zone.ZoneId) || !validBoundedText(zone.DisplayName, 512) ||
@@ -47,20 +56,126 @@ func validateDesiredState(desired *devicev1.DesiredStateSnapshot, deviceID strin
 			return errors.New("desired-state zone is invalid")
 		}
 		previous = zone.ZoneId
-		zones[zone.ZoneId] = struct{}{}
+		zones[zone.ZoneId] = zone.Cidr
 	}
 	previous = ""
-	for _, decoy := range desired.PlaceholderDecoys {
-		if decoy == nil || !validUUID(decoy.ObjectId) || !validUUID(decoy.ZoneId) ||
-			!validBoundedText(decoy.DisplayName, 512) || (previous != "" && decoy.ObjectId <= previous) {
-			return errors.New("placeholder desired object is invalid")
+	for _, decoy := range desired.Decoys {
+		if decoy == nil || !validUUIDv7(decoy.DecoyId) || !validUUID(decoy.ZoneId) ||
+			!validBoundedText(decoy.DisplayName, 512) || decoy.SourceRevision == 0 ||
+			(previous != "" && decoy.DecoyId <= previous) {
+			return errors.New("decoy desired object is invalid")
 		}
-		if _, ok := zones[decoy.ZoneId]; !ok {
-			return errors.New("placeholder desired object references an unknown zone")
+		if !validDecoyVocabulary(decoy) || !validPackReference(decoy) {
+			return errors.New("decoy desired object is outside the closed vocabulary")
 		}
-		previous = decoy.ObjectId
+		cidr, ok := zones[decoy.ZoneId]
+		if !ok {
+			return errors.New("decoy desired object references an unknown zone")
+		}
+		if !addressInPrefix(decoy.Address, cidr) {
+			return errors.New("decoy desired object is placed outside its zone")
+		}
+		previous = decoy.DecoyId
 	}
 	return nil
+}
+
+// validDecoyVocabulary rejects an unspecified enum value as well as an unknown
+// one, so a peer that omits a field cannot have it read as a default.
+// interaction level is checked against family because INT-01 pairs them.
+func validDecoyVocabulary(decoy *devicev1.DecoyDesiredObject) bool {
+	switch decoy.DesiredState {
+	case devicev1.DecoyDesiredLifecycle_DECOY_DESIRED_LIFECYCLE_DEPLOYED,
+		devicev1.DecoyDesiredLifecycle_DECOY_DESIRED_LIFECYCLE_DISABLED:
+	default:
+		return false
+	}
+	switch decoy.Persona {
+	case devicev1.DecoyPersona_DECOY_PERSONA_LINUX_ADMIN_SERVER,
+		devicev1.DecoyPersona_DECOY_PERSONA_INTERNAL_ADMIN_WEB_APP,
+		devicev1.DecoyPersona_DECOY_PERSONA_DATABASE_SERVER,
+		devicev1.DecoyPersona_DECOY_PERSONA_WINDOWS_FILE_SERVICE_HOST:
+	default:
+		return false
+	}
+	switch decoy.Family {
+	case devicev1.DecoyFamily_DECOY_FAMILY_SSH:
+		return decoy.InteractionLevel == devicev1.DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_MEDIUM
+	case devicev1.DecoyFamily_DECOY_FAMILY_HTTP, devicev1.DecoyFamily_DECOY_FAMILY_SMB:
+		return decoy.InteractionLevel == devicev1.DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_LOW
+	case devicev1.DecoyFamily_DECOY_FAMILY_POSTGRES:
+		return decoy.InteractionLevel == devicev1.DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_LOW ||
+			decoy.InteractionLevel == devicev1.DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_MEDIUM
+	default:
+		return false
+	}
+}
+
+// validPackReference bounds the opaque (pack, version, digest) triple. This
+// package never parses a manifest; P2-W4 owns what one contains.
+func validPackReference(decoy *devicev1.DecoyDesiredObject) bool {
+	if !validPackName(decoy.Pack) || !validPackVersion(decoy.PackVersion) {
+		return false
+	}
+	// An empty digest is correct until P2-W4 supplies a manifest to hash.
+	if decoy.PackDigest == "" {
+		return true
+	}
+	return len(decoy.PackDigest) == len("sha256:")+64 && strings.HasPrefix(decoy.PackDigest, "sha256:") &&
+		validLowerHex(decoy.PackDigest[len("sha256:"):])
+}
+
+func validPackName(value string) bool {
+	if len(value) < 1 || len(value) > 64 {
+		return false
+	}
+	for index, character := range value {
+		if index == 0 && (character < 'a' || character > 'z') {
+			return false
+		}
+		if (character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') || character == '-' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func validPackVersion(value string) bool {
+	segments := strings.Split(value, ".")
+	if len(value) > 32 || len(segments) != 3 {
+		return false
+	}
+	for _, segment := range segments {
+		if len(segment) < 1 || len(segment) > 6 || (len(segment) > 1 && segment[0] == '0') {
+			return false
+		}
+		for _, character := range segment {
+			if character < '0' || character > '9' {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func validLowerHex(value string) bool {
+	for _, character := range value {
+		if (character >= '0' && character <= '9') || (character >= 'a' && character <= 'f') {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func addressInPrefix(address, cidr string) bool {
+	parsed, err := netip.ParseAddr(address)
+	if err != nil || !parsed.Is4() || parsed.String() != address {
+		return false
+	}
+	prefix, err := netip.ParsePrefix(cidr)
+	return err == nil && prefix.Contains(parsed)
 }
 
 func validateObservedState(observed *devicev1.ObservedState) error {
@@ -91,6 +206,106 @@ func validReconciliationCondition(condition *devicev1.ReconciliationCondition) b
 	default:
 		return false
 	}
+}
+
+// validateDecoyStateReport is the trust boundary for everything an Edge says
+// about its decoys. It never accepts DECOY_OBSERVED_LIFECYCLE_UNSPECIFIED, so
+// an omitted state cannot be read as a default, and it never accepts an
+// `unmanaged` claim: SEC-06 is a Control Plane projection from device state,
+// and the device that has lost management is precisely the one whose
+// self-report about that cannot be trusted.
+func validateDecoyStateReport(report *devicev1.DecoyStateReport) error {
+	if report == nil || proto.Size(report) > MaxDecoyReportBytes || !validUUIDv7(report.ReportId) ||
+		len(report.Decoys) > MaxDecoys {
+		return errors.New("decoy report envelope is invalid")
+	}
+	if err := report.ObservedAt.CheckValid(); err != nil {
+		return errors.New("decoy report observation timestamp is invalid")
+	}
+	observedAt := report.ObservedAt.AsTime()
+	if err := health.ValidateTimestamp(observedAt); err != nil {
+		return errors.New("decoy report observation timestamp is out of range")
+	}
+	seen := make(map[string]struct{}, len(report.Decoys))
+	for _, observation := range report.Decoys {
+		if observation == nil || !validUUIDv7(observation.DecoyId) {
+			return errors.New("decoy observation identity is invalid")
+		}
+		if _, duplicate := seen[observation.DecoyId]; duplicate {
+			return errors.New("decoy observation is repeated")
+		}
+		seen[observation.DecoyId] = struct{}{}
+		if err := validateDecoyObservation(observation, observedAt); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateDecoyObservation(observation *devicev1.DecoyObservation, observedAt time.Time) error {
+	switch observation.State {
+	case devicev1.DecoyObservedLifecycle_DECOY_OBSERVED_LIFECYCLE_UNKNOWN,
+		devicev1.DecoyObservedLifecycle_DECOY_OBSERVED_LIFECYCLE_DEPLOYED,
+		devicev1.DecoyObservedLifecycle_DECOY_OBSERVED_LIFECYCLE_DEGRADED,
+		devicev1.DecoyObservedLifecycle_DECOY_OBSERVED_LIFECYCLE_ABSENT:
+	default:
+		return errors.New("decoy observed lifecycle is invalid")
+	}
+	if observation.LastInteractionAt != nil {
+		if err := observation.LastInteractionAt.CheckValid(); err != nil {
+			return errors.New("decoy interaction timestamp is invalid")
+		}
+		if observation.LastInteractionAt.AsTime().After(observedAt) {
+			return errors.New("decoy interaction is after the observation")
+		}
+	}
+	if len(observation.Conditions) != DecoyConditionCount {
+		return errors.New("decoy conditions must be the complete ordered set")
+	}
+	for index, condition := range observation.Conditions {
+		if condition == nil || int(condition.Type) != index+1 || condition.LastTransitionTime == nil {
+			return errors.New("decoy condition order is invalid")
+		}
+		switch condition.Status {
+		case devicev1.HealthConditionStatus_HEALTH_CONDITION_STATUS_TRUE,
+			devicev1.HealthConditionStatus_HEALTH_CONDITION_STATUS_FALSE,
+			devicev1.HealthConditionStatus_HEALTH_CONDITION_STATUS_UNKNOWN:
+		default:
+			return errors.New("decoy condition status is invalid")
+		}
+		if !validReasonIdentifier(condition.Reason) || len(condition.Message) > 512 ||
+			!utf8.ValidString(condition.Message) {
+			return errors.New("decoy condition reason or message is invalid")
+		}
+		for _, character := range condition.Message {
+			if character < 0x20 || character == 0x7f {
+				return errors.New("decoy condition message contains a control character")
+			}
+		}
+		if err := condition.LastTransitionTime.CheckValid(); err != nil {
+			return errors.New("decoy condition transition timestamp is invalid")
+		}
+		if condition.LastTransitionTime.AsTime().After(observedAt) {
+			return errors.New("decoy condition transition is after the observation")
+		}
+	}
+	return nil
+}
+
+func validReasonIdentifier(value string) bool {
+	if len(value) < 1 || len(value) > 64 {
+		return false
+	}
+	for index, character := range value {
+		if index == 0 && (character < 'a' || character > 'z') {
+			return false
+		}
+		if (character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') || character == '_' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func validateAcknowledgement(ack *devicev1.Acknowledgement) error {

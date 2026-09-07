@@ -22,6 +22,346 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// DecoyFamily is the closed DC-01 family set. A family outside these four
+// cannot be represented on the wire, so an unbounded string never reaches the
+// Edge or, through it, an operator surface.
+type DecoyFamily int32
+
+const (
+	DecoyFamily_DECOY_FAMILY_UNSPECIFIED DecoyFamily = 0
+	DecoyFamily_DECOY_FAMILY_SSH         DecoyFamily = 1
+	DecoyFamily_DECOY_FAMILY_HTTP        DecoyFamily = 2
+	DecoyFamily_DECOY_FAMILY_POSTGRES    DecoyFamily = 3
+	DecoyFamily_DECOY_FAMILY_SMB         DecoyFamily = 4
+)
+
+// Enum value maps for DecoyFamily.
+var (
+	DecoyFamily_name = map[int32]string{
+		0: "DECOY_FAMILY_UNSPECIFIED",
+		1: "DECOY_FAMILY_SSH",
+		2: "DECOY_FAMILY_HTTP",
+		3: "DECOY_FAMILY_POSTGRES",
+		4: "DECOY_FAMILY_SMB",
+	}
+	DecoyFamily_value = map[string]int32{
+		"DECOY_FAMILY_UNSPECIFIED": 0,
+		"DECOY_FAMILY_SSH":         1,
+		"DECOY_FAMILY_HTTP":        2,
+		"DECOY_FAMILY_POSTGRES":    3,
+		"DECOY_FAMILY_SMB":         4,
+	}
+)
+
+func (x DecoyFamily) Enum() *DecoyFamily {
+	p := new(DecoyFamily)
+	*p = x
+	return p
+}
+
+func (x DecoyFamily) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DecoyFamily) Descriptor() protoreflect.EnumDescriptor {
+	return file_guardian_device_v1_channel_proto_enumTypes[0].Descriptor()
+}
+
+func (DecoyFamily) Type() protoreflect.EnumType {
+	return &file_guardian_device_v1_channel_proto_enumTypes[0]
+}
+
+func (x DecoyFamily) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DecoyFamily.Descriptor instead.
+func (DecoyFamily) EnumDescriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{0}
+}
+
+// DecoyPersona is the closed DC-11 curated persona set. There is no
+// generative persona builder and no free-text persona.
+type DecoyPersona int32
+
+const (
+	DecoyPersona_DECOY_PERSONA_UNSPECIFIED               DecoyPersona = 0
+	DecoyPersona_DECOY_PERSONA_LINUX_ADMIN_SERVER        DecoyPersona = 1
+	DecoyPersona_DECOY_PERSONA_INTERNAL_ADMIN_WEB_APP    DecoyPersona = 2
+	DecoyPersona_DECOY_PERSONA_DATABASE_SERVER           DecoyPersona = 3
+	DecoyPersona_DECOY_PERSONA_WINDOWS_FILE_SERVICE_HOST DecoyPersona = 4
+)
+
+// Enum value maps for DecoyPersona.
+var (
+	DecoyPersona_name = map[int32]string{
+		0: "DECOY_PERSONA_UNSPECIFIED",
+		1: "DECOY_PERSONA_LINUX_ADMIN_SERVER",
+		2: "DECOY_PERSONA_INTERNAL_ADMIN_WEB_APP",
+		3: "DECOY_PERSONA_DATABASE_SERVER",
+		4: "DECOY_PERSONA_WINDOWS_FILE_SERVICE_HOST",
+	}
+	DecoyPersona_value = map[string]int32{
+		"DECOY_PERSONA_UNSPECIFIED":               0,
+		"DECOY_PERSONA_LINUX_ADMIN_SERVER":        1,
+		"DECOY_PERSONA_INTERNAL_ADMIN_WEB_APP":    2,
+		"DECOY_PERSONA_DATABASE_SERVER":           3,
+		"DECOY_PERSONA_WINDOWS_FILE_SERVICE_HOST": 4,
+	}
+)
+
+func (x DecoyPersona) Enum() *DecoyPersona {
+	p := new(DecoyPersona)
+	*p = x
+	return p
+}
+
+func (x DecoyPersona) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DecoyPersona) Descriptor() protoreflect.EnumDescriptor {
+	return file_guardian_device_v1_channel_proto_enumTypes[1].Descriptor()
+}
+
+func (DecoyPersona) Type() protoreflect.EnumType {
+	return &file_guardian_device_v1_channel_proto_enumTypes[1]
+}
+
+func (x DecoyPersona) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DecoyPersona.Descriptor instead.
+func (DecoyPersona) EnumDescriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{1}
+}
+
+// DecoyInteractionLevel carries INT-01. High interaction has no wire value
+// because it is out of the MVP.
+type DecoyInteractionLevel int32
+
+const (
+	DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_UNSPECIFIED DecoyInteractionLevel = 0
+	DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_LOW         DecoyInteractionLevel = 1
+	DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_MEDIUM      DecoyInteractionLevel = 2
+)
+
+// Enum value maps for DecoyInteractionLevel.
+var (
+	DecoyInteractionLevel_name = map[int32]string{
+		0: "DECOY_INTERACTION_LEVEL_UNSPECIFIED",
+		1: "DECOY_INTERACTION_LEVEL_LOW",
+		2: "DECOY_INTERACTION_LEVEL_MEDIUM",
+	}
+	DecoyInteractionLevel_value = map[string]int32{
+		"DECOY_INTERACTION_LEVEL_UNSPECIFIED": 0,
+		"DECOY_INTERACTION_LEVEL_LOW":         1,
+		"DECOY_INTERACTION_LEVEL_MEDIUM":      2,
+	}
+)
+
+func (x DecoyInteractionLevel) Enum() *DecoyInteractionLevel {
+	p := new(DecoyInteractionLevel)
+	*p = x
+	return p
+}
+
+func (x DecoyInteractionLevel) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DecoyInteractionLevel) Descriptor() protoreflect.EnumDescriptor {
+	return file_guardian_device_v1_channel_proto_enumTypes[2].Descriptor()
+}
+
+func (DecoyInteractionLevel) Type() protoreflect.EnumType {
+	return &file_guardian_device_v1_channel_proto_enumTypes[2]
+}
+
+func (x DecoyInteractionLevel) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DecoyInteractionLevel.Descriptor instead.
+func (DecoyInteractionLevel) EnumDescriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{2}
+}
+
+// DecoyDesiredLifecycle is what the operator asked for. `removed` has no wire
+// value: a removed decoy is absent from the snapshot rather than present with
+// a tombstone state.
+type DecoyDesiredLifecycle int32
+
+const (
+	DecoyDesiredLifecycle_DECOY_DESIRED_LIFECYCLE_UNSPECIFIED DecoyDesiredLifecycle = 0
+	DecoyDesiredLifecycle_DECOY_DESIRED_LIFECYCLE_DEPLOYED    DecoyDesiredLifecycle = 1
+	DecoyDesiredLifecycle_DECOY_DESIRED_LIFECYCLE_DISABLED    DecoyDesiredLifecycle = 2
+)
+
+// Enum value maps for DecoyDesiredLifecycle.
+var (
+	DecoyDesiredLifecycle_name = map[int32]string{
+		0: "DECOY_DESIRED_LIFECYCLE_UNSPECIFIED",
+		1: "DECOY_DESIRED_LIFECYCLE_DEPLOYED",
+		2: "DECOY_DESIRED_LIFECYCLE_DISABLED",
+	}
+	DecoyDesiredLifecycle_value = map[string]int32{
+		"DECOY_DESIRED_LIFECYCLE_UNSPECIFIED": 0,
+		"DECOY_DESIRED_LIFECYCLE_DEPLOYED":    1,
+		"DECOY_DESIRED_LIFECYCLE_DISABLED":    2,
+	}
+)
+
+func (x DecoyDesiredLifecycle) Enum() *DecoyDesiredLifecycle {
+	p := new(DecoyDesiredLifecycle)
+	*p = x
+	return p
+}
+
+func (x DecoyDesiredLifecycle) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DecoyDesiredLifecycle) Descriptor() protoreflect.EnumDescriptor {
+	return file_guardian_device_v1_channel_proto_enumTypes[3].Descriptor()
+}
+
+func (DecoyDesiredLifecycle) Type() protoreflect.EnumType {
+	return &file_guardian_device_v1_channel_proto_enumTypes[3]
+}
+
+func (x DecoyDesiredLifecycle) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DecoyDesiredLifecycle.Descriptor instead.
+func (DecoyDesiredLifecycle) EnumDescriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{3}
+}
+
+// DecoyObservedLifecycle is what the Edge saw. `unmanaged` is deliberately
+// absent: a device that has lost management cannot truthfully report that
+// about itself, so the Control Plane projects it from device state instead.
+type DecoyObservedLifecycle int32
+
+const (
+	DecoyObservedLifecycle_DECOY_OBSERVED_LIFECYCLE_UNSPECIFIED DecoyObservedLifecycle = 0
+	DecoyObservedLifecycle_DECOY_OBSERVED_LIFECYCLE_UNKNOWN     DecoyObservedLifecycle = 1
+	DecoyObservedLifecycle_DECOY_OBSERVED_LIFECYCLE_DEPLOYED    DecoyObservedLifecycle = 2
+	DecoyObservedLifecycle_DECOY_OBSERVED_LIFECYCLE_DEGRADED    DecoyObservedLifecycle = 3
+	DecoyObservedLifecycle_DECOY_OBSERVED_LIFECYCLE_ABSENT      DecoyObservedLifecycle = 4
+)
+
+// Enum value maps for DecoyObservedLifecycle.
+var (
+	DecoyObservedLifecycle_name = map[int32]string{
+		0: "DECOY_OBSERVED_LIFECYCLE_UNSPECIFIED",
+		1: "DECOY_OBSERVED_LIFECYCLE_UNKNOWN",
+		2: "DECOY_OBSERVED_LIFECYCLE_DEPLOYED",
+		3: "DECOY_OBSERVED_LIFECYCLE_DEGRADED",
+		4: "DECOY_OBSERVED_LIFECYCLE_ABSENT",
+	}
+	DecoyObservedLifecycle_value = map[string]int32{
+		"DECOY_OBSERVED_LIFECYCLE_UNSPECIFIED": 0,
+		"DECOY_OBSERVED_LIFECYCLE_UNKNOWN":     1,
+		"DECOY_OBSERVED_LIFECYCLE_DEPLOYED":    2,
+		"DECOY_OBSERVED_LIFECYCLE_DEGRADED":    3,
+		"DECOY_OBSERVED_LIFECYCLE_ABSENT":      4,
+	}
+)
+
+func (x DecoyObservedLifecycle) Enum() *DecoyObservedLifecycle {
+	p := new(DecoyObservedLifecycle)
+	*p = x
+	return p
+}
+
+func (x DecoyObservedLifecycle) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DecoyObservedLifecycle) Descriptor() protoreflect.EnumDescriptor {
+	return file_guardian_device_v1_channel_proto_enumTypes[4].Descriptor()
+}
+
+func (DecoyObservedLifecycle) Type() protoreflect.EnumType {
+	return &file_guardian_device_v1_channel_proto_enumTypes[4]
+}
+
+func (x DecoyObservedLifecycle) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DecoyObservedLifecycle.Descriptor instead.
+func (DecoyObservedLifecycle) EnumDescriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{4}
+}
+
+// DecoyConditionType is the closed decoy health dimension set. They are
+// separate so that a dead process, an unapplied address, and broken telemetry
+// produce distinct degraded states rather than one undifferentiated failure.
+type DecoyConditionType int32
+
+const (
+	DecoyConditionType_DECOY_CONDITION_TYPE_UNSPECIFIED             DecoyConditionType = 0
+	DecoyConditionType_DECOY_CONDITION_TYPE_RUNTIME_HEALTHY         DecoyConditionType = 1
+	DecoyConditionType_DECOY_CONDITION_TYPE_ADDRESS_APPLIED         DecoyConditionType = 2
+	DecoyConditionType_DECOY_CONDITION_TYPE_PORT_RESPONDING         DecoyConditionType = 3
+	DecoyConditionType_DECOY_CONDITION_TYPE_TELEMETRY_REPORTING     DecoyConditionType = 4
+	DecoyConditionType_DECOY_CONDITION_TYPE_POLICY_APPLIED          DecoyConditionType = 5
+	DecoyConditionType_DECOY_CONDITION_TYPE_VERSION_MATCHES_DESIRED DecoyConditionType = 6
+)
+
+// Enum value maps for DecoyConditionType.
+var (
+	DecoyConditionType_name = map[int32]string{
+		0: "DECOY_CONDITION_TYPE_UNSPECIFIED",
+		1: "DECOY_CONDITION_TYPE_RUNTIME_HEALTHY",
+		2: "DECOY_CONDITION_TYPE_ADDRESS_APPLIED",
+		3: "DECOY_CONDITION_TYPE_PORT_RESPONDING",
+		4: "DECOY_CONDITION_TYPE_TELEMETRY_REPORTING",
+		5: "DECOY_CONDITION_TYPE_POLICY_APPLIED",
+		6: "DECOY_CONDITION_TYPE_VERSION_MATCHES_DESIRED",
+	}
+	DecoyConditionType_value = map[string]int32{
+		"DECOY_CONDITION_TYPE_UNSPECIFIED":             0,
+		"DECOY_CONDITION_TYPE_RUNTIME_HEALTHY":         1,
+		"DECOY_CONDITION_TYPE_ADDRESS_APPLIED":         2,
+		"DECOY_CONDITION_TYPE_PORT_RESPONDING":         3,
+		"DECOY_CONDITION_TYPE_TELEMETRY_REPORTING":     4,
+		"DECOY_CONDITION_TYPE_POLICY_APPLIED":          5,
+		"DECOY_CONDITION_TYPE_VERSION_MATCHES_DESIRED": 6,
+	}
+)
+
+func (x DecoyConditionType) Enum() *DecoyConditionType {
+	p := new(DecoyConditionType)
+	*p = x
+	return p
+}
+
+func (x DecoyConditionType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DecoyConditionType) Descriptor() protoreflect.EnumDescriptor {
+	return file_guardian_device_v1_channel_proto_enumTypes[5].Descriptor()
+}
+
+func (DecoyConditionType) Type() protoreflect.EnumType {
+	return &file_guardian_device_v1_channel_proto_enumTypes[5]
+}
+
+func (x DecoyConditionType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DecoyConditionType.Descriptor instead.
+func (DecoyConditionType) EnumDescriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{5}
+}
+
 type ReconciliationConditionStatus int32
 
 const (
@@ -61,11 +401,11 @@ func (x ReconciliationConditionStatus) String() string {
 }
 
 func (ReconciliationConditionStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_guardian_device_v1_channel_proto_enumTypes[0].Descriptor()
+	return file_guardian_device_v1_channel_proto_enumTypes[6].Descriptor()
 }
 
 func (ReconciliationConditionStatus) Type() protoreflect.EnumType {
-	return &file_guardian_device_v1_channel_proto_enumTypes[0]
+	return &file_guardian_device_v1_channel_proto_enumTypes[6]
 }
 
 func (x ReconciliationConditionStatus) Number() protoreflect.EnumNumber {
@@ -74,16 +414,17 @@ func (x ReconciliationConditionStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReconciliationConditionStatus.Descriptor instead.
 func (ReconciliationConditionStatus) EnumDescriptor() ([]byte, []int) {
-	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{0}
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{6}
 }
 
 type AcknowledgementKind int32
 
 const (
-	AcknowledgementKind_ACKNOWLEDGEMENT_KIND_UNSPECIFIED    AcknowledgementKind = 0
-	AcknowledgementKind_ACKNOWLEDGEMENT_KIND_DESIRED_STATE  AcknowledgementKind = 1
-	AcknowledgementKind_ACKNOWLEDGEMENT_KIND_OBSERVED_STATE AcknowledgementKind = 2
-	AcknowledgementKind_ACKNOWLEDGEMENT_KIND_HEALTH_REPORT  AcknowledgementKind = 3
+	AcknowledgementKind_ACKNOWLEDGEMENT_KIND_UNSPECIFIED        AcknowledgementKind = 0
+	AcknowledgementKind_ACKNOWLEDGEMENT_KIND_DESIRED_STATE      AcknowledgementKind = 1
+	AcknowledgementKind_ACKNOWLEDGEMENT_KIND_OBSERVED_STATE     AcknowledgementKind = 2
+	AcknowledgementKind_ACKNOWLEDGEMENT_KIND_HEALTH_REPORT      AcknowledgementKind = 3
+	AcknowledgementKind_ACKNOWLEDGEMENT_KIND_DECOY_STATE_REPORT AcknowledgementKind = 4
 )
 
 // Enum value maps for AcknowledgementKind.
@@ -93,12 +434,14 @@ var (
 		1: "ACKNOWLEDGEMENT_KIND_DESIRED_STATE",
 		2: "ACKNOWLEDGEMENT_KIND_OBSERVED_STATE",
 		3: "ACKNOWLEDGEMENT_KIND_HEALTH_REPORT",
+		4: "ACKNOWLEDGEMENT_KIND_DECOY_STATE_REPORT",
 	}
 	AcknowledgementKind_value = map[string]int32{
-		"ACKNOWLEDGEMENT_KIND_UNSPECIFIED":    0,
-		"ACKNOWLEDGEMENT_KIND_DESIRED_STATE":  1,
-		"ACKNOWLEDGEMENT_KIND_OBSERVED_STATE": 2,
-		"ACKNOWLEDGEMENT_KIND_HEALTH_REPORT":  3,
+		"ACKNOWLEDGEMENT_KIND_UNSPECIFIED":        0,
+		"ACKNOWLEDGEMENT_KIND_DESIRED_STATE":      1,
+		"ACKNOWLEDGEMENT_KIND_OBSERVED_STATE":     2,
+		"ACKNOWLEDGEMENT_KIND_HEALTH_REPORT":      3,
+		"ACKNOWLEDGEMENT_KIND_DECOY_STATE_REPORT": 4,
 	}
 )
 
@@ -113,11 +456,11 @@ func (x AcknowledgementKind) String() string {
 }
 
 func (AcknowledgementKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_guardian_device_v1_channel_proto_enumTypes[1].Descriptor()
+	return file_guardian_device_v1_channel_proto_enumTypes[7].Descriptor()
 }
 
 func (AcknowledgementKind) Type() protoreflect.EnumType {
-	return &file_guardian_device_v1_channel_proto_enumTypes[1]
+	return &file_guardian_device_v1_channel_proto_enumTypes[7]
 }
 
 func (x AcknowledgementKind) Number() protoreflect.EnumNumber {
@@ -126,7 +469,7 @@ func (x AcknowledgementKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AcknowledgementKind.Descriptor instead.
 func (AcknowledgementKind) EnumDescriptor() ([]byte, []int) {
-	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{1}
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{7}
 }
 
 type ProtocolVersion struct {
@@ -461,31 +804,44 @@ func (x *NetworkZoneMetadata) GetSourceRevision() uint64 {
 	return 0
 }
 
-// PlaceholderDecoyDesiredObject proves typed evolution without introducing a
-// real decoy lifecycle. It has no enabled, runtime, artifact, or action field.
-type PlaceholderDecoyDesiredObject struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ObjectId      string                 `protobuf:"bytes,1,opt,name=object_id,json=objectId,proto3" json:"object_id,omitempty"`
-	ZoneId        string                 `protobuf:"bytes,2,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
-	DisplayName   string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+// DecoyDesiredObject is one decoy an operator asked for. It carries no key,
+// certificate, credential, image reference, command, mount, or capability:
+// runtime detail comes from the manifest the (pack, pack_version) pair selects
+// in the Control Plane's server-side index, never from this message.
+type DecoyDesiredObject struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	DecoyId string                 `protobuf:"bytes,1,opt,name=decoy_id,json=decoyId,proto3" json:"decoy_id,omitempty"`
+	ZoneId  string                 `protobuf:"bytes,2,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
+	// Operator-supplied and therefore untrusted to any renderer.
+	DisplayName      string                `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	Family           DecoyFamily           `protobuf:"varint,4,opt,name=family,proto3,enum=guardian.device.v1.DecoyFamily" json:"family,omitempty"`
+	Persona          DecoyPersona          `protobuf:"varint,5,opt,name=persona,proto3,enum=guardian.device.v1.DecoyPersona" json:"persona,omitempty"`
+	InteractionLevel DecoyInteractionLevel `protobuf:"varint,6,opt,name=interaction_level,json=interactionLevel,proto3,enum=guardian.device.v1.DecoyInteractionLevel" json:"interaction_level,omitempty"`
+	// The IPv4 address inside the referenced zone that this decoy answers on.
+	Address        string                `protobuf:"bytes,7,opt,name=address,proto3" json:"address,omitempty"`
+	Pack           string                `protobuf:"bytes,8,opt,name=pack,proto3" json:"pack,omitempty"`
+	PackVersion    string                `protobuf:"bytes,9,opt,name=pack_version,json=packVersion,proto3" json:"pack_version,omitempty"`
+	PackDigest     string                `protobuf:"bytes,10,opt,name=pack_digest,json=packDigest,proto3" json:"pack_digest,omitempty"`
+	DesiredState   DecoyDesiredLifecycle `protobuf:"varint,11,opt,name=desired_state,json=desiredState,proto3,enum=guardian.device.v1.DecoyDesiredLifecycle" json:"desired_state,omitempty"`
+	SourceRevision uint64                `protobuf:"varint,12,opt,name=source_revision,json=sourceRevision,proto3" json:"source_revision,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
-func (x *PlaceholderDecoyDesiredObject) Reset() {
-	*x = PlaceholderDecoyDesiredObject{}
+func (x *DecoyDesiredObject) Reset() {
+	*x = DecoyDesiredObject{}
 	mi := &file_guardian_device_v1_channel_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *PlaceholderDecoyDesiredObject) String() string {
+func (x *DecoyDesiredObject) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PlaceholderDecoyDesiredObject) ProtoMessage() {}
+func (*DecoyDesiredObject) ProtoMessage() {}
 
-func (x *PlaceholderDecoyDesiredObject) ProtoReflect() protoreflect.Message {
+func (x *DecoyDesiredObject) ProtoReflect() protoreflect.Message {
 	mi := &file_guardian_device_v1_channel_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -497,39 +853,102 @@ func (x *PlaceholderDecoyDesiredObject) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PlaceholderDecoyDesiredObject.ProtoReflect.Descriptor instead.
-func (*PlaceholderDecoyDesiredObject) Descriptor() ([]byte, []int) {
+// Deprecated: Use DecoyDesiredObject.ProtoReflect.Descriptor instead.
+func (*DecoyDesiredObject) Descriptor() ([]byte, []int) {
 	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *PlaceholderDecoyDesiredObject) GetObjectId() string {
+func (x *DecoyDesiredObject) GetDecoyId() string {
 	if x != nil {
-		return x.ObjectId
+		return x.DecoyId
 	}
 	return ""
 }
 
-func (x *PlaceholderDecoyDesiredObject) GetZoneId() string {
+func (x *DecoyDesiredObject) GetZoneId() string {
 	if x != nil {
 		return x.ZoneId
 	}
 	return ""
 }
 
-func (x *PlaceholderDecoyDesiredObject) GetDisplayName() string {
+func (x *DecoyDesiredObject) GetDisplayName() string {
 	if x != nil {
 		return x.DisplayName
 	}
 	return ""
 }
 
+func (x *DecoyDesiredObject) GetFamily() DecoyFamily {
+	if x != nil {
+		return x.Family
+	}
+	return DecoyFamily_DECOY_FAMILY_UNSPECIFIED
+}
+
+func (x *DecoyDesiredObject) GetPersona() DecoyPersona {
+	if x != nil {
+		return x.Persona
+	}
+	return DecoyPersona_DECOY_PERSONA_UNSPECIFIED
+}
+
+func (x *DecoyDesiredObject) GetInteractionLevel() DecoyInteractionLevel {
+	if x != nil {
+		return x.InteractionLevel
+	}
+	return DecoyInteractionLevel_DECOY_INTERACTION_LEVEL_UNSPECIFIED
+}
+
+func (x *DecoyDesiredObject) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+func (x *DecoyDesiredObject) GetPack() string {
+	if x != nil {
+		return x.Pack
+	}
+	return ""
+}
+
+func (x *DecoyDesiredObject) GetPackVersion() string {
+	if x != nil {
+		return x.PackVersion
+	}
+	return ""
+}
+
+func (x *DecoyDesiredObject) GetPackDigest() string {
+	if x != nil {
+		return x.PackDigest
+	}
+	return ""
+}
+
+func (x *DecoyDesiredObject) GetDesiredState() DecoyDesiredLifecycle {
+	if x != nil {
+		return x.DesiredState
+	}
+	return DecoyDesiredLifecycle_DECOY_DESIRED_LIFECYCLE_UNSPECIFIED
+}
+
+func (x *DecoyDesiredObject) GetSourceRevision() uint64 {
+	if x != nil {
+		return x.SourceRevision
+	}
+	return 0
+}
+
 type DesiredStateSnapshot struct {
-	state             protoimpl.MessageState           `protogen:"open.v1"`
-	MessageId         string                           `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
-	Revision          uint64                           `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
-	EdgeConfiguration *EdgeConfiguration               `protobuf:"bytes,3,opt,name=edge_configuration,json=edgeConfiguration,proto3" json:"edge_configuration,omitempty"`
-	Zones             []*NetworkZoneMetadata           `protobuf:"bytes,4,rep,name=zones,proto3" json:"zones,omitempty"`
-	PlaceholderDecoys []*PlaceholderDecoyDesiredObject `protobuf:"bytes,5,rep,name=placeholder_decoys,json=placeholderDecoys,proto3" json:"placeholder_decoys,omitempty"`
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	MessageId         string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	Revision          uint64                 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	EdgeConfiguration *EdgeConfiguration     `protobuf:"bytes,3,opt,name=edge_configuration,json=edgeConfiguration,proto3" json:"edge_configuration,omitempty"`
+	Zones             []*NetworkZoneMetadata `protobuf:"bytes,4,rep,name=zones,proto3" json:"zones,omitempty"`
+	Decoys            []*DecoyDesiredObject  `protobuf:"bytes,5,rep,name=decoys,proto3" json:"decoys,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -592,9 +1011,237 @@ func (x *DesiredStateSnapshot) GetZones() []*NetworkZoneMetadata {
 	return nil
 }
 
-func (x *DesiredStateSnapshot) GetPlaceholderDecoys() []*PlaceholderDecoyDesiredObject {
+func (x *DesiredStateSnapshot) GetDecoys() []*DecoyDesiredObject {
 	if x != nil {
-		return x.PlaceholderDecoys
+		return x.Decoys
+	}
+	return nil
+}
+
+// DecoyCondition follows the P1-W9 condition model and reuses its tri-state
+// status: one product, one meaning for True, False, and Unknown.
+type DecoyCondition struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Type               DecoyConditionType     `protobuf:"varint,1,opt,name=type,proto3,enum=guardian.device.v1.DecoyConditionType" json:"type,omitempty"`
+	Status             HealthConditionStatus  `protobuf:"varint,2,opt,name=status,proto3,enum=guardian.device.v1.HealthConditionStatus" json:"status,omitempty"`
+	Reason             string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	Message            string                 `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
+	ObservedRevision   *uint64                `protobuf:"varint,5,opt,name=observed_revision,json=observedRevision,proto3,oneof" json:"observed_revision,omitempty"`
+	LastTransitionTime *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=last_transition_time,json=lastTransitionTime,proto3" json:"last_transition_time,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *DecoyCondition) Reset() {
+	*x = DecoyCondition{}
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DecoyCondition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DecoyCondition) ProtoMessage() {}
+
+func (x *DecoyCondition) ProtoReflect() protoreflect.Message {
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DecoyCondition.ProtoReflect.Descriptor instead.
+func (*DecoyCondition) Descriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *DecoyCondition) GetType() DecoyConditionType {
+	if x != nil {
+		return x.Type
+	}
+	return DecoyConditionType_DECOY_CONDITION_TYPE_UNSPECIFIED
+}
+
+func (x *DecoyCondition) GetStatus() HealthConditionStatus {
+	if x != nil {
+		return x.Status
+	}
+	return HealthConditionStatus_HEALTH_CONDITION_STATUS_UNSPECIFIED
+}
+
+func (x *DecoyCondition) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *DecoyCondition) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *DecoyCondition) GetObservedRevision() uint64 {
+	if x != nil && x.ObservedRevision != nil {
+		return *x.ObservedRevision
+	}
+	return 0
+}
+
+func (x *DecoyCondition) GetLastTransitionTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastTransitionTime
+	}
+	return nil
+}
+
+// DecoyObservation is one decoy's observed truth. It is never merged into the
+// desired object: an operator asked for something, and this is what the
+// network reported.
+type DecoyObservation struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	DecoyId           string                 `protobuf:"bytes,1,opt,name=decoy_id,json=decoyId,proto3" json:"decoy_id,omitempty"`
+	State             DecoyObservedLifecycle `protobuf:"varint,2,opt,name=state,proto3,enum=guardian.device.v1.DecoyObservedLifecycle" json:"state,omitempty"`
+	LastInteractionAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=last_interaction_at,json=lastInteractionAt,proto3" json:"last_interaction_at,omitempty"`
+	DesiredRevision   uint64                 `protobuf:"varint,4,opt,name=desired_revision,json=desiredRevision,proto3" json:"desired_revision,omitempty"`
+	Conditions        []*DecoyCondition      `protobuf:"bytes,5,rep,name=conditions,proto3" json:"conditions,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *DecoyObservation) Reset() {
+	*x = DecoyObservation{}
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DecoyObservation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DecoyObservation) ProtoMessage() {}
+
+func (x *DecoyObservation) ProtoReflect() protoreflect.Message {
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DecoyObservation.ProtoReflect.Descriptor instead.
+func (*DecoyObservation) Descriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *DecoyObservation) GetDecoyId() string {
+	if x != nil {
+		return x.DecoyId
+	}
+	return ""
+}
+
+func (x *DecoyObservation) GetState() DecoyObservedLifecycle {
+	if x != nil {
+		return x.State
+	}
+	return DecoyObservedLifecycle_DECOY_OBSERVED_LIFECYCLE_UNSPECIFIED
+}
+
+func (x *DecoyObservation) GetLastInteractionAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastInteractionAt
+	}
+	return nil
+}
+
+func (x *DecoyObservation) GetDesiredRevision() uint64 {
+	if x != nil {
+		return x.DesiredRevision
+	}
+	return 0
+}
+
+func (x *DecoyObservation) GetConditions() []*DecoyCondition {
+	if x != nil {
+		return x.Conditions
+	}
+	return nil
+}
+
+// DecoyStateReport is the complete ordered decoy observation set from one mTLS
+// device identity. There is no delta form and no identity field: the peer is
+// supplied exclusively by mTLS.
+type DecoyStateReport struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ReportId      string                 `protobuf:"bytes,1,opt,name=report_id,json=reportId,proto3" json:"report_id,omitempty"`
+	ObservedAt    *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
+	Decoys        []*DecoyObservation    `protobuf:"bytes,3,rep,name=decoys,proto3" json:"decoys,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DecoyStateReport) Reset() {
+	*x = DecoyStateReport{}
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DecoyStateReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DecoyStateReport) ProtoMessage() {}
+
+func (x *DecoyStateReport) ProtoReflect() protoreflect.Message {
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DecoyStateReport.ProtoReflect.Descriptor instead.
+func (*DecoyStateReport) Descriptor() ([]byte, []int) {
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *DecoyStateReport) GetReportId() string {
+	if x != nil {
+		return x.ReportId
+	}
+	return ""
+}
+
+func (x *DecoyStateReport) GetObservedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ObservedAt
+	}
+	return nil
+}
+
+func (x *DecoyStateReport) GetDecoys() []*DecoyObservation {
+	if x != nil {
+		return x.Decoys
 	}
 	return nil
 }
@@ -614,7 +1261,7 @@ type ReconciliationCondition struct {
 
 func (x *ReconciliationCondition) Reset() {
 	*x = ReconciliationCondition{}
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[8]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -626,7 +1273,7 @@ func (x *ReconciliationCondition) String() string {
 func (*ReconciliationCondition) ProtoMessage() {}
 
 func (x *ReconciliationCondition) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[8]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -639,7 +1286,7 @@ func (x *ReconciliationCondition) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReconciliationCondition.ProtoReflect.Descriptor instead.
 func (*ReconciliationCondition) Descriptor() ([]byte, []int) {
-	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{8}
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ReconciliationCondition) GetStatus() ReconciliationConditionStatus {
@@ -690,7 +1337,7 @@ type ObservedState struct {
 
 func (x *ObservedState) Reset() {
 	*x = ObservedState{}
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[9]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -702,7 +1349,7 @@ func (x *ObservedState) String() string {
 func (*ObservedState) ProtoMessage() {}
 
 func (x *ObservedState) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[9]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -715,7 +1362,7 @@ func (x *ObservedState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ObservedState.ProtoReflect.Descriptor instead.
 func (*ObservedState) Descriptor() ([]byte, []int) {
-	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{9}
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ObservedState) GetMessageId() string {
@@ -764,7 +1411,7 @@ type Acknowledgement struct {
 
 func (x *Acknowledgement) Reset() {
 	*x = Acknowledgement{}
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[10]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -776,7 +1423,7 @@ func (x *Acknowledgement) String() string {
 func (*Acknowledgement) ProtoMessage() {}
 
 func (x *Acknowledgement) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[10]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -789,7 +1436,7 @@ func (x *Acknowledgement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Acknowledgement.ProtoReflect.Descriptor instead.
 func (*Acknowledgement) Descriptor() ([]byte, []int) {
-	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{10}
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Acknowledgement) GetMessageId() string {
@@ -822,6 +1469,7 @@ type ConnectRequest struct {
 	//	*ConnectRequest_ObservedState
 	//	*ConnectRequest_HealthReport
 	//	*ConnectRequest_Acknowledgement
+	//	*ConnectRequest_DecoyState
 	Payload       isConnectRequest_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -829,7 +1477,7 @@ type ConnectRequest struct {
 
 func (x *ConnectRequest) Reset() {
 	*x = ConnectRequest{}
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[11]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -841,7 +1489,7 @@ func (x *ConnectRequest) String() string {
 func (*ConnectRequest) ProtoMessage() {}
 
 func (x *ConnectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[11]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -854,7 +1502,7 @@ func (x *ConnectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectRequest.ProtoReflect.Descriptor instead.
 func (*ConnectRequest) Descriptor() ([]byte, []int) {
-	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{11}
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ConnectRequest) GetPayload() isConnectRequest_Payload {
@@ -909,6 +1557,15 @@ func (x *ConnectRequest) GetAcknowledgement() *Acknowledgement {
 	return nil
 }
 
+func (x *ConnectRequest) GetDecoyState() *DecoyStateReport {
+	if x != nil {
+		if x, ok := x.Payload.(*ConnectRequest_DecoyState); ok {
+			return x.DecoyState
+		}
+	}
+	return nil
+}
+
 type isConnectRequest_Payload interface {
 	isConnectRequest_Payload()
 }
@@ -933,6 +1590,10 @@ type ConnectRequest_Acknowledgement struct {
 	Acknowledgement *Acknowledgement `protobuf:"bytes,5,opt,name=acknowledgement,proto3,oneof"`
 }
 
+type ConnectRequest_DecoyState struct {
+	DecoyState *DecoyStateReport `protobuf:"bytes,6,opt,name=decoy_state,json=decoyState,proto3,oneof"`
+}
+
 func (*ConnectRequest_Hello) isConnectRequest_Payload() {}
 
 func (*ConnectRequest_Heartbeat) isConnectRequest_Payload() {}
@@ -942,6 +1603,8 @@ func (*ConnectRequest_ObservedState) isConnectRequest_Payload() {}
 func (*ConnectRequest_HealthReport) isConnectRequest_Payload() {}
 
 func (*ConnectRequest_Acknowledgement) isConnectRequest_Payload() {}
+
+func (*ConnectRequest_DecoyState) isConnectRequest_Payload() {}
 
 type ConnectResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -957,7 +1620,7 @@ type ConnectResponse struct {
 
 func (x *ConnectResponse) Reset() {
 	*x = ConnectResponse{}
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[12]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -969,7 +1632,7 @@ func (x *ConnectResponse) String() string {
 func (*ConnectResponse) ProtoMessage() {}
 
 func (x *ConnectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_guardian_device_v1_channel_proto_msgTypes[12]
+	mi := &file_guardian_device_v1_channel_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -982,7 +1645,7 @@ func (x *ConnectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectResponse.ProtoReflect.Descriptor instead.
 func (*ConnectResponse) Descriptor() ([]byte, []int) {
-	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{12}
+	return file_guardian_device_v1_channel_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ConnectResponse) GetPayload() isConnectResponse_Payload {
@@ -1065,18 +1728,50 @@ const file_guardian_device_v1_channel_proto_rawDesc = "" +
 	"\azone_id\x18\x01 \x01(\tR\x06zoneId\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x12\n" +
 	"\x04cidr\x18\x03 \x01(\tR\x04cidr\x12'\n" +
-	"\x0fsource_revision\x18\x04 \x01(\x04R\x0esourceRevision\"x\n" +
-	"\x1dPlaceholderDecoyDesiredObject\x12\x1b\n" +
-	"\tobject_id\x18\x01 \x01(\tR\bobjectId\x12\x17\n" +
+	"\x0fsource_revision\x18\x04 \x01(\x04R\x0esourceRevision\"\xa3\x04\n" +
+	"\x12DecoyDesiredObject\x12\x19\n" +
+	"\bdecoy_id\x18\x01 \x01(\tR\adecoyId\x12\x17\n" +
 	"\azone_id\x18\x02 \x01(\tR\x06zoneId\x12!\n" +
-	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\"\xc8\x02\n" +
+	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x127\n" +
+	"\x06family\x18\x04 \x01(\x0e2\x1f.guardian.device.v1.DecoyFamilyR\x06family\x12:\n" +
+	"\apersona\x18\x05 \x01(\x0e2 .guardian.device.v1.DecoyPersonaR\apersona\x12V\n" +
+	"\x11interaction_level\x18\x06 \x01(\x0e2).guardian.device.v1.DecoyInteractionLevelR\x10interactionLevel\x12\x18\n" +
+	"\aaddress\x18\a \x01(\tR\aaddress\x12\x12\n" +
+	"\x04pack\x18\b \x01(\tR\x04pack\x12!\n" +
+	"\fpack_version\x18\t \x01(\tR\vpackVersion\x12\x1f\n" +
+	"\vpack_digest\x18\n" +
+	" \x01(\tR\n" +
+	"packDigest\x12N\n" +
+	"\rdesired_state\x18\v \x01(\x0e2).guardian.device.v1.DecoyDesiredLifecycleR\fdesiredState\x12'\n" +
+	"\x0fsource_revision\x18\f \x01(\x04R\x0esourceRevision\"\xa6\x02\n" +
 	"\x14DesiredStateSnapshot\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x1a\n" +
 	"\brevision\x18\x02 \x01(\x04R\brevision\x12T\n" +
 	"\x12edge_configuration\x18\x03 \x01(\v2%.guardian.device.v1.EdgeConfigurationR\x11edgeConfiguration\x12=\n" +
-	"\x05zones\x18\x04 \x03(\v2'.guardian.device.v1.NetworkZoneMetadataR\x05zones\x12`\n" +
-	"\x12placeholder_decoys\x18\x05 \x03(\v21.guardian.device.v1.PlaceholderDecoyDesiredObjectR\x11placeholderDecoys\"\xaf\x02\n" +
+	"\x05zones\x18\x04 \x03(\v2'.guardian.device.v1.NetworkZoneMetadataR\x05zones\x12>\n" +
+	"\x06decoys\x18\x05 \x03(\v2&.guardian.device.v1.DecoyDesiredObjectR\x06decoys\"\xd7\x02\n" +
+	"\x0eDecoyCondition\x12:\n" +
+	"\x04type\x18\x01 \x01(\x0e2&.guardian.device.v1.DecoyConditionTypeR\x04type\x12A\n" +
+	"\x06status\x18\x02 \x01(\x0e2).guardian.device.v1.HealthConditionStatusR\x06status\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x18\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage\x120\n" +
+	"\x11observed_revision\x18\x05 \x01(\x04H\x00R\x10observedRevision\x88\x01\x01\x12L\n" +
+	"\x14last_transition_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x12lastTransitionTimeB\x14\n" +
+	"\x12_observed_revision\"\xaa\x02\n" +
+	"\x10DecoyObservation\x12\x19\n" +
+	"\bdecoy_id\x18\x01 \x01(\tR\adecoyId\x12@\n" +
+	"\x05state\x18\x02 \x01(\x0e2*.guardian.device.v1.DecoyObservedLifecycleR\x05state\x12J\n" +
+	"\x13last_interaction_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x11lastInteractionAt\x12)\n" +
+	"\x10desired_revision\x18\x04 \x01(\x04R\x0fdesiredRevision\x12B\n" +
+	"\n" +
+	"conditions\x18\x05 \x03(\v2\".guardian.device.v1.DecoyConditionR\n" +
+	"conditions\"\xaa\x01\n" +
+	"\x10DecoyStateReport\x12\x1b\n" +
+	"\treport_id\x18\x01 \x01(\tR\breportId\x12;\n" +
+	"\vobserved_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"observedAt\x12<\n" +
+	"\x06decoys\x18\x03 \x03(\v2$.guardian.device.v1.DecoyObservationR\x06decoys\"\xaf\x02\n" +
 	"\x17ReconciliationCondition\x12I\n" +
 	"\x06status\x18\x01 \x01(\x0e21.guardian.device.v1.ReconciliationConditionStatusR\x06status\x12\x1f\n" +
 	"\vreason_code\x18\x02 \x01(\tR\n" +
@@ -1095,30 +1790,67 @@ const file_guardian_device_v1_channel_proto_rawDesc = "" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12;\n" +
 	"\x04kind\x18\x02 \x01(\x0e2'.guardian.device.v1.AcknowledgementKindR\x04kind\x12\x1a\n" +
-	"\brevision\x18\x03 \x01(\x04R\brevision\"\xf7\x02\n" +
+	"\brevision\x18\x03 \x01(\x04R\brevision\"\xc0\x03\n" +
 	"\x0eConnectRequest\x125\n" +
 	"\x05hello\x18\x01 \x01(\v2\x1d.guardian.device.v1.EdgeHelloH\x00R\x05hello\x12=\n" +
 	"\theartbeat\x18\x02 \x01(\v2\x1d.guardian.device.v1.HeartbeatH\x00R\theartbeat\x12J\n" +
 	"\x0eobserved_state\x18\x03 \x01(\v2!.guardian.device.v1.ObservedStateH\x00R\robservedState\x12G\n" +
 	"\rhealth_report\x18\x04 \x01(\v2 .guardian.device.v1.HealthReportH\x00R\fhealthReport\x12O\n" +
-	"\x0facknowledgement\x18\x05 \x01(\v2#.guardian.device.v1.AcknowledgementH\x00R\x0facknowledgementB\t\n" +
+	"\x0facknowledgement\x18\x05 \x01(\v2#.guardian.device.v1.AcknowledgementH\x00R\x0facknowledgement\x12G\n" +
+	"\vdecoy_state\x18\x06 \x01(\v2$.guardian.device.v1.DecoyStateReportH\x00R\n" +
+	"decoyStateB\t\n" +
 	"\apayload\"\x96\x02\n" +
 	"\x0fConnectResponse\x12V\n" +
 	"\x12protocol_selection\x18\x01 \x01(\v2%.guardian.device.v1.ProtocolSelectionH\x00R\x11protocolSelection\x12O\n" +
 	"\rdesired_state\x18\x02 \x01(\v2(.guardian.device.v1.DesiredStateSnapshotH\x00R\fdesiredState\x12O\n" +
 	"\x0facknowledgement\x18\x03 \x01(\v2#.guardian.device.v1.AcknowledgementH\x00R\x0facknowledgementB\t\n" +
-	"\apayload*\x86\x02\n" +
+	"\apayload*\x89\x01\n" +
+	"\vDecoyFamily\x12\x1c\n" +
+	"\x18DECOY_FAMILY_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10DECOY_FAMILY_SSH\x10\x01\x12\x15\n" +
+	"\x11DECOY_FAMILY_HTTP\x10\x02\x12\x19\n" +
+	"\x15DECOY_FAMILY_POSTGRES\x10\x03\x12\x14\n" +
+	"\x10DECOY_FAMILY_SMB\x10\x04*\xcd\x01\n" +
+	"\fDecoyPersona\x12\x1d\n" +
+	"\x19DECOY_PERSONA_UNSPECIFIED\x10\x00\x12$\n" +
+	" DECOY_PERSONA_LINUX_ADMIN_SERVER\x10\x01\x12(\n" +
+	"$DECOY_PERSONA_INTERNAL_ADMIN_WEB_APP\x10\x02\x12!\n" +
+	"\x1dDECOY_PERSONA_DATABASE_SERVER\x10\x03\x12+\n" +
+	"'DECOY_PERSONA_WINDOWS_FILE_SERVICE_HOST\x10\x04*\x85\x01\n" +
+	"\x15DecoyInteractionLevel\x12'\n" +
+	"#DECOY_INTERACTION_LEVEL_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bDECOY_INTERACTION_LEVEL_LOW\x10\x01\x12\"\n" +
+	"\x1eDECOY_INTERACTION_LEVEL_MEDIUM\x10\x02*\x8c\x01\n" +
+	"\x15DecoyDesiredLifecycle\x12'\n" +
+	"#DECOY_DESIRED_LIFECYCLE_UNSPECIFIED\x10\x00\x12$\n" +
+	" DECOY_DESIRED_LIFECYCLE_DEPLOYED\x10\x01\x12$\n" +
+	" DECOY_DESIRED_LIFECYCLE_DISABLED\x10\x02*\xdb\x01\n" +
+	"\x16DecoyObservedLifecycle\x12(\n" +
+	"$DECOY_OBSERVED_LIFECYCLE_UNSPECIFIED\x10\x00\x12$\n" +
+	" DECOY_OBSERVED_LIFECYCLE_UNKNOWN\x10\x01\x12%\n" +
+	"!DECOY_OBSERVED_LIFECYCLE_DEPLOYED\x10\x02\x12%\n" +
+	"!DECOY_OBSERVED_LIFECYCLE_DEGRADED\x10\x03\x12#\n" +
+	"\x1fDECOY_OBSERVED_LIFECYCLE_ABSENT\x10\x04*\xc1\x02\n" +
+	"\x12DecoyConditionType\x12$\n" +
+	" DECOY_CONDITION_TYPE_UNSPECIFIED\x10\x00\x12(\n" +
+	"$DECOY_CONDITION_TYPE_RUNTIME_HEALTHY\x10\x01\x12(\n" +
+	"$DECOY_CONDITION_TYPE_ADDRESS_APPLIED\x10\x02\x12(\n" +
+	"$DECOY_CONDITION_TYPE_PORT_RESPONDING\x10\x03\x12,\n" +
+	"(DECOY_CONDITION_TYPE_TELEMETRY_REPORTING\x10\x04\x12'\n" +
+	"#DECOY_CONDITION_TYPE_POLICY_APPLIED\x10\x05\x120\n" +
+	",DECOY_CONDITION_TYPE_VERSION_MATCHES_DESIRED\x10\x06*\x86\x02\n" +
 	"\x1dReconciliationConditionStatus\x12/\n" +
 	"+RECONCILIATION_CONDITION_STATUS_UNSPECIFIED\x10\x00\x12+\n" +
 	"'RECONCILIATION_CONDITION_STATUS_PENDING\x10\x01\x12-\n" +
 	")RECONCILIATION_CONDITION_STATUS_CONVERGED\x10\x02\x12,\n" +
 	"(RECONCILIATION_CONDITION_STATUS_RETRYING\x10\x03\x12*\n" +
-	"&RECONCILIATION_CONDITION_STATUS_FAILED\x10\x04*\xb4\x01\n" +
+	"&RECONCILIATION_CONDITION_STATUS_FAILED\x10\x04*\xe1\x01\n" +
 	"\x13AcknowledgementKind\x12$\n" +
 	" ACKNOWLEDGEMENT_KIND_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"ACKNOWLEDGEMENT_KIND_DESIRED_STATE\x10\x01\x12'\n" +
 	"#ACKNOWLEDGEMENT_KIND_OBSERVED_STATE\x10\x02\x12&\n" +
-	"\"ACKNOWLEDGEMENT_KIND_HEALTH_REPORT\x10\x032n\n" +
+	"\"ACKNOWLEDGEMENT_KIND_HEALTH_REPORT\x10\x03\x12+\n" +
+	"'ACKNOWLEDGEMENT_KIND_DECOY_STATE_REPORT\x10\x042n\n" +
 	"\x14DeviceChannelService\x12V\n" +
 	"\aConnect\x12\".guardian.device.v1.ConnectRequest\x1a#.guardian.device.v1.ConnectResponse(\x010\x01BDZBgithub.com/GuardianPot/guardian/gen/go/guardian/device/v1;devicev1b\x06proto3"
 
@@ -1134,54 +1866,77 @@ func file_guardian_device_v1_channel_proto_rawDescGZIP() []byte {
 	return file_guardian_device_v1_channel_proto_rawDescData
 }
 
-var file_guardian_device_v1_channel_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_guardian_device_v1_channel_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_guardian_device_v1_channel_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
+var file_guardian_device_v1_channel_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_guardian_device_v1_channel_proto_goTypes = []any{
-	(ReconciliationConditionStatus)(0),    // 0: guardian.device.v1.ReconciliationConditionStatus
-	(AcknowledgementKind)(0),              // 1: guardian.device.v1.AcknowledgementKind
-	(*ProtocolVersion)(nil),               // 2: guardian.device.v1.ProtocolVersion
-	(*EdgeHello)(nil),                     // 3: guardian.device.v1.EdgeHello
-	(*ProtocolSelection)(nil),             // 4: guardian.device.v1.ProtocolSelection
-	(*Heartbeat)(nil),                     // 5: guardian.device.v1.Heartbeat
-	(*EdgeConfiguration)(nil),             // 6: guardian.device.v1.EdgeConfiguration
-	(*NetworkZoneMetadata)(nil),           // 7: guardian.device.v1.NetworkZoneMetadata
-	(*PlaceholderDecoyDesiredObject)(nil), // 8: guardian.device.v1.PlaceholderDecoyDesiredObject
-	(*DesiredStateSnapshot)(nil),          // 9: guardian.device.v1.DesiredStateSnapshot
-	(*ReconciliationCondition)(nil),       // 10: guardian.device.v1.ReconciliationCondition
-	(*ObservedState)(nil),                 // 11: guardian.device.v1.ObservedState
-	(*Acknowledgement)(nil),               // 12: guardian.device.v1.Acknowledgement
-	(*ConnectRequest)(nil),                // 13: guardian.device.v1.ConnectRequest
-	(*ConnectResponse)(nil),               // 14: guardian.device.v1.ConnectResponse
-	(*timestamppb.Timestamp)(nil),         // 15: google.protobuf.Timestamp
-	(*HealthReport)(nil),                  // 16: guardian.device.v1.HealthReport
+	(DecoyFamily)(0),                   // 0: guardian.device.v1.DecoyFamily
+	(DecoyPersona)(0),                  // 1: guardian.device.v1.DecoyPersona
+	(DecoyInteractionLevel)(0),         // 2: guardian.device.v1.DecoyInteractionLevel
+	(DecoyDesiredLifecycle)(0),         // 3: guardian.device.v1.DecoyDesiredLifecycle
+	(DecoyObservedLifecycle)(0),        // 4: guardian.device.v1.DecoyObservedLifecycle
+	(DecoyConditionType)(0),            // 5: guardian.device.v1.DecoyConditionType
+	(ReconciliationConditionStatus)(0), // 6: guardian.device.v1.ReconciliationConditionStatus
+	(AcknowledgementKind)(0),           // 7: guardian.device.v1.AcknowledgementKind
+	(*ProtocolVersion)(nil),            // 8: guardian.device.v1.ProtocolVersion
+	(*EdgeHello)(nil),                  // 9: guardian.device.v1.EdgeHello
+	(*ProtocolSelection)(nil),          // 10: guardian.device.v1.ProtocolSelection
+	(*Heartbeat)(nil),                  // 11: guardian.device.v1.Heartbeat
+	(*EdgeConfiguration)(nil),          // 12: guardian.device.v1.EdgeConfiguration
+	(*NetworkZoneMetadata)(nil),        // 13: guardian.device.v1.NetworkZoneMetadata
+	(*DecoyDesiredObject)(nil),         // 14: guardian.device.v1.DecoyDesiredObject
+	(*DesiredStateSnapshot)(nil),       // 15: guardian.device.v1.DesiredStateSnapshot
+	(*DecoyCondition)(nil),             // 16: guardian.device.v1.DecoyCondition
+	(*DecoyObservation)(nil),           // 17: guardian.device.v1.DecoyObservation
+	(*DecoyStateReport)(nil),           // 18: guardian.device.v1.DecoyStateReport
+	(*ReconciliationCondition)(nil),    // 19: guardian.device.v1.ReconciliationCondition
+	(*ObservedState)(nil),              // 20: guardian.device.v1.ObservedState
+	(*Acknowledgement)(nil),            // 21: guardian.device.v1.Acknowledgement
+	(*ConnectRequest)(nil),             // 22: guardian.device.v1.ConnectRequest
+	(*ConnectResponse)(nil),            // 23: guardian.device.v1.ConnectResponse
+	(*timestamppb.Timestamp)(nil),      // 24: google.protobuf.Timestamp
+	(HealthConditionStatus)(0),         // 25: guardian.device.v1.HealthConditionStatus
+	(*HealthReport)(nil),               // 26: guardian.device.v1.HealthReport
 }
 var file_guardian_device_v1_channel_proto_depIdxs = []int32{
-	2,  // 0: guardian.device.v1.EdgeHello.protocol:type_name -> guardian.device.v1.ProtocolVersion
-	2,  // 1: guardian.device.v1.ProtocolSelection.selected:type_name -> guardian.device.v1.ProtocolVersion
-	15, // 2: guardian.device.v1.Heartbeat.sent_at:type_name -> google.protobuf.Timestamp
-	6,  // 3: guardian.device.v1.DesiredStateSnapshot.edge_configuration:type_name -> guardian.device.v1.EdgeConfiguration
-	7,  // 4: guardian.device.v1.DesiredStateSnapshot.zones:type_name -> guardian.device.v1.NetworkZoneMetadata
-	8,  // 5: guardian.device.v1.DesiredStateSnapshot.placeholder_decoys:type_name -> guardian.device.v1.PlaceholderDecoyDesiredObject
-	0,  // 6: guardian.device.v1.ReconciliationCondition.status:type_name -> guardian.device.v1.ReconciliationConditionStatus
-	15, // 7: guardian.device.v1.ReconciliationCondition.retry_at:type_name -> google.protobuf.Timestamp
-	15, // 8: guardian.device.v1.ReconciliationCondition.last_transition_time:type_name -> google.protobuf.Timestamp
-	10, // 9: guardian.device.v1.ObservedState.condition:type_name -> guardian.device.v1.ReconciliationCondition
-	1,  // 10: guardian.device.v1.Acknowledgement.kind:type_name -> guardian.device.v1.AcknowledgementKind
-	3,  // 11: guardian.device.v1.ConnectRequest.hello:type_name -> guardian.device.v1.EdgeHello
-	5,  // 12: guardian.device.v1.ConnectRequest.heartbeat:type_name -> guardian.device.v1.Heartbeat
-	11, // 13: guardian.device.v1.ConnectRequest.observed_state:type_name -> guardian.device.v1.ObservedState
-	16, // 14: guardian.device.v1.ConnectRequest.health_report:type_name -> guardian.device.v1.HealthReport
-	12, // 15: guardian.device.v1.ConnectRequest.acknowledgement:type_name -> guardian.device.v1.Acknowledgement
-	4,  // 16: guardian.device.v1.ConnectResponse.protocol_selection:type_name -> guardian.device.v1.ProtocolSelection
-	9,  // 17: guardian.device.v1.ConnectResponse.desired_state:type_name -> guardian.device.v1.DesiredStateSnapshot
-	12, // 18: guardian.device.v1.ConnectResponse.acknowledgement:type_name -> guardian.device.v1.Acknowledgement
-	13, // 19: guardian.device.v1.DeviceChannelService.Connect:input_type -> guardian.device.v1.ConnectRequest
-	14, // 20: guardian.device.v1.DeviceChannelService.Connect:output_type -> guardian.device.v1.ConnectResponse
-	20, // [20:21] is the sub-list for method output_type
-	19, // [19:20] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	8,  // 0: guardian.device.v1.EdgeHello.protocol:type_name -> guardian.device.v1.ProtocolVersion
+	8,  // 1: guardian.device.v1.ProtocolSelection.selected:type_name -> guardian.device.v1.ProtocolVersion
+	24, // 2: guardian.device.v1.Heartbeat.sent_at:type_name -> google.protobuf.Timestamp
+	0,  // 3: guardian.device.v1.DecoyDesiredObject.family:type_name -> guardian.device.v1.DecoyFamily
+	1,  // 4: guardian.device.v1.DecoyDesiredObject.persona:type_name -> guardian.device.v1.DecoyPersona
+	2,  // 5: guardian.device.v1.DecoyDesiredObject.interaction_level:type_name -> guardian.device.v1.DecoyInteractionLevel
+	3,  // 6: guardian.device.v1.DecoyDesiredObject.desired_state:type_name -> guardian.device.v1.DecoyDesiredLifecycle
+	12, // 7: guardian.device.v1.DesiredStateSnapshot.edge_configuration:type_name -> guardian.device.v1.EdgeConfiguration
+	13, // 8: guardian.device.v1.DesiredStateSnapshot.zones:type_name -> guardian.device.v1.NetworkZoneMetadata
+	14, // 9: guardian.device.v1.DesiredStateSnapshot.decoys:type_name -> guardian.device.v1.DecoyDesiredObject
+	5,  // 10: guardian.device.v1.DecoyCondition.type:type_name -> guardian.device.v1.DecoyConditionType
+	25, // 11: guardian.device.v1.DecoyCondition.status:type_name -> guardian.device.v1.HealthConditionStatus
+	24, // 12: guardian.device.v1.DecoyCondition.last_transition_time:type_name -> google.protobuf.Timestamp
+	4,  // 13: guardian.device.v1.DecoyObservation.state:type_name -> guardian.device.v1.DecoyObservedLifecycle
+	24, // 14: guardian.device.v1.DecoyObservation.last_interaction_at:type_name -> google.protobuf.Timestamp
+	16, // 15: guardian.device.v1.DecoyObservation.conditions:type_name -> guardian.device.v1.DecoyCondition
+	24, // 16: guardian.device.v1.DecoyStateReport.observed_at:type_name -> google.protobuf.Timestamp
+	17, // 17: guardian.device.v1.DecoyStateReport.decoys:type_name -> guardian.device.v1.DecoyObservation
+	6,  // 18: guardian.device.v1.ReconciliationCondition.status:type_name -> guardian.device.v1.ReconciliationConditionStatus
+	24, // 19: guardian.device.v1.ReconciliationCondition.retry_at:type_name -> google.protobuf.Timestamp
+	24, // 20: guardian.device.v1.ReconciliationCondition.last_transition_time:type_name -> google.protobuf.Timestamp
+	19, // 21: guardian.device.v1.ObservedState.condition:type_name -> guardian.device.v1.ReconciliationCondition
+	7,  // 22: guardian.device.v1.Acknowledgement.kind:type_name -> guardian.device.v1.AcknowledgementKind
+	9,  // 23: guardian.device.v1.ConnectRequest.hello:type_name -> guardian.device.v1.EdgeHello
+	11, // 24: guardian.device.v1.ConnectRequest.heartbeat:type_name -> guardian.device.v1.Heartbeat
+	20, // 25: guardian.device.v1.ConnectRequest.observed_state:type_name -> guardian.device.v1.ObservedState
+	26, // 26: guardian.device.v1.ConnectRequest.health_report:type_name -> guardian.device.v1.HealthReport
+	21, // 27: guardian.device.v1.ConnectRequest.acknowledgement:type_name -> guardian.device.v1.Acknowledgement
+	18, // 28: guardian.device.v1.ConnectRequest.decoy_state:type_name -> guardian.device.v1.DecoyStateReport
+	10, // 29: guardian.device.v1.ConnectResponse.protocol_selection:type_name -> guardian.device.v1.ProtocolSelection
+	15, // 30: guardian.device.v1.ConnectResponse.desired_state:type_name -> guardian.device.v1.DesiredStateSnapshot
+	21, // 31: guardian.device.v1.ConnectResponse.acknowledgement:type_name -> guardian.device.v1.Acknowledgement
+	22, // 32: guardian.device.v1.DeviceChannelService.Connect:input_type -> guardian.device.v1.ConnectRequest
+	23, // 33: guardian.device.v1.DeviceChannelService.Connect:output_type -> guardian.device.v1.ConnectResponse
+	33, // [33:34] is the sub-list for method output_type
+	32, // [32:33] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_guardian_device_v1_channel_proto_init() }
@@ -1190,14 +1945,16 @@ func file_guardian_device_v1_channel_proto_init() {
 		return
 	}
 	file_guardian_device_v1_device_proto_init()
-	file_guardian_device_v1_channel_proto_msgTypes[11].OneofWrappers = []any{
+	file_guardian_device_v1_channel_proto_msgTypes[8].OneofWrappers = []any{}
+	file_guardian_device_v1_channel_proto_msgTypes[14].OneofWrappers = []any{
 		(*ConnectRequest_Hello)(nil),
 		(*ConnectRequest_Heartbeat)(nil),
 		(*ConnectRequest_ObservedState)(nil),
 		(*ConnectRequest_HealthReport)(nil),
 		(*ConnectRequest_Acknowledgement)(nil),
+		(*ConnectRequest_DecoyState)(nil),
 	}
-	file_guardian_device_v1_channel_proto_msgTypes[12].OneofWrappers = []any{
+	file_guardian_device_v1_channel_proto_msgTypes[15].OneofWrappers = []any{
 		(*ConnectResponse_ProtocolSelection)(nil),
 		(*ConnectResponse_DesiredState)(nil),
 		(*ConnectResponse_Acknowledgement)(nil),
@@ -1207,8 +1964,8 @@ func file_guardian_device_v1_channel_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_guardian_device_v1_channel_proto_rawDesc), len(file_guardian_device_v1_channel_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   13,
+			NumEnums:      8,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

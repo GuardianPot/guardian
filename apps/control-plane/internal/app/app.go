@@ -57,9 +57,14 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("build device inventory service: %w", err)
 	}
+	decoyService, err := deception.NewService(store)
+	if err != nil {
+		return fmt.Errorf("build decoy service: %w", err)
+	}
 	serverOptions := []api.Option{
 		api.WithAuthService(authService),
 		api.WithEnvironmentService(environmentService),
+		api.WithDecoyService(decoyService),
 		api.WithHealthService(healthService),
 		api.WithDeviceInventoryService(deviceInventoryService),
 		api.WithWebConsoleDirectory(cfg.WebConsoleDirectory),
@@ -119,10 +124,15 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 			if err != nil {
 				return fmt.Errorf("build health channel handler: %w", err)
 			}
+			decoyHandler, err := deception.NewChannelHandler(decoyService)
+			if err != nil {
+				return fmt.Errorf("build decoy channel handler: %w", err)
+			}
 			channelServer, err = devicechannel.NewServer(devicechannel.Config{
 				Address: cfg.DeviceChannelAddress, TLSCertificateFile: cfg.TLSCertificateFile,
 				TLSPrivateKeyFile: cfg.TLSPrivateKeyFile, DeviceCAPEM: authority.CertificatePEM(),
-				Verifier: deviceService, Reconciliation: reconciliationHandler, Health: healthHandler, Logger: logger,
+				Verifier: deviceService, Reconciliation: reconciliationHandler, Health: healthHandler,
+				Decoy: decoyHandler, Logger: logger,
 			})
 			if err != nil {
 				return fmt.Errorf("build device channel server: %w", err)

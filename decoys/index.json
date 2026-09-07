@@ -1,0 +1,35 @@
+{
+  "schema": "guardian.decoy.pack_index.v1",
+  "description": "The server-side pack index. A decoy record names a pack by (pack, version); the Control Plane resolves family, interaction level, and digest here. No API field ever supplies an image reference, command, mount, or capability, so this file is the only place a runtime detail can enter the desired state. The packs themselves are implemented by P2-W5 through P2-W8; nothing here is an image, an adapter, or attacker-facing behaviour.",
+  "digest_note": "digest is null until P2-W4 defines a manifest and a pack exists to hash. A null digest is recorded and transported as null. Inventing a placeholder digest would claim an artifact identity that nothing has verified, which is the same lie as reporting an unreported decoy as healthy.",
+  "packs": [
+    {
+      "pack": "ssh-cowrie",
+      "version": "0.1.0",
+      "digest": null,
+      "family": "ssh",
+      "interaction_level": "medium"
+    },
+    {
+      "pack": "http-admin",
+      "version": "0.1.0",
+      "digest": null,
+      "family": "http",
+      "interaction_level": "low"
+    },
+    {
+      "pack": "postgres-service",
+      "version": "0.1.0",
+      "digest": null,
+      "family": "postgres",
+      "interaction_level": "low"
+    },
+    {
+      "pack": "smb-fileshare",
+      "version": "0.1.0",
+      "digest": null,
+      "family": "smb",
+      "interaction_level": "low"
+    }
+  ]
+}

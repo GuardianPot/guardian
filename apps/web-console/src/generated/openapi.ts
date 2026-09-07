@@ -244,6 +244,92 @@ export interface paths {
         patch: operations["updateEnvironmentZone"];
         trace?: never;
     };
+    "/v1/environments/{environmentId}/decoys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List decoys in one environment
+         * @description Every entry carries the desired object and the observed record as two separate fields. They are never merged: a decoy nothing has reported on is `unknown`, never `deployed` and never `absent`.
+         */
+        get: operations["listEnvironmentDecoys"];
+        put?: never;
+        /**
+         * Place one decoy in a zone
+         * @description The request names a pack by `(pack, pack_version)`. Interaction level and digest are resolved from the server-side pack index, and no request field accepts a container image reference, command, mount, or capability. The address must lie inside the referenced zone's CIDR.
+         */
+        post: operations["createEnvironmentDecoy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/environments/{environmentId}/decoys/{decoyId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one decoy and its observed record */
+        get: operations["getEnvironmentDecoy"];
+        put?: never;
+        post?: never;
+        /**
+         * Remove one decoy from the active list
+         * @description Removal retires the decoy. It is not a deletion of history: the audit trail and every interaction already attributed to this decoy identity survive it.
+         */
+        delete: operations["deleteEnvironmentDecoy"];
+        options?: never;
+        head?: never;
+        /**
+         * Update one decoy's configuration with optimistic concurrency
+         * @description Configuration only. Enable and disable are separate operations, and observed state cannot be written through this or any other REST path.
+         */
+        patch: operations["updateEnvironmentDecoy"];
+        trace?: never;
+    };
+    "/v1/environments/{environmentId}/decoys/{decoyId}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask for this decoy to be deployed
+         * @description A separate operation rather than a PATCH field, because WC-D16 assigns confirmation levels to operations. Success means the desired state changed; it says nothing about what the network is doing.
+         */
+        post: operations["enableEnvironmentDecoy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/environments/{environmentId}/decoys/{decoyId}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask for this decoy to stop */
+        post: operations["disableEnvironmentDecoy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/environments/{environmentId}/enrollment-tokens": {
         parameters: {
             query?: never;
@@ -562,6 +648,107 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
+        /** @description The complete set of fields an operator may supply. There is deliberately no image, command, argument, mount, capability, port, digest, or interaction-level field: runtime detail is resolved from the server-side pack index, so this contract has nowhere to put one. Unknown properties are rejected rather than ignored. */
+        DecoyWriteRequest: {
+            /** Format: uuid */
+            zone_id: string;
+            /** @description Operator-supplied, trimmed NFC text bounded to 128 Unicode code points. It round-trips through the API and must be treated as untrusted by any renderer. */
+            display_name: string;
+            family: components["schemas"]["DecoyFamily"];
+            persona: components["schemas"]["DecoyPersona"];
+            /** @description A canonical private IPv4 host address that must lie inside the referenced zone's CIDR, and may be neither its network nor its broadcast address. */
+            address: string;
+            pack: string;
+            pack_version: string;
+        };
+        /**
+         * @description The closed DC-01 family set. A closed token, never free text.
+         * @enum {string}
+         */
+        DecoyFamily: "ssh" | "http" | "postgres" | "smb";
+        /**
+         * @description The closed DC-11 curated persona set. There is no generative persona builder, so a console may render this as a category.
+         * @enum {string}
+         */
+        DecoyPersona: "linux_admin_server" | "internal_admin_web_app" | "database_server" | "windows_file_service_host";
+        /**
+         * @description INT-01. Resolved from the pack index rather than supplied: SSH is medium, HTTP and SMB are low, a database surface may be either, and high interaction is out of the MVP.
+         * @enum {string}
+         */
+        DecoyInteractionLevel: "low" | "medium";
+        /**
+         * @description What the operator asked for. Never what the network reported.
+         * @enum {string}
+         */
+        DecoyDesiredState: "deployed" | "disabled" | "removed";
+        /**
+         * @description What was reported. `unknown` is the value for a decoy no Edge has reported on and is never replaced by a favourable default. `unmanaged` means the reporting device is disabled or revoked (SEC-06): the decoy may still be running, but Guardian has lost the ability to manage it.
+         * @enum {string}
+         */
+        DecoyObservedState: "unknown" | "deployed" | "degraded" | "absent" | "unmanaged";
+        /** @enum {string} */
+        DecoyConditionType: "runtime_healthy" | "address_applied" | "port_responding" | "telemetry_reporting" | "policy_applied" | "version_matches_desired";
+        /** @description Desired and observed state as two sibling objects. There is no combined field at any level, because the moment one exists a reader will treat it as the truth about coverage. */
+        DecoyView: {
+            decoy: components["schemas"]["Decoy"];
+            observed: components["schemas"]["DecoyObservation"];
+        };
+        DecoyPage: {
+            decoys: components["schemas"]["DecoyView"][];
+        };
+        Decoy: {
+            /** Format: uuid */
+            decoy_id: string;
+            /** Format: uuid */
+            environment_id: string;
+            /** Format: uuid */
+            zone_id: string;
+            /** @description Operator-supplied and therefore untrusted. Every other string in this object is a closed token the console may treat as a category; this one is not. */
+            display_name: string;
+            family: components["schemas"]["DecoyFamily"];
+            persona: components["schemas"]["DecoyPersona"];
+            interaction_level: components["schemas"]["DecoyInteractionLevel"];
+            address: string;
+            pack: string;
+            pack_version: string;
+            /** @description DC-12. Null until P2-W4 defines a manifest and a pack exists to hash; a placeholder digest would assert an artifact identity nothing has verified. Recorded, not verified: signature enforcement is the Phase 5 gate AC-SEC-004. */
+            pack_digest: string | null;
+            desired_state: components["schemas"]["DecoyDesiredState"];
+            /** Format: int64 */
+            revision: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description Written only by the device channel. No REST operation can set any field here, so an operator cannot assert that a decoy is healthy. */
+        DecoyObservation: {
+            observed_state: components["schemas"]["DecoyObservedState"];
+            /** Format: uuid */
+            reporting_device_id: string | null;
+            /** Format: date-time */
+            reported_at: string | null;
+            /**
+             * Format: date-time
+             * @description A timestamp only. It is not a finding, an incident, or evidence; those belong to the packages that own event intelligence.
+             */
+            last_interaction_at: string | null;
+            /** Format: int64 */
+            desired_revision: number | null;
+            /** @description The complete ordered dimension set. A dimension nothing reported is Unknown, never absent and never favourable, so that killing a process, removing an address, and breaking telemetry produce distinct degraded states. */
+            conditions: components["schemas"]["DecoyCondition"][];
+        };
+        DecoyCondition: {
+            type: components["schemas"]["DecoyConditionType"];
+            status: components["schemas"]["HealthStatus"];
+            reason: string;
+            /** @description Bounded Edge-supplied detail. Untrusted to any renderer. */
+            message: string;
+            /** Format: int64 */
+            observed_revision: number | null;
+            /** Format: date-time */
+            last_transition_time: string;
+        };
         AuthBootstrapRequest: {
             username: string;
             password: string;
@@ -817,6 +1004,17 @@ export interface components {
                 "application/json": components["schemas"]["ZoneResponse"];
             };
         };
+        /** @description One decoy, its observed record, and its strong revision ETag. */
+        DecoyResponse: {
+            headers: {
+                "Cache-Control": components["headers"]["NoStore"];
+                ETag: string;
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["DecoyView"];
+            };
+        };
         /** @description A rotated opaque Secure, HttpOnly, SameSite=Strict __Host- session cookie plus a no-store synchronizer CSRF token for memory-only use. */
         AuthSessionCredentialsResponse: {
             headers: {
@@ -865,6 +1063,8 @@ export interface components {
         EnvironmentId: string;
         /** @description Canonical UUIDv7 zone identity. */
         ZoneId: string;
+        /** @description Canonical UUIDv7 decoy identity. */
+        DecoyId: string;
         /** @description Maximum number of deterministic results; defaults to 50. */
         EnvironmentListLimit: number;
         /** @description Strong decimal revision ETag returned by the resource endpoint. */
@@ -1692,6 +1892,429 @@ export interface operations {
             };
             /** @description The normalized name or CIDR conflicts in this environment. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The strong revision ETag is stale. */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TLS is required. */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A strong If-Match revision ETag is required. */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listEnvironmentDecoys: {
+        parameters: {
+            query?: {
+                /** @description Maximum number of deterministic results; defaults to 50. */
+                limit?: components["parameters"]["EnvironmentListLimit"];
+            };
+            header?: never;
+            path: {
+                /** @description Canonical environment identity. */
+                environmentId: components["parameters"]["EnvironmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A deterministic bounded decoy list. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["NoStore"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecoyPage"];
+                };
+            };
+            /** @description The list query is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A valid Guardian owner session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The environment does not exist in the implicit organization. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TLS is required. */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createEnvironmentDecoy: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                /** @description Canonical environment identity. */
+                environmentId: components["parameters"]["EnvironmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecoyWriteRequest"];
+            };
+        };
+        responses: {
+            201: components["responses"]["DecoyResponse"];
+            /** @description The request is invalid, the pack version is not in the index, or the address is outside the zone. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session, CSRF, or exact-origin validation failed. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The environment or zone does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The normalized name or address conflicts in this environment, or the environment already holds the 64 decoys the device channel can carry. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TLS is required. */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getEnvironmentDecoy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Canonical environment identity. */
+                environmentId: components["parameters"]["EnvironmentId"];
+                /** @description Canonical UUIDv7 decoy identity. */
+                decoyId: components["parameters"]["DecoyId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["DecoyResponse"];
+            /** @description A valid Guardian owner session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The decoy does not exist in the requested environment. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TLS is required. */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteEnvironmentDecoy: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Strong decimal revision ETag returned by the resource endpoint. */
+                "If-Match": components["parameters"]["IfMatchRevision"];
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                /** @description Canonical environment identity. */
+                environmentId: components["parameters"]["EnvironmentId"];
+                /** @description Canonical UUIDv7 decoy identity. */
+                decoyId: components["parameters"]["DecoyId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The decoy was removed and the mutation was audited atomically. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The ETag is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session, CSRF, or exact-origin validation failed. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The decoy does not exist in the requested environment. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The strong revision ETag is stale. */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TLS is required. */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A strong If-Match revision ETag is required. */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateEnvironmentDecoy: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Strong decimal revision ETag returned by the resource endpoint. */
+                "If-Match": components["parameters"]["IfMatchRevision"];
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                /** @description Canonical environment identity. */
+                environmentId: components["parameters"]["EnvironmentId"];
+                /** @description Canonical UUIDv7 decoy identity. */
+                decoyId: components["parameters"]["DecoyId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecoyWriteRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["DecoyResponse"];
+            /** @description The strict bounded request, pack reference, placement, or ETag is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session, CSRF, or exact-origin validation failed. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The decoy or zone does not exist in the requested environment. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The normalized name or address conflicts in this environment. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The strong revision ETag is stale. */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TLS is required. */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A strong If-Match revision ETag is required. */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    enableEnvironmentDecoy: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Strong decimal revision ETag returned by the resource endpoint. */
+                "If-Match": components["parameters"]["IfMatchRevision"];
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                /** @description Canonical environment identity. */
+                environmentId: components["parameters"]["EnvironmentId"];
+                /** @description Canonical UUIDv7 decoy identity. */
+                decoyId: components["parameters"]["DecoyId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["DecoyResponse"];
+            /** @description The ETag is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session, CSRF, or exact-origin validation failed. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The decoy does not exist in the requested environment. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The strong revision ETag is stale. */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TLS is required. */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A strong If-Match revision ETag is required. */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    disableEnvironmentDecoy: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Strong decimal revision ETag returned by the resource endpoint. */
+                "If-Match": components["parameters"]["IfMatchRevision"];
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                /** @description Canonical environment identity. */
+                environmentId: components["parameters"]["EnvironmentId"];
+                /** @description Canonical UUIDv7 decoy identity. */
+                decoyId: components["parameters"]["DecoyId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["DecoyResponse"];
+            /** @description The ETag is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session, CSRF, or exact-origin validation failed. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The decoy does not exist in the requested environment. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

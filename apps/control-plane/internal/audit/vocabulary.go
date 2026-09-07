@@ -45,6 +45,11 @@ const (
 	ActionZoneCreated            Action = "zone.created"
 	ActionZoneUpdated            Action = "zone.updated"
 	ActionZoneRemoved            Action = "zone.removed"
+	ActionDecoyCreated           Action = "decoy.created"
+	ActionDecoyUpdated           Action = "decoy.updated"
+	ActionDecoyRemoved           Action = "decoy.removed"
+	ActionDecoyEnabled           Action = "decoy.enabled"
+	ActionDecoyDisabled          Action = "decoy.disabled"
 	ActionDesiredStatePublished  Action = "desired_state.revision.published"
 	ActionSecurityActionDenied   Action = "security.action.denied"
 )
@@ -62,6 +67,7 @@ const (
 	ObjectTypeDeviceCertificate    ObjectType = "device_certificate"
 	ObjectTypeEnvironment          ObjectType = "environment"
 	ObjectTypeZone                 ObjectType = "zone"
+	ObjectTypeDecoy                ObjectType = "decoy"
 	ObjectTypeDesiredStateRevision ObjectType = "desired_state_revision"
 	ObjectTypeSecurityAction       ObjectType = "security_action"
 )
@@ -98,6 +104,11 @@ var (
 		ActionZoneCreated:            ObjectTypeZone,
 		ActionZoneUpdated:            ObjectTypeZone,
 		ActionZoneRemoved:            ObjectTypeZone,
+		ActionDecoyCreated:           ObjectTypeDecoy,
+		ActionDecoyUpdated:           ObjectTypeDecoy,
+		ActionDecoyRemoved:           ObjectTypeDecoy,
+		ActionDecoyEnabled:           ObjectTypeDecoy,
+		ActionDecoyDisabled:          ObjectTypeDecoy,
 		ActionDesiredStatePublished:  ObjectTypeDesiredStateRevision,
 		ActionSecurityActionDenied:   ObjectTypeSecurityAction,
 	}
@@ -153,6 +164,7 @@ func (t ObjectType) Valid() bool {
 		ObjectTypeDeviceCertificate,
 		ObjectTypeEnvironment,
 		ObjectTypeZone,
+		ObjectTypeDecoy,
 		ObjectTypeDesiredStateRevision,
 		ObjectTypeSecurityAction:
 		return true
@@ -213,6 +225,11 @@ func Actions() []Action {
 		ActionZoneCreated,
 		ActionZoneUpdated,
 		ActionZoneRemoved,
+		ActionDecoyCreated,
+		ActionDecoyUpdated,
+		ActionDecoyRemoved,
+		ActionDecoyEnabled,
+		ActionDecoyDisabled,
 		ActionDesiredStatePublished,
 		ActionSecurityActionDenied,
 	}

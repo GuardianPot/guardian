@@ -64,6 +64,7 @@ type Config struct {
 	DesiredHandler                 DesiredHandler
 	ObservedAcknowledgementHandler ObservedAcknowledgementHandler
 	HealthAcknowledgementHandler   ObservedAcknowledgementHandler
+	DecoyAcknowledgementHandler    ObservedAcknowledgementHandler
 	StateRecorder                  StateRecorder
 }
 
@@ -76,6 +77,7 @@ type Client struct {
 	desiredHandler                 DesiredHandler
 	observedAcknowledgementHandler ObservedAcknowledgementHandler
 	healthAcknowledgementHandler   ObservedAcknowledgementHandler
+	decoyAcknowledgementHandler    ObservedAcknowledgementHandler
 	stateRecorder                  StateRecorder
 	outgoing                       *requestQueue
 	heartbeatInterval              time.Duration
@@ -103,7 +105,8 @@ func NewClient(config Config) (*Client, error) {
 		endpoint: config.Endpoint, agentVersion: config.AgentVersion, credentials: config.Credentials,
 		rootCAs: config.RootCAs, logger: config.Logger, desiredHandler: config.DesiredHandler,
 		observedAcknowledgementHandler: config.ObservedAcknowledgementHandler,
-		healthAcknowledgementHandler:   config.HealthAcknowledgementHandler, stateRecorder: config.StateRecorder,
+		healthAcknowledgementHandler:   config.HealthAcknowledgementHandler,
+		decoyAcknowledgementHandler:    config.DecoyAcknowledgementHandler, stateRecorder: config.StateRecorder,
 		outgoing: newRequestQueue(), heartbeatInterval: HeartbeatInterval, stableAfter: StaleAfter,
 		helloTimeout: HelloTimeout, jitter: fullJitter, state: "disconnected", reason: "not_started",
 	}, nil
@@ -168,6 +171,19 @@ func (c *Client) EnqueueObserved(observed *devicev1.ObservedState) error {
 		return err
 	}
 	return c.outgoing.enqueue(&devicev1.ConnectRequest{Payload: &devicev1.ConnectRequest_ObservedState{ObservedState: observed}})
+}
+
+// EnqueueDecoyState publishes observed decoy truth. It is a separate frame
+// from observed reconciliation state because the two answer different
+// questions: whether this Edge converged on a revision, and what each decoy is
+// actually doing.
+func (c *Client) EnqueueDecoyState(report *devicev1.DecoyStateReport) error {
+	if err := validateDecoyStateReport(report); err != nil {
+		return err
+	}
+	return c.outgoing.enqueue(&devicev1.ConnectRequest{Payload: &devicev1.ConnectRequest_DecoyState{
+		DecoyState: report,
+	}})
 }
 
 func (c *Client) EnqueueHealth(report health.Report) error {
@@ -340,6 +356,16 @@ func (c *Client) receiveLoop(ctx context.Context, stream grpc.BidiStreamingClien
 				}
 				if err := c.healthAcknowledgementHandler.Acknowledgement(ctx, payload.Acknowledgement); err != nil {
 					return status.Error(codes.Internal, "health acknowledgement handling failed")
+				}
+			case devicev1.AcknowledgementKind_ACKNOWLEDGEMENT_KIND_DECOY_STATE_REPORT:
+				if c.decoyAcknowledgementHandler == nil {
+					// A decoy acknowledgement with no handler is not a protocol
+					// error: an Edge that publishes no decoy state can still be
+					// acknowledged by a Control Plane that does.
+					continue
+				}
+				if err := c.decoyAcknowledgementHandler.Acknowledgement(ctx, payload.Acknowledgement); err != nil {
+					return status.Error(codes.Internal, "decoy acknowledgement handling failed")
 				}
 			default:
 				return status.Error(codes.InvalidArgument, "acknowledgement kind is invalid")

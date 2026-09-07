@@ -11,6 +11,7 @@ import (
 
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/components"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/config"
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/decoy"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/devicechannel"
 	devicev1 "github.com/GuardianPot/guardian/apps/edge-agent/internal/devicechannel/gen/guardian/device/v1"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/enrollment"
@@ -73,9 +74,22 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) (runErr er
 
 	graph := components.NewFoundation(store, metadata, enrollmentStatus)
 	var channel *devicechannel.Client
+	// P2-W3 replaces the null runtime with containerd. Until it does, every
+	// decoy this Edge reports on is honestly unknown rather than assumed
+	// deployed, and the contract is exercisable end to end regardless.
+	decoyManager, err := decoy.New(
+		decoy.NewNullRuntime(),
+		decoy.PublisherFunc(func(report *devicev1.DecoyStateReport) error {
+			return channel.EnqueueDecoyState(report)
+		}),
+		store,
+	)
+	if err != nil {
+		return fmt.Errorf("build decoy manager: %w", err)
+	}
 	reconciler, err := reconciliation.New(store, metadata.DeviceID, reconciliation.PublisherFunc(func(observed *devicev1.ObservedState) error {
 		return channel.EnqueueObserved(observed)
-	}), nil)
+	}), decoyManager)
 	if err != nil {
 		return fmt.Errorf("build desired-state reconciler: %w", err)
 	}
@@ -100,6 +114,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) (runErr er
 	}
 	graph.Channel = channel
 	graph.Reconciler = reconciler
+	graph.DecoyManager = decoyManager
 	graph.HealthReporter = reporter
 	ordered := graph.Ordered()
 	ordered = append(ordered, enrollment.NewRotationManager(

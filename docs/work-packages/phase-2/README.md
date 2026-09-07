@@ -13,9 +13,15 @@ advance.
 
 | Package | Status |
 |---|---|
-| `P2-W15` — Decoy domain, lifecycle contract, and management surface | draft, awaiting owner approval |
+| `P2-W15` — Decoy domain, lifecycle contract, and management surface | delivered 2026-09-08 |
 
 Every other roadmap workstream is unwritten.
+
+`WCX-11` is unblocked: every `UX-06` field now exists in the contract, and
+`openapi/guardian.yaml` carries the decoy paths the console reads. What it will
+render today is a list of decoys whose observed state is `unknown`, because
+`P2-W3` has not supplied a container runtime. That is the intended output, and
+the console must render it as unknown rather than as anything more reassuring.
 
 ## How P2-W15 relates to WCX-11
 

@@ -197,7 +197,7 @@ func TestQueueAndHealthRateAreBounded(t *testing.T) {
 		t.Fatalf("saturated queue error = %v", err)
 	}
 
-	var limiter healthRateLimiter
+	var limiter reportRateLimiter
 	limiter.devices = make(map[string]*tokenBucket)
 	now := time.Now().UTC()
 	for index := 0; index < 3; index++ {

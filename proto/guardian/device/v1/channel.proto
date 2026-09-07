@@ -50,12 +50,63 @@ message NetworkZoneMetadata {
   uint64 source_revision = 4;
 }
 
-// PlaceholderDecoyDesiredObject proves typed evolution without introducing a
-// real decoy lifecycle. It has no enabled, runtime, artifact, or action field.
-message PlaceholderDecoyDesiredObject {
-  string object_id = 1;
+// DecoyFamily is the closed DC-01 family set. A family outside these four
+// cannot be represented on the wire, so an unbounded string never reaches the
+// Edge or, through it, an operator surface.
+enum DecoyFamily {
+  DECOY_FAMILY_UNSPECIFIED = 0;
+  DECOY_FAMILY_SSH = 1;
+  DECOY_FAMILY_HTTP = 2;
+  DECOY_FAMILY_POSTGRES = 3;
+  DECOY_FAMILY_SMB = 4;
+}
+
+// DecoyPersona is the closed DC-11 curated persona set. There is no
+// generative persona builder and no free-text persona.
+enum DecoyPersona {
+  DECOY_PERSONA_UNSPECIFIED = 0;
+  DECOY_PERSONA_LINUX_ADMIN_SERVER = 1;
+  DECOY_PERSONA_INTERNAL_ADMIN_WEB_APP = 2;
+  DECOY_PERSONA_DATABASE_SERVER = 3;
+  DECOY_PERSONA_WINDOWS_FILE_SERVICE_HOST = 4;
+}
+
+// DecoyInteractionLevel carries INT-01. High interaction has no wire value
+// because it is out of the MVP.
+enum DecoyInteractionLevel {
+  DECOY_INTERACTION_LEVEL_UNSPECIFIED = 0;
+  DECOY_INTERACTION_LEVEL_LOW = 1;
+  DECOY_INTERACTION_LEVEL_MEDIUM = 2;
+}
+
+// DecoyDesiredLifecycle is what the operator asked for. `removed` has no wire
+// value: a removed decoy is absent from the snapshot rather than present with
+// a tombstone state.
+enum DecoyDesiredLifecycle {
+  DECOY_DESIRED_LIFECYCLE_UNSPECIFIED = 0;
+  DECOY_DESIRED_LIFECYCLE_DEPLOYED = 1;
+  DECOY_DESIRED_LIFECYCLE_DISABLED = 2;
+}
+
+// DecoyDesiredObject is one decoy an operator asked for. It carries no key,
+// certificate, credential, image reference, command, mount, or capability:
+// runtime detail comes from the manifest the (pack, pack_version) pair selects
+// in the Control Plane's server-side index, never from this message.
+message DecoyDesiredObject {
+  string decoy_id = 1;
   string zone_id = 2;
+  // Operator-supplied and therefore untrusted to any renderer.
   string display_name = 3;
+  DecoyFamily family = 4;
+  DecoyPersona persona = 5;
+  DecoyInteractionLevel interaction_level = 6;
+  // The IPv4 address inside the referenced zone that this decoy answers on.
+  string address = 7;
+  string pack = 8;
+  string pack_version = 9;
+  string pack_digest = 10;
+  DecoyDesiredLifecycle desired_state = 11;
+  uint64 source_revision = 12;
 }
 
 message DesiredStateSnapshot {
@@ -63,7 +114,62 @@ message DesiredStateSnapshot {
   uint64 revision = 2;
   EdgeConfiguration edge_configuration = 3;
   repeated NetworkZoneMetadata zones = 4;
-  repeated PlaceholderDecoyDesiredObject placeholder_decoys = 5;
+  repeated DecoyDesiredObject decoys = 5;
+}
+
+// DecoyObservedLifecycle is what the Edge saw. `unmanaged` is deliberately
+// absent: a device that has lost management cannot truthfully report that
+// about itself, so the Control Plane projects it from device state instead.
+enum DecoyObservedLifecycle {
+  DECOY_OBSERVED_LIFECYCLE_UNSPECIFIED = 0;
+  DECOY_OBSERVED_LIFECYCLE_UNKNOWN = 1;
+  DECOY_OBSERVED_LIFECYCLE_DEPLOYED = 2;
+  DECOY_OBSERVED_LIFECYCLE_DEGRADED = 3;
+  DECOY_OBSERVED_LIFECYCLE_ABSENT = 4;
+}
+
+// DecoyConditionType is the closed decoy health dimension set. They are
+// separate so that a dead process, an unapplied address, and broken telemetry
+// produce distinct degraded states rather than one undifferentiated failure.
+enum DecoyConditionType {
+  DECOY_CONDITION_TYPE_UNSPECIFIED = 0;
+  DECOY_CONDITION_TYPE_RUNTIME_HEALTHY = 1;
+  DECOY_CONDITION_TYPE_ADDRESS_APPLIED = 2;
+  DECOY_CONDITION_TYPE_PORT_RESPONDING = 3;
+  DECOY_CONDITION_TYPE_TELEMETRY_REPORTING = 4;
+  DECOY_CONDITION_TYPE_POLICY_APPLIED = 5;
+  DECOY_CONDITION_TYPE_VERSION_MATCHES_DESIRED = 6;
+}
+
+// DecoyCondition follows the P1-W9 condition model and reuses its tri-state
+// status: one product, one meaning for True, False, and Unknown.
+message DecoyCondition {
+  DecoyConditionType type = 1;
+  HealthConditionStatus status = 2;
+  string reason = 3;
+  string message = 4;
+  optional uint64 observed_revision = 5;
+  google.protobuf.Timestamp last_transition_time = 6;
+}
+
+// DecoyObservation is one decoy's observed truth. It is never merged into the
+// desired object: an operator asked for something, and this is what the
+// network reported.
+message DecoyObservation {
+  string decoy_id = 1;
+  DecoyObservedLifecycle state = 2;
+  google.protobuf.Timestamp last_interaction_at = 3;
+  uint64 desired_revision = 4;
+  repeated DecoyCondition conditions = 5;
+}
+
+// DecoyStateReport is the complete ordered decoy observation set from one mTLS
+// device identity. There is no delta form and no identity field: the peer is
+// supplied exclusively by mTLS.
+message DecoyStateReport {
+  string report_id = 1;
+  google.protobuf.Timestamp observed_at = 2;
+  repeated DecoyObservation decoys = 3;
 }
 
 enum ReconciliationConditionStatus {
@@ -97,6 +203,7 @@ enum AcknowledgementKind {
   ACKNOWLEDGEMENT_KIND_DESIRED_STATE = 1;
   ACKNOWLEDGEMENT_KIND_OBSERVED_STATE = 2;
   ACKNOWLEDGEMENT_KIND_HEALTH_REPORT = 3;
+  ACKNOWLEDGEMENT_KIND_DECOY_STATE_REPORT = 4;
 }
 
 message Acknowledgement {
@@ -112,6 +219,7 @@ message ConnectRequest {
     ObservedState observed_state = 3;
     HealthReport health_report = 4;
     Acknowledgement acknowledgement = 5;
+    DecoyStateReport decoy_state = 6;
   }
 }
 
