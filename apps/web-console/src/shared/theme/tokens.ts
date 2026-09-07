@@ -129,6 +129,18 @@ export const CONTRAST_PAIRS: readonly {
   { name: 'device revoked label', foreground: PRIMITIVE.neutral1000, background: PRIMITIVE.neutral600, minimum: 4.5 },
   { name: 'confidence step', foreground: PRIMITIVE.neutral1000, background: PRIMITIVE.neutral200, minimum: 3 },
   { name: 'reauthentication banner text', foreground: PRIMITIVE.neutral0, background: PRIMITIVE.sev3, minimum: 4.5 },
+  // WCX-04 shared component layer. The state block, the blocking banner, the
+  // description list, and the destructive control all paint on the sunken
+  // surface or on the destructive tint, neither of which appeared above.
+  { name: 'primary text on sunken surface', foreground: PRIMITIVE.neutral1000, background: PRIMITIVE.neutral100, minimum: 4.5 },
+  { name: 'secondary text on sunken surface', foreground: PRIMITIVE.neutral900, background: PRIMITIVE.neutral100, minimum: 4.5 },
+  { name: 'blocking state heading on sunken surface', foreground: PRIMITIVE.red400, background: PRIMITIVE.neutral100, minimum: 4.5 },
+  { name: 'destructive action label on raised surface', foreground: PRIMITIVE.red400, background: badge(PRIMITIVE.red400, PRIMITIVE.neutral200), minimum: 4.5 },
+  { name: 'destructive action label on page', foreground: PRIMITIVE.red400, background: badge(PRIMITIVE.red400, PRIMITIVE.neutral50), minimum: 4.5 },
+  { name: 'quiet action label on raised surface', foreground: PRIMITIVE.neutral900, background: PRIMITIVE.neutral200, minimum: 4.5 },
+  // The confidence meter is read from the step colours as well as its text, so
+  // a filled step must be distinguishable from an empty one.
+  { name: 'confidence filled step against empty step', foreground: PRIMITIVE.neutral1000, background: PRIMITIVE.neutral500, minimum: 3 },
 ];
 
 const channel = (value: number): number => {

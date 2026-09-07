@@ -14,9 +14,8 @@
     "generate:api": "npx --yes openapi-typescript@7.13.0 ../../openapi/guardian.yaml --output src/generated/openapi.ts"
   },
   "dependencies": {
-    "@radix-ui/react-dialog": "1.1.23",
-    "@radix-ui/react-label": "2.1.15",
     "@tanstack/react-query": "5.102.8",
+    "radix-ui": "1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-router-dom": "7.18.3"

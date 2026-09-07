@@ -60,7 +60,10 @@ describe('EnvironmentPage', () => {
     const notice = await screen.findByText(/Zone creation failed/);
     expect(notice).toHaveTextContent('Use a canonical, non-overlapping RFC1918 CIDR.');
     expect(notice).not.toHaveTextContent('10.20.0.0/33');
-    expect(screen.getByText('No zones defined.')).toBeVisible();
+    // An error is never toast-only: this is a banner, so it persists until the
+    // condition clears rather than expiring unseen (section 8.5).
+    expect(notice).toHaveAttribute('role', 'alert');
+    expect(screen.getByText('No private network zones recorded')).toBeVisible();
     expect(stub.header(`POST /v1/environments/${environmentID}/zones`, 'X-CSRF-Token')).not.toBeNull();
   });
 
@@ -114,7 +117,11 @@ describe('EnvironmentPage', () => {
     }));
     renderRoute(<EnvironmentPage />, { path: routePath, entry, authenticated: false });
 
-    expect(await screen.findByText('The current health projection is unavailable. This is not a healthy signal.')).toBeVisible();
+    // No cached projection and an impaired upstream is `degraded`: it names
+    // the dependency, and it never presents the absence as health.
+    expect(await screen.findByText('The health projection is impaired')).toBeVisible();
+    expect(screen.getByText(/Not answering: every health condition for this scope/)).toBeVisible();
+    expect(screen.getByText(/Still answering: inventory and configuration/)).toBeVisible();
     expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Eight-condition health' })).not.toBeInTheDocument();
   });
@@ -150,13 +157,19 @@ describe('EnvironmentPage', () => {
     expect(document.querySelectorAll('img')).toHaveLength(0);
   });
 
-  it('presents an authorization failure as unavailable rather than empty configuration', async () => {
+  it('presents an authorization failure as refused rather than empty configuration', async () => {
     stubFetch(readHandlers({
       [`GET /v1/environments/${environmentID}`]: () => json({ error: 'forbidden' }, 403),
     }));
     renderRoute(<EnvironmentPage />, { path: routePath, entry, authenticated: false });
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('This environment is unavailable or access was denied.');
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Access was refused');
+    // A refusal reports nothing about what exists, so no zone count, no device
+    // count, and no configuration state reaches the screen (section 8.3).
+    expect(alert).toHaveTextContent(/reports nothing about what is or is not here/);
+    expect(screen.queryByRole('heading', { name: 'Edge devices' })).not.toBeInTheDocument();
+    expect(screen.queryByText('No private network zones recorded')).not.toBeInTheDocument();
   });
 
   it('drops the memory-only CSRF proof when a mutation is rejected as unauthorized', async () => {

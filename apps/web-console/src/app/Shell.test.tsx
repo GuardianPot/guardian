@@ -10,16 +10,25 @@ import { Shell } from './Shell';
 
 afterEach(() => vi.unstubAllGlobals());
 
-function renderShell(options: { authenticated: boolean; handlers?: Record<string, StubHandler> }) {
+function Explode(): never {
+  throw new Error('screen-token-4b1e leaked through an exception message');
+}
+
+function renderShell(options: {
+  authenticated: boolean;
+  handlers?: Record<string, StubHandler>;
+  entry?: string;
+}) {
   const stub = stubFetch({ ...loginHandlers(), ...options.handlers });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const tree = (
-    <MemoryRouter initialEntries={['/environments']}>
+    <MemoryRouter initialEntries={[options.entry ?? '/environments']}>
       <Routes>
         <Route path="/login" element={<h1>Sign in</h1>} />
         <Route element={<RequireAuth />}>
           <Route element={<Shell />}>
             <Route path="/environments" element={<h2>Environment workspace</h2>} />
+            <Route path="/broken" element={<Explode />} />
           </Route>
         </Route>
       </Routes>
@@ -70,5 +79,39 @@ describe('Shell', () => {
     expect(screen.getByText('Environment workspace')).toBeVisible();
     expect(stub.called('POST /v1/auth/logout')).toHaveLength(1);
     expect(screen.queryByRole('heading', { name: 'Sign in' })).not.toBeInTheDocument();
+  });
+
+  it('keeps navigation and sign-out reachable when a screen throws', async () => {
+    // `P1-W11` GAP-2: without a boundary this blanked the console, leaving an
+    // operator with no way to end the session.
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    renderShell({ authenticated: true, entry: '/broken' });
+
+    expect(await screen.findByRole('button', { name: 'Sign out' })).toBeVisible();
+    expect(screen.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent('This screen stopped unexpectedly');
+    expect(document.body.innerHTML).not.toContain('screen-token-4b1e');
+    consoleError.mockRestore();
+  });
+
+  it('recovers the failed screen when the operator navigates away', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    renderShell({ authenticated: true, entry: '/broken' });
+    expect(await screen.findByRole('alert')).toBeVisible();
+
+    await userEvent.click(screen.getByRole('link', { name: 'Environments' }));
+
+    expect(await screen.findByText('Environment workspace')).toBeVisible();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    consoleError.mockRestore();
+  });
+
+  it('keeps the read-only session banner the browser suite reloads into', async () => {
+    renderShell({ authenticated: false });
+
+    const banner = await screen.findByText(/Read-only session restored\./);
+    expect(banner).toBeVisible();
+    expect(banner).toHaveAttribute('role', 'status');
+    expect(banner).toHaveTextContent('before changing configuration or signing out.');
   });
 });

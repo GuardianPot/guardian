@@ -10,6 +10,7 @@ const CAPABILITIES: Capability[] = [
   'device.enroll',
   'device.disable',
   'device.revoke',
+  'enrollment.revoke',
   'session.revoke',
   'account.password',
 ];

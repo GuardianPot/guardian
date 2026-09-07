@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { toConsoleError } from '@shared/api/error';
 import { configEncoding, deviceEncoding } from '@shared/theme/statusEncoding';
 import { devicesQuery } from '@features/devices';
 import {
@@ -16,19 +15,24 @@ import {
 import type { EnrollmentSecret } from '@shared/api/types';
 import { useAuth, useCapability } from '@features/auth';
 import { textField } from '@shared/forms/textField';
-import { environmentHealthQuery, HealthPanel, formatTime } from '@features/health';
+import { environmentHealthQuery, HealthPanel, HEALTH_TEXT, formatTime } from '@features/health';
 import { SecretDialog } from './SecretDialog';
-import { EmptyState, ErrorState, LoadingState } from '@shared/ui/Status';
+import { Banner, Button, DataBoundary, Panel, StatusBadge, TextField } from '@shared/ui';
 import styles from '@shared/styles/app.module.css';
+import { ENVIRONMENT_TEXT as TEXT } from './text';
+
+type PageMessage = { text: string; tone: 'informational' | 'blocking' };
 
 export function EnvironmentPage() {
   const { environmentId = '' } = useParams();
   const auth = useAuth();
   const queryClient = useQueryClient();
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState<PageMessage | null>(null);
   const [secret, setSecret] = useState<EnrollmentSecret | null>(null);
   const secretRef = useRef<EnrollmentSecret | null>(null);
   const [creatingSecret, setCreatingSecret] = useState(false);
+  const deviceNameField = useRef<HTMLInputElement>(null);
+  const zoneNameField = useRef<HTMLInputElement>(null);
   const enrollDevice = useCapability('device.enroll');
   const defineZone = useCapability('zone.create');
   const updateEnvironment = useCapability('environment.update');
@@ -57,101 +61,244 @@ export function EnvironmentPage() {
   });
 
   async function submitRename(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setMessage('');
-    if (!auth.csrf || !environment.data) return setMessage('Re-authenticate before changing this environment.');
+    event.preventDefault(); setMessage(null);
+    if (!auth.csrf || !environment.data) {
+      return setMessage({ text: TEXT.reauthenticateToRename, tone: 'blocking' });
+    }
     const form = event.currentTarget;
-    try { await rename.mutateAsync(textField(new FormData(form), 'display_name')); setMessage('Environment name updated.'); }
-    catch { setMessage('Rename failed. Refresh if another change was made first.'); }
+    try {
+      await rename.mutateAsync(textField(new FormData(form), 'display_name'));
+      setMessage({ text: TEXT.renamed, tone: 'informational' });
+    } catch {
+      setMessage({ text: TEXT.renameFailed, tone: 'blocking' });
+    }
   }
 
   async function submitZone(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setMessage('');
-    if (!auth.csrf) return setMessage('Re-authenticate before adding a zone.');
+    event.preventDefault(); setMessage(null);
+    if (!auth.csrf) return setMessage({ text: TEXT.reauthenticateToAddZone, tone: 'blocking' });
     const form = event.currentTarget; const data = new FormData(form);
     try {
       await createZone.mutateAsync({ display_name: textField(data, 'display_name'), cidr: textField(data, 'cidr') });
-      form.reset(); setMessage('Private network zone added.');
-    } catch { setMessage('Zone creation failed. Use a canonical, non-overlapping RFC1918 CIDR.'); }
+      form.reset();
+      setMessage({ text: TEXT.zoneAdded, tone: 'informational' });
+    } catch {
+      setMessage({ text: TEXT.zoneFailed, tone: 'blocking' });
+    }
   }
 
   async function submitEnrollment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setMessage('');
-    if (!auth.csrf) return setMessage('Re-authenticate before creating an enrollment secret.');
+    event.preventDefault(); setMessage(null);
+    if (!auth.csrf) return setMessage({ text: TEXT.reauthenticateToEnroll, tone: 'blocking' });
     const form = event.currentTarget;
     setCreatingSecret(true);
     try {
       const created = await createEnrollmentSecret(environmentId, textField(new FormData(form), 'device_name'), auth.csrf);
       form.reset(); setSecret(created);
       await environmentInvalidation.afterEnrollmentSecret(queryClient, environmentId);
-    } catch { setMessage('Enrollment secret creation was denied.'); }
-    finally { setCreatingSecret(false); }
+    } catch {
+      setMessage({ text: TEXT.secretDenied, tone: 'blocking' });
+    } finally {
+      setCreatingSecret(false);
+    }
   }
 
-  if (environment.isPending) return <LoadingState label="Loading environment…" />;
-  if (environment.isError || !environment.data) return <ErrorState>This environment is unavailable or access was denied.</ErrorState>;
+  const enrollReason = enrollDevice.allowed ? undefined : TEXT.reauthenticateToEnroll;
+  const zoneReason = defineZone.allowed ? undefined : TEXT.reauthenticateToAddZone;
+  const renameReason = updateEnvironment.allowed ? undefined : TEXT.reauthenticateToRename;
 
   return (
     <div>
-      <Link className={styles.backLink} to="/environments">← All environments</Link>
-      <header className={styles.pageHeader}>
-        <div><p className={styles.eyebrow}>Environment</p><h1>{environment.data.display_name}</h1><p className={styles.mono}>{environment.data.environment_id}</p></div>
-        <span className={`${styles.statusBadge} ${styles[configEncoding(environment.data.status).tone] ?? ''}`}>
-          {environment.data.status === 'zones_defined' ? 'Configuration complete' : 'Zones required'}
-        </span>
-      </header>
-      {message && <p className={styles.notice} role="status">{message}</p>}
-      <div className={styles.twoColumn}>
-        <section className={styles.panel} aria-labelledby="inventory-heading">
-          <div className={styles.panelHeading}><div><p className={styles.eyebrow}>Inventory truth</p><h2 id="inventory-heading">Edge devices</h2></div><span className={styles.panelCount}>{devices.data?.length ?? 0}</span></div>
-          {devices.isPending && <LoadingState />}
-          {devices.isError && <ErrorState>Device inventory could not be loaded.</ErrorState>}
-          {devices.data?.length === 0 && <EmptyState>No device records yet. Create an enrollment secret to begin.</EmptyState>}
-          <ul className={styles.deviceList}>
-            {devices.data?.map((device) => (
-              <li key={device.device_id}>
-                <Link to={`/environments/${environmentId}/devices/${device.device_id}`}>
-                  <span><strong>{device.display_name}</strong><small>{device.device_id}</small></span>
-                  <span className={`${styles.statusBadge} ${styles[deviceEncoding(device.state).tone] ?? ''}`}>{deviceEncoding(device.state).label}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-        <section className={styles.panel} aria-labelledby="enroll-heading">
-          <p className={styles.eyebrow}>One-time handoff</p><h2 id="enroll-heading">Enroll an Edge</h2>
-          <p>Create a 15-minute secret for one named Edge. Device health remains unknown until the real Edge reports all conditions.</p>
-          <form className={styles.form} onSubmit={(event) => { void submitEnrollment(event); }}>
-            <label>Device name<input name="device_name" required maxLength={128} disabled={!enrollDevice.allowed || creatingSecret} /></label>
-            <button className={styles.primaryButton} disabled={!enrollDevice.allowed || creatingSecret}>{creatingSecret ? 'Creating…' : 'Create one-time secret'}</button>
-          </form>
-        </section>
-      </div>
-      {health.data ? <HealthPanel health={health.data} /> : (
-        <section className={styles.panel} aria-labelledby="health-unavailable-heading">
-          <p className={styles.eyebrow}>Backend health projection</p><h2 id="health-unavailable-heading">Health not yet reported</h2>
-          <p>{toConsoleError(health.error).kind === 'not-found' ? 'No active Edge has supplied a health projection.' : 'The current health projection is unavailable. This is not a healthy signal.'}</p>
-        </section>
-      )}
-      <div className={styles.twoColumn}>
-        <section className={styles.panel} aria-labelledby="zones-heading">
-          <div className={styles.panelHeading}><h2 id="zones-heading">Private network zones</h2><span className={styles.panelCount}>{zones.data?.length ?? 0}</span></div>
-          {zones.isPending && <LoadingState />}{zones.isError && <ErrorState />}
-          {zones.data?.length === 0 && <EmptyState>No zones defined.</EmptyState>}
-          <ul className={styles.zoneList}>{zones.data?.map((zone) => <li key={zone.zone_id}><span><strong>{zone.display_name}</strong><small>Updated {formatTime(zone.updated_at)}</small></span><code>{zone.cidr}</code></li>)}</ul>
-          <form className={styles.inlineForm} onSubmit={(event) => { void submitZone(event); }}>
-            <label>Zone name<input name="display_name" required maxLength={128} disabled={!defineZone.allowed} /></label>
-            <label>Private CIDR<input name="cidr" placeholder="10.20.0.0/24" required maxLength={18} disabled={!defineZone.allowed} /></label>
-            <button className={styles.secondaryButton} disabled={!defineZone.allowed || createZone.isPending}>Add zone</button>
-          </form>
-        </section>
-        <section className={styles.panel} aria-labelledby="settings-heading">
-          <p className={styles.eyebrow}>Configuration</p><h2 id="settings-heading">Environment settings</h2>
-          <form className={styles.form} onSubmit={(event) => { void submitRename(event); }}>
-            <label>Display name<input name="display_name" defaultValue={environment.data.display_name} required maxLength={128} disabled={!updateEnvironment.allowed} /></label>
-            <button className={styles.secondaryButton} disabled={!updateEnvironment.allowed || rename.isPending}>Save name</button>
-          </form>
-        </section>
-      </div>
+      <Link className={styles.backLink} to="/environments">{TEXT.back}</Link>
+      <DataBoundary
+        query={environment}
+        subject={{
+          name: TEXT.loading,
+          dependency: TEXT.dependency,
+          stillWorks: TEXT.stillWorks,
+          doesNotWork: TEXT.doesNotWork,
+          staleReason: TEXT.staleReason,
+        }}
+        onRetry={() => { void environment.refetch(); }}
+      >
+        {(record) => (
+          <>
+            <header className={styles.pageHeader}>
+              <div>
+                <p className={styles.eyebrow}>{TEXT.eyebrow}</p>
+                <h1>{record.display_name}</h1>
+                <p className={styles.mono}>{record.environment_id}</p>
+              </div>
+              <StatusBadge encoding={configEncoding(record.status)} />
+            </header>
+            {message && <Banner tone={message.tone}>{message.text}</Banner>}
+            <div className={styles.twoColumn}>
+              <Panel
+                heading={TEXT.inventoryHeading}
+                headingLevel={2}
+                eyebrow={TEXT.inventoryEyebrow}
+                aside={<span className={styles.panelCount}>{devices.data?.length ?? 0}</span>}
+              >
+                <DataBoundary
+                  query={devices}
+                  subject={{
+                    name: TEXT.deviceCollection,
+                    dependency: TEXT.deviceDependency,
+                    stillWorks: TEXT.deviceStillWorks,
+                    doesNotWork: TEXT.deviceDoesNotWork,
+                    staleReason: TEXT.deviceStaleReason,
+                  }}
+                  onRetry={() => { void devices.refetch(); }}
+                  emptyAction={
+                    enrollDevice.allowed
+                      ? <Button variant="secondary" onClick={() => deviceNameField.current?.focus()}>{TEXT.enrollFirst}</Button>
+                      : undefined
+                  }
+                >
+                  {(list) => (
+                    <ul className={styles.deviceList}>
+                      {list.map((device) => (
+                        <li key={device.device_id}>
+                          <Link to={`/environments/${environmentId}/devices/${device.device_id}`}>
+                            <span><strong>{device.display_name}</strong><small>{device.device_id}</small></span>
+                            <StatusBadge encoding={deviceEncoding(device.state)} />
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </DataBoundary>
+              </Panel>
+              <Panel heading={TEXT.enrollHeading} headingLevel={2} eyebrow={TEXT.enrollEyebrow}>
+                <p>{TEXT.enrollIntro}</p>
+                <form className={styles.form} onSubmit={(event) => { void submitEnrollment(event); }}>
+                  <TextField
+                    name="device_name"
+                    label={TEXT.deviceName}
+                    required
+                    maxLength={128}
+                    inputRef={deviceNameField}
+                    {...(enrollReason === undefined ? {} : { disabledReason: enrollReason })}
+                  />
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    pending={creatingSecret}
+                    {...(enrollReason === undefined ? {} : { disabledReason: enrollReason })}
+                  >
+                    {TEXT.createSecret}
+                  </Button>
+                </form>
+              </Panel>
+            </div>
+            {/*
+              Health is a separate read with separate truth. Inventory presence
+              above says nothing about it, and a missing projection renders as
+              `unknown` — never as an empty or a healthy panel.
+            */}
+            <DataBoundary
+              query={health}
+              observationShaped
+              // OPS-03: a health projection older than the freshness policy is
+              // shown as stale even though the read succeeded. An old
+              // observation is not the current state of a network.
+              observedAt={health.data?.received_at ?? null}
+              subject={{
+                name: HEALTH_TEXT.environmentSubject,
+                observationSource: HEALTH_TEXT.observationSource,
+                dependency: HEALTH_TEXT.dependency,
+                stillWorks: HEALTH_TEXT.stillWorks,
+                doesNotWork: HEALTH_TEXT.doesNotWork,
+                staleReason: HEALTH_TEXT.staleReason,
+              }}
+              onRetry={() => { void health.refetch(); }}
+            >
+              {(view) => <HealthPanel health={view} />}
+            </DataBoundary>
+            <div className={styles.twoColumn}>
+              <Panel
+                heading={TEXT.zonesHeading}
+                headingLevel={2}
+                aside={<span className={styles.panelCount}>{zones.data?.length ?? 0}</span>}
+              >
+                <DataBoundary
+                  query={zones}
+                  subject={{
+                    name: TEXT.zoneCollection,
+                    dependency: TEXT.zoneDependency,
+                    stillWorks: TEXT.zoneStillWorks,
+                    doesNotWork: TEXT.zoneDoesNotWork,
+                    staleReason: TEXT.zoneStaleReason,
+                  }}
+                  onRetry={() => { void zones.refetch(); }}
+                  emptyAction={
+                    defineZone.allowed
+                      ? <Button variant="secondary" onClick={() => zoneNameField.current?.focus()}>{TEXT.nameFirstZone}</Button>
+                      : undefined
+                  }
+                >
+                  {(list) => (
+                    <ul className={styles.zoneList}>
+                      {list.map((zone) => (
+                        <li key={zone.zone_id}>
+                          <span><strong>{zone.display_name}</strong><small>{TEXT.updated(formatTime(zone.updated_at))}</small></span>
+                          <code>{zone.cidr}</code>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </DataBoundary>
+                <form className={styles.inlineForm} onSubmit={(event) => { void submitZone(event); }}>
+                  <TextField
+                    name="display_name"
+                    label={TEXT.zoneName}
+                    required
+                    maxLength={128}
+                    inputRef={zoneNameField}
+                    {...(zoneReason === undefined ? {} : { disabledReason: zoneReason })}
+                  />
+                  <TextField
+                    name="cidr"
+                    label={TEXT.zoneCidr}
+                    placeholder="10.20.0.0/24"
+                    required
+                    maxLength={18}
+                    {...(zoneReason === undefined ? {} : { disabledReason: zoneReason })}
+                  />
+                  <Button
+                    variant="secondary"
+                    type="submit"
+                    pending={createZone.isPending}
+                    {...(zoneReason === undefined ? {} : { disabledReason: zoneReason })}
+                  >
+                    {TEXT.addZone}
+                  </Button>
+                </form>
+              </Panel>
+              <Panel heading={TEXT.settingsHeading} headingLevel={2} eyebrow={TEXT.settingsEyebrow}>
+                <form className={styles.form} onSubmit={(event) => { void submitRename(event); }}>
+                  <TextField
+                    name="display_name"
+                    label={TEXT.displayNameLabel}
+                    defaultValue={record.display_name}
+                    required
+                    maxLength={128}
+                    {...(renameReason === undefined ? {} : { disabledReason: renameReason })}
+                  />
+                  <Button
+                    variant="secondary"
+                    type="submit"
+                    pending={rename.isPending}
+                    {...(renameReason === undefined ? {} : { disabledReason: renameReason })}
+                  >
+                    {TEXT.saveName}
+                  </Button>
+                </form>
+              </Panel>
+            </div>
+          </>
+        )}
+      </DataBoundary>
       <SecretDialog secret={secret} onDismiss={() => setSecret(null)} />
     </div>
   );

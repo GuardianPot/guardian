@@ -77,17 +77,78 @@
 .statusGlyph { width: var(--size-dot); height: var(--size-dot); flex: none; fill: currentcolor; }
 
 .form { display: grid; gap: var(--space-5); margin-top: var(--space-7); }
-.form label, .inlineForm label { display: grid; gap: var(--space-2); color: var(--text-secondary); font-size: var(--font-size-4); font-weight: var(--weight-bold); }
-.form input, .inlineForm input { min-width: 0; width: 100%; padding: var(--space-4) var(--space-5); color: var(--text-primary); border: 1px solid var(--line-strong); border-radius: var(--radius-field); background: var(--surface-inset); }
-.form input:disabled, .inlineForm input:disabled { opacity: var(--action-disabled-opacity); cursor: not-allowed; }
-.primaryButton, .secondaryButton { min-height: var(--size-control); padding: var(--space-4) var(--space-6); border-radius: var(--radius-control); font-weight: var(--weight-heavy); transition: opacity var(--motion-fast) var(--motion-easing); }
+.form label, .inlineForm label, .field label { display: grid; gap: var(--space-2); color: var(--text-secondary); font-size: var(--font-size-4); font-weight: var(--weight-bold); }
+.form input, .inlineForm input, .field input { min-width: 0; width: 100%; padding: var(--space-4) var(--space-5); color: var(--text-primary); border: 1px solid var(--line-strong); border-radius: var(--radius-field); background: var(--surface-inset); }
+.form input:disabled, .inlineForm input:disabled, .field input:disabled { opacity: var(--action-disabled-opacity); cursor: not-allowed; }
+.primaryButton, .secondaryButton, .destructiveButton, .quietButton { min-height: var(--size-control); padding: var(--space-4) var(--space-6); border-radius: var(--radius-control); font-weight: var(--weight-heavy); transition: opacity var(--motion-fast) var(--motion-easing); }
 .primaryButton { color: var(--action-primary-contrast); border: 1px solid var(--action-primary); background: var(--action-primary); }
 .secondaryButton { color: var(--action-secondary-contrast); border: 1px solid var(--action-secondary-line); background: var(--action-secondary); }
-.primaryButton:disabled, .secondaryButton:disabled { opacity: var(--action-disabled-opacity); cursor: not-allowed; }
+.destructiveButton { color: var(--action-destructive-contrast); border: 1px solid var(--action-destructive-line); background: var(--action-destructive); }
+.quietButton { color: var(--text-secondary); border: 1px solid transparent; background: transparent; }
+.primaryButton:disabled, .secondaryButton:disabled, .destructiveButton:disabled, .quietButton:disabled { opacity: var(--action-disabled-opacity); cursor: not-allowed; }
 .formError { margin: 0; color: var(--health-false); font-size: var(--font-size-4); }
 .state, .empty { padding: var(--space-6) 0; color: var(--text-muted); }
 .error { color: var(--health-false); }
 .empty { border-block: 1px dashed var(--line-subtle); }
+
+/*
+ * Shared component layer (WCX-04). Everything below is used only by
+ * `src/shared/ui/**`; a screen composes those components and never reaches a
+ * class here directly.
+ */
+.control { display: grid; gap: var(--space-2); justify-items: start; }
+.buttonPending { margin-left: var(--space-3); font-weight: var(--weight-regular); opacity: var(--action-disabled-opacity); }
+.disabledReason { color: var(--text-muted); font-size: var(--font-size-2); font-weight: var(--weight-regular); max-width: 34rem; }
+.field { display: grid; gap: var(--space-2); }
+.fieldDescription { color: var(--text-muted); font-size: var(--font-size-2); }
+.inlineSuccess { margin: 0; color: var(--text-secondary); font-size: var(--font-size-4); }
+
+/*
+ * Data states (WCX-04 section 9.1). One treatment for all eight: the state is
+ * carried by its words and its role, never by colour alone. Only the blocking
+ * variant takes a tone, and it takes the health-false tone rather than a new
+ * one, because a blocking state is the same "needs attention" the health
+ * palette already means.
+ */
+.stateWrapper { display: grid; gap: var(--space-6); }
+.stateBlock { display: grid; gap: var(--space-3); justify-items: start; padding: var(--space-6); border: 1px solid var(--line-subtle); border-radius: var(--radius-3); background: var(--surface-sunken); }
+/*
+ * A blocking state keeps the opaque sunken surface and marks itself with the
+ * health-false line and heading. A translucent tint would composite over
+ * whichever surface the state happened to land on, and the contrast table
+ * cannot measure a background that varies by call site — the mistake WCX-03
+ * shipped as a real axe failure.
+ */
+.stateBlocking { border-color: var(--health-false); }
+.stateHeading { margin: 0; font-weight: var(--weight-heavy); }
+.stateBlocking .stateHeading { color: var(--health-false); }
+.stateDetail { margin: 0; color: var(--text-muted); font-size: var(--font-size-4); line-height: var(--line-height-normal); max-width: 60ch; }
+.stateList { margin: 0; padding-left: var(--space-7); color: var(--text-secondary); font-size: var(--font-size-4); }
+.skeleton { display: grid; gap: var(--space-3); width: 100%; }
+.skeletonLine { height: var(--space-5); border-radius: var(--radius-1); background: var(--surface-chip); }
+.skeletonLine:last-child { width: 60%; }
+
+/* Feedback surfaces (WCX-04 section 9.4). */
+.banner, .bannerBlocking { padding: var(--space-5) var(--space-6); border-radius: var(--radius-3); font-size: var(--font-size-5); }
+.banner { color: var(--notice-accent); border-left: 3px solid var(--notice-accent); background: var(--notice-surface); }
+.bannerBlocking { color: var(--health-false); border-left: 3px solid var(--health-false); background: var(--surface-sunken); }
+/*
+ * The region never takes pointer events, so a floating confirmation can never
+ * intercept a click on the content it covers. Only the dismiss control does.
+ */
+.toastRegion { position: fixed; right: var(--space-9); bottom: var(--space-9); z-index: 60; display: grid; gap: var(--space-4); width: min(24rem, calc(100% - 2rem)); pointer-events: none; }
+.toast { display: flex; align-items: center; justify-content: space-between; gap: var(--space-6); padding: var(--space-5) var(--space-6); color: var(--text-primary); border: 1px solid var(--line-subtle); border-radius: var(--radius-3); background: var(--surface-raised); box-shadow: var(--elevation-1); }
+.toastDismiss { padding: 0; color: var(--brand-accent); border: 0; background: transparent; font-size: var(--font-size-4); font-weight: var(--weight-heavy); pointer-events: auto; }
+.pendingOnObject { display: flex; align-items: center; gap: var(--space-4); margin: var(--space-3) 0 0; color: var(--text-muted); font-size: var(--font-size-2); }
+.pendingLabel { padding: var(--space-2) var(--space-4); color: var(--text-secondary); border: 1px dashed var(--line-strong); border-radius: var(--radius-pill); font-weight: var(--weight-heavy); }
+
+/* Confidence (WCX-04 section 9.5). Neutral steps; never a severity colour. */
+.confidence { display: flex; align-items: center; gap: var(--space-4); margin: 0; color: var(--text-secondary); font-size: var(--font-size-3); }
+.confidenceLabel { color: var(--text-muted); }
+.confidenceSteps { display: flex; gap: var(--space-2); }
+.confidenceStep, .confidenceStepFilled { width: var(--space-6); height: var(--space-3); border-radius: var(--radius-1); }
+.confidenceStep { background: var(--confidence-step-empty); }
+.confidenceStepFilled { background: var(--confidence-step); }
 .notice { margin: calc(var(--space-6) * -1) 0 var(--space-6); padding: var(--space-4) var(--space-6); color: var(--notice-accent); border-left: 3px solid var(--notice-accent); background: var(--notice-surface); }
 .backLink { display: inline-block; margin-bottom: var(--space-7); color: var(--text-muted); text-decoration: none; transition: color var(--motion-fast) var(--motion-easing); }
 .backLink:hover { color: var(--brand-accent); }
@@ -103,9 +164,9 @@
 .blocking { padding: var(--space-4) var(--space-5); color: var(--health-false); border: 1px solid var(--line-subtle); border-radius: var(--radius-control); background: var(--health-false-surface); overflow-wrap: anywhere; }
 .timestamp { margin: var(--space-6) 0 0; }
 .factGrid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-5); margin-bottom: var(--space-6); }
-.factGrid div { display: grid; gap: var(--space-2); padding: var(--space-6); border: 1px solid var(--line-subtle); border-radius: var(--radius-3); background: var(--surface-sunken); }
-.factGrid span { color: var(--text-muted); font-size: var(--font-size-2); }
-.factGrid strong { overflow-wrap: anywhere; }
+.factGrid dl { display: grid; gap: var(--space-2); margin: 0; padding: var(--space-6); border: 1px solid var(--line-subtle); border-radius: var(--radius-3); background: var(--surface-sunken); }
+.factGrid dt { color: var(--text-muted); font-size: var(--font-size-2); }
+.factGrid dd { margin: 0; font-weight: var(--weight-bold); overflow-wrap: anywhere; }
 .loginPage { min-height: 100vh; display: grid; grid-template-columns: minmax(0,1.25fr) minmax(22rem,.75fr); align-items: center; gap: clamp(3rem,8vw,9rem); width: min(80rem, calc(100% - 3rem)); margin: 0 auto; padding: 4rem 0; }
 .loginIntro h1 { max-width: 14ch; }
 .loginIntro > p:last-child { max-width: 38rem; color: var(--text-muted); font-size: var(--font-size-6); line-height: var(--line-height-loose); }
@@ -123,7 +184,7 @@
 .secretBox > span { color: var(--secret-label); font-size: var(--font-size-2); font-weight: var(--weight-heavy); text-transform: uppercase; }
 .secretBox code { padding: var(--space-4); overflow-wrap: anywhere; color: var(--text-primary); background: var(--surface-inset); border-radius: var(--radius-1); }
 .secretBox small { color: var(--text-muted); }
-.dialogActions { display: flex; justify-content: flex-end; }
+.dialogActions { display: flex; justify-content: flex-end; gap: var(--space-4); }
 
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }

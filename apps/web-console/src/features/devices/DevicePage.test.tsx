@@ -46,11 +46,16 @@ describe('DevicePage', () => {
   it('never treats an active inventory record as a healthy signal', async () => {
     renderDevice({ [`GET /v1/devices/${deviceID}/health`]: () => json({ error: 'not_found' }, 404) });
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'No current device health projection exists. Inventory presence is not a healthy signal.',
-    );
+    // `WCX-04` section 9.6: the bespoke message is now the canonical `unknown`
+    // state, with the same meaning. A missing projection is an absent
+    // observation, so it announces as `status` rather than as a failure — but
+    // it still says, in those words, that this is not a healthy signal.
+    expect(await screen.findByText(/Guardian holds no observation of the health of this device/)).toBeVisible();
+    expect(screen.getByText(/not a healthy signal/)).toBeVisible();
+    expect(screen.getByText(/an enrolled Edge reports its eight health conditions/)).toBeVisible();
     expect(screen.getByText('Inventory: active')).toBeVisible();
     expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Eight-condition health' })).not.toBeInTheDocument();
   });
 
   it('keeps a revoked device visible without implying it is reachable', async () => {
@@ -67,14 +72,42 @@ describe('DevicePage', () => {
     expect(screen.getByText(/Blocking: Device certificate/)).toBeVisible();
   });
 
-  it('presents a denied device record as unavailable', async () => {
+  it('marks a health projection older than the freshness policy as stale (OPS-03)', async () => {
+    // The fixture's projection is dated well in the past, so a successful read
+    // still is not current data. The conditions stay visible — the operator
+    // needs them — with the age and the reason stated above them.
+    renderDevice();
+
+    expect(await screen.findByText('Showing the last data Guardian received')).toBeVisible();
+    expect(screen.getByText(/Observed .* ago\./)).toBeVisible();
+    expect(screen.getByText(/the last health refresh did not return/)).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Eight-condition health' })).toBeVisible();
+    expect(screen.getByRole('list', { name: 'Device health conditions' }).querySelectorAll('li')).toHaveLength(8);
+  });
+
+  it('shows a current projection without a staleness claim', async () => {
+    renderDevice({
+      [`GET /v1/devices/${deviceID}/health`]: () => json({
+        ...healthView(),
+        received_at: new Date().toISOString(),
+      }),
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Eight-condition health' })).toBeVisible();
+    expect(screen.queryByText('Showing the last data Guardian received')).not.toBeInTheDocument();
+  });
+
+  it('presents a denied device record as refused, not as an absent one', async () => {
     renderDevice({
       [`GET /v1/environments/${environmentID}/devices/${deviceID}`]: () => json({ error: 'forbidden' }, 403),
     });
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The device record is unavailable or outside this environment.',
-    );
+    // Section 8.3. The Phase 1 wording ran "unavailable or access was denied"
+    // together; the two are now distinct states and this one is the refusal.
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Access was refused');
+    expect(alert).toHaveTextContent(/reports nothing about what is or is not here/);
     expect(screen.queryByRole('heading', { name: 'Eight-condition health' })).not.toBeInTheDocument();
+    expect(screen.queryByText('edge-one')).not.toBeInTheDocument();
   });
 });

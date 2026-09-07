@@ -339,6 +339,200 @@ is eleven new class rules in `app.module.css` for the severity tones and the
 status glyph. The 32 KiB budget holds with 13.5 KiB of headroom, and the cost
 buys the light theme in `WCX-15` as a reassignment rather than a rewrite.
 
+## Shared components and data states
+
+Every screen composes from `@shared/ui`. The layer exists because `P1-W11`
+wrote its truth semantics inline in two routes and they had already started to
+drift: a 404 on health was rendered as unavailable in one place and as a
+bespoke sentence in another.
+
+Three rules hold across the whole layer:
+
+- **No component takes a `className`.** `WCX-04` section 9.5 permits one
+  documented layout slot; this layer offers none. A screen positions a
+  component with its own container element, so it can never restyle a status
+  indicator into something that reads differently from what the backend said.
+  `controls.test.tsx` asserts no module declares a `className` prop.
+- **No component writes to browser storage.** `storage.test.tsx` renders every
+  component, interacts with the ones that respond to interaction, and asserts
+  that `localStorage`, `sessionStorage`, and IndexedDB are both empty *and*
+  never written to — a value written and deleted would pass an emptiness check
+  alone.
+- **No component renders HTML from data.** `dangerouslySetInnerHTML` is absent
+  and asserted absent. `WCX-06` adds the full untrusted-text contract; this is
+  the floor it builds on.
+
+### The eight data states
+
+Each is a component under `@shared/ui/state/`. The rule that governs all of
+them: **no state may read as healthy, complete, or successful.** The word
+"healthy" appears in exactly one string in the layer, inside the sentence that
+denies it, and `states.test.tsx` asserts that negatively for all eight.
+
+| State | Meaning | What it must say |
+|---|---|---|
+| `loading` | first load in flight | the activity, announced as `status` |
+| `empty` | the backend confirmed zero items | what the collection is, and the action that creates the first item when the operator holds the capability |
+| `unknown` | no observation exists | that this is neither a healthy nor a failing signal, plus what would produce an observation |
+| `stale` | last good data, refresh not current | the data, its observation age, and why the refresh is not current |
+| `partial` | some sources answered, some did not | the data that arrived, a list of what did not, and a retry |
+| `degraded` | an upstream dependency is impaired | which dependency, what still answers, what does not |
+| `denied` | authorization refused | that access was refused — and nothing about what exists |
+| `error` | unexpected failure | a fixed message, a retry when retryable, no diagnostic detail |
+
+Three distinctions carry the security weight, and each has its own test:
+
+- `denied` is not `empty`. A refusal rendered as an empty list tells an
+  operator that no devices exist when access was in fact refused.
+- `unknown` is neither `empty` nor `False`. Absence of a health projection is
+  not a negative observation and not a positive one.
+- `denied` names nothing. It renders no count, no identifier, and no
+  collection name, because the refusal withheld exactly that.
+
+### The mapping
+
+`resolveDataState` is pure and exhaustive over `ConsoleErrorKind`, so adding a
+kind to the taxonomy fails typecheck rather than falling through to `error`.
+`DataBoundary` renders whichever state it returns; the screen supplies only the
+words.
+
+| Condition | State |
+|---|---|
+| `isPending` and no cached data | `loading` |
+| success, collection is empty | `empty` |
+| success, projection absent where the domain defines absence | `unknown` |
+| `forbidden`, `unauthenticated`, or `reauthentication-required` | `denied` |
+| `not-found` on an observation-shaped resource | `unknown` |
+| `unavailable` or `timeout`, with cached data | `stale` |
+| `unavailable` or `timeout`, without cached data | `degraded` |
+| `network`, with cached data | `stale` |
+| `network`, without cached data | `error` |
+| any other error | `error` |
+| success, but observed longer ago than the freshness policy allows | `stale` |
+
+Two deliberate readings of that table:
+
+- `reauthentication-required` is a third authorization refusal, so it joins
+  `denied` rather than the catch-all. Falling through to `error` would render
+  a refusal as an unexplained failure. A read carries no CSRF proof, so the
+  transport classifies a read's 401 as `unauthenticated` and this kind is
+  currently unreachable from a read.
+- Freshness is checked **before** the success-shaped states. `empty` asserts
+  that the backend confirmed zero items; a read past its freshness policy
+  confirmed nothing about now, so an empty collection past its policy is
+  `stale`, not a confirmed zero.
+
+The threshold is `FRESHNESS_LIMIT_MS` in `@shared/ui/state/freshness.ts`, one
+constant beside the rule that reads it. `WCX-07` replaces it with the real
+per-read policy.
+
+Which reads it applies to is deliberately opt-in, by passing `observedAt` to
+`DataBoundary`. Today that is the environment and device health projections,
+which carry a real observation time in `received_at` — `OPS-03` is about
+exactly those. A list read has no observation time of its own, so it is not
+subject to the interim threshold; deciding that it should be, and at what age,
+is `WCX-07`'s policy call rather than a number guessed at a call site. The
+stale state still shows an age for those reads, taken from when the query
+cache last accepted the data.
+
+### Error boundaries
+
+`P1-W11` GAP-2: no boundary existed, so any unexpected exception blanked the
+console. A blank page in a security product is indistinguishable from "nothing
+is wrong".
+
+- The **root** boundary wraps the router in `main.tsx`. Its fallback names the
+  product, states a fixed failure, and offers a reload. It renders inside
+  `#root`, so the document language and the theme stylesheet stay mounted.
+- The **route** boundary wraps the shell's `<Outlet>`, so a failing screen
+  leaves navigation and sign-out mounted. It resets when the location changes,
+  so moving away from a broken screen recovers without a reload. `/login` sits
+  outside the shell and carries its own.
+
+Neither fallback renders anything derived from the caught error: no message, no
+stack, no component stack, no request or response content. The error goes to
+`recordRenderError`, a module-level variable that dies with the tab and exists
+so `WCX-15` can build the user-triggered diagnostic report on an interface that
+already exists. Nothing is transmitted, logged, or stored.
+
+### Confirmation levels
+
+The action-to-level mapping is a table in `@shared/ui/confirm/levels.ts`, not a
+per-call-site judgement. `WCX-09` and `WCX-11` extend it; neither invents a
+level.
+
+| Level | Applies to | Interaction |
+|---|---|---|
+| 1 reversible | enable, disable, disposition changes | no confirmation; result feedback, undo where the backend supports it |
+| 2 destructive-recoverable | zone delete, enrollment-token revoke | modal; the confirm button names the effect, never `OK`; the object is named |
+| 3 irreversible-security | device revoke, session revoke, password change | modal; the operator types the exact object name to enable confirm; step-up reauthentication |
+
+Focus lands on cancel, never on the destructive control. Radix would otherwise
+focus whichever control comes first in the DOM.
+
+Step-up reauthentication is an **interface only** here. The single
+implementation is `stepUpUnavailable`, which refuses, so a level 3 confirmation
+cannot complete. That is the intended state: no screen exposes a level 3 action
+in this package, and `WCX-09` supplies the implementation against approved
+change proposal `0003`.
+
+Focus return is handled in `@shared/ui/controls/Dialog.tsx` rather than by
+Radix. Radix returns focus to its own `Dialog.Trigger`, and every dialog in
+this console opens from state — a one-time secret appears when a mutation
+resolves, not when a button is pressed — so there is no trigger to return to.
+The invoking control is captured in `onOpenAutoFocus`, while focus is still on
+it.
+
+### Feedback surfaces
+
+| Surface | Use | Lifetime | Role |
+|---|---|---|---|
+| inline | field and form-scoped validation and results | until the form changes | `alert` for errors, none for success |
+| banner | page or scope-level persistent condition | until the condition clears | `status` informational, `alert` blocking |
+| toast | short confirmation of a completed action | dismissible, at least 6 s, pauses on hover and focus | `status` |
+
+**An error can never be toast-only.** That is enforced structurally rather than
+by convention: `Toast` has no error tone and no way to add one. `show` takes
+text and nothing else, a `ToastMessage` carries no severity, and the module
+contains no `alert` role. Errors go to `InlineMessage` or `Banner`, both of
+which persist.
+
+The toast region is `pointer-events: none`, and only the dismiss control takes
+pointer events, so a floating confirmation can never intercept a click on the
+content it covers — including in the browser suite.
+
+Long-running work uses `PendingOnObject`: the treatment goes on the object's
+own row or panel with its age and reason. No blocking progress modal is
+permitted, and the component offers no way to build one.
+
+### Radix consolidation
+
+`@radix-ui/react-dialog` and `@radix-ui/react-label` are replaced by the single
+`radix-ui` package (`WC-D09`). `WCX-04` expected the dependency graph to
+shrink. **It grew**, and the honest number is worth recording: the meta-package
+vendors every primitive, so the lockfile went from 17 `@radix-ui` entries and
+330 packages to 61 and 378. What that buys is one version to bump instead of
+one per primitive, and later packages adding a popover or a tooltip add no new
+dependency. The shipped bundle is tree-shaken and only pays for what is
+imported.
+
+### Budgets after this package
+
+| Measure | Before | After | Change | Budget |
+|---|---:|---:|---:|---:|
+| JavaScript | 384 692 | 401 894 | +17 202 (+4.5%) | 460 800 |
+| CSS | 19 500 | 23 567 | +4 067 (+20.9%) | 32 768 |
+
+Both hold: 57.5 KiB of JavaScript headroom and 9.0 KiB of CSS headroom.
+
+The CSS figure needs an owner's eye. `WC-D30` sets twenty percent as the point
+at which a regression requires owner review, and CSS crossed it at 20.9%. The
+growth is the shared layer's own rules — the state block, the two banner
+tones, the toast region, the confidence meter, the description list, and the
+two new button variants — not a change to anything that already existed.
+`WCX-04` section 9.11 sets the binding constraint as the absolute 32 KiB cap,
+which holds, so this is recorded rather than escalated.
+
 ## Continuous integration
 
 Two workflows, one job each, no conditions.

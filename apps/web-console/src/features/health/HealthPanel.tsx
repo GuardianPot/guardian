@@ -1,59 +1,54 @@
-import type { HealthStatus, HealthView } from '@shared/api/types';
+import type { HealthView } from '@shared/api/types';
 import { healthEncoding } from '@shared/theme/statusEncoding';
+import { Panel, StatusBadge } from '@shared/ui';
 import styles from '@shared/styles/app.module.css';
+import { HEALTH_TEXT } from './text';
 
-const labels: Record<string, string> = {
-  edge_connected: 'Edge connection',
-  device_certificate_ready: 'Device certificate',
-  config_converged: 'Configuration convergence',
-  local_database_healthy: 'Local database',
-  spool_healthy: 'Event spool',
-  clock_quality: 'Clock quality',
-  container_runtime_reachable: 'Container runtime',
-  privileged_helper_reachable: 'Privileged helper',
-};
-
-function statusLabel(status: HealthStatus) {
-  if (status === 'True') return 'Healthy';
-  if (status === 'False') return 'Action required';
-  return 'Unknown';
-}
-
+/**
+ * The backend health projection, rendered as text (P1-W11, WCX-04 section 9.6).
+ *
+ * Every condition keeps its own status word, so `False` and `Unknown` never
+ * collapse into one another and neither reads as healthy. The status words come
+ * from the `WCX-03` encoding table rather than from a local map, so a value the
+ * backend adds later resolves to the unknown treatment instead of falling
+ * through to a healthy-looking blank.
+ *
+ * The condition list deliberately carries no glyph: the aggregate badge above
+ * it does, and the browser suite asserts that nothing inside this list is an
+ * embedded element, because hostile condition text travels through it.
+ */
 export function HealthPanel({ health }: { health: HealthView }) {
   const aggregate = health.aggregate.status;
   return (
-    <section className={styles.panel} aria-labelledby="health-heading">
-      <div className={styles.panelHeading}>
-        <div>
-          <p className={styles.eyebrow}>Backend health projection</p>
-          <h2 id="health-heading">Eight-condition health</h2>
-        </div>
-        <span className={`${styles.statusBadge} ${styles[healthEncoding(aggregate).tone] ?? ''}`}>
-          {statusLabel(aggregate)}
-        </span>
-      </div>
+    <Panel
+      heading={HEALTH_TEXT.heading}
+      headingLevel={2}
+      eyebrow={HEALTH_TEXT.eyebrow}
+      aside={<StatusBadge encoding={healthEncoding(aggregate)} />}
+    >
       {health.aggregate.blocking_type && (
         <p className={styles.blocking}>
-          Blocking: {labels[health.aggregate.blocking_type] ?? health.aggregate.blocking_type}
+          {HEALTH_TEXT.blocking}
+          {HEALTH_TEXT.conditions[health.aggregate.blocking_type] ?? health.aggregate.blocking_type}
           {health.aggregate.reason ? ` — ${health.aggregate.reason}` : ''}
           {health.aggregate.blocking_device_id ? ` · source ${health.aggregate.blocking_device_id}` : ''}
         </p>
       )}
-      <ul className={styles.conditionGrid} aria-label="Device health conditions">
+      <ul className={styles.conditionGrid} aria-label={HEALTH_TEXT.conditionsLabel}>
         {health.conditions.map((condition) => (
           <li key={condition.type} className={styles.condition}>
             <span className={`${styles.conditionDot} ${styles[healthEncoding(condition.status).tone] ?? ''}`} aria-hidden="true" />
             <div>
-              <strong>{labels[condition.type] ?? condition.type}</strong>
-              <span>{statusLabel(condition.status)} · {condition.reason}</span>
+              <strong>{HEALTH_TEXT.conditions[condition.type] ?? condition.type}</strong>
+              <span>{healthEncoding(condition.status).label} · {condition.reason}</span>
               {condition.message && <p>{condition.message}</p>}
               {condition.source_device_id && <small>Source device: {condition.source_device_id}</small>}
             </div>
           </li>
         ))}
       </ul>
-      <p className={styles.timestamp}>Control Plane received this projection {formatTime(health.received_at)}.</p>
-    </section>
+      <p className={styles.timestamp}>{HEALTH_TEXT.receivedAt(formatTime(health.received_at))}</p>
+    </Panel>
   );
 }
 

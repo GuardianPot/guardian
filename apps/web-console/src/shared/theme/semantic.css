@@ -85,6 +85,14 @@
   --action-secondary: var(--color-neutral-300);
   --action-secondary-contrast: var(--color-neutral-1000);
   --action-secondary-line: var(--color-neutral-600);
+  /*
+   * Destructive. Borrows the health-false hue on purpose: "this needs your
+   * attention" is one meaning, and inventing a fourth red would put a colour
+   * outside the three disjoint groups WC-D11 allows.
+   */
+  --action-destructive: color-mix(in srgb, var(--color-red-400) 12%, transparent);
+  --action-destructive-contrast: var(--color-red-400);
+  --action-destructive-line: var(--color-red-400);
   --action-disabled-opacity: 0.48;
   --focus-ring: var(--color-azure-300);
 
