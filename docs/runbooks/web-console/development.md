@@ -612,13 +612,33 @@ walk it once by keyboard alone and confirm:
 
 | Exception | Reason | Owner | Review |
 |---|---|---|---|
-| The operator block, which holds sign-out and re-authenticate, is `display: none` below 900 pixels. A keyboard operator on a narrow viewport cannot reach sign-out. | `P1-W11` GAP-1. Fixing it restores a block to the layout, and visual change is a non-goal of `WCX-05`. | `WCX-10` | When `WCX-10` lands |
 | The sign-in failure message does not name which credential was wrong. | Deliberate. Naming the failing field would tell an attacker whether a username exists. The message still names the correction, which is what section 9.6.5 asks for. | Product | Standing |
 
-`keyboard.test.tsx` pins the first entry: it parses the stylesheet, finds every
-region a breakpoint hides, and fails if one is not accounted for. When `WCX-10`
-removes the rule the test fails and forces this table to be updated rather than
-left behind.
+`keyboard.test.tsx` keeps the register honest: it parses the stylesheet, finds
+every region a breakpoint hides, and fails on anything not on an exhaustive
+allowed list. Adding a new entry to that list is a deliberate act that has to
+be justified here.
+
+### GAP-1, closed
+
+`P1-W11` GAP-1 — the operator block, holding sign-out and the re-authentication
+link, was `display: none` below 900 pixels — was briefly recorded here as an
+exception owned by `WCX-10`. It is now fixed: the block becomes a wrapping row
+in the horizontal bar instead of disappearing from it.
+
+It was pulled forward because it blocked two packages rather than one.
+`WCX-05` cannot claim its own acceptance criterion 5 with it open, and
+`WCX-06`'s browser keyboard traversal reaches sign-out at a narrow viewport,
+so both would have had to record the same defect and move on.
+
+**What `WCX-10` still owns.** Its section 9.3 specifies a disclosure control
+that navigation and the operator block collapse into below the breakpoint, with
+`aria-expanded`, `aria-controls`, escape-to-close, and focus return. None of
+that is delivered here. What is delivered is the invariant that section calls
+its single most important requirement — *no operator control is removed at any
+viewport width* — which is the defect, as distinct from the design that
+replaces it. `WCX-10` restyles the same markup; it no longer has to un-break
+it first.
 
 ### Cost
 

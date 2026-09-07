@@ -129,14 +129,14 @@ describe('keyboard operability', () => {
  * The narrow-viewport half of section 9.5.1.
  *
  * jsdom resolves no media queries, so a rendered tab order cannot see what a
- * breakpoint hides. The stylesheet can. This asserts that exactly one region
- * carrying an interactive control is removed at a breakpoint, and that it is
- * the one recorded in the runbook's exceptions register.
+ * breakpoint hides. The stylesheet can.
  *
- * `WCX-05` may not fix it: a fix restores a block to the layout, and visual
- * change is a non-goal of this package. `WCX-10` owns it as `P1-W11` GAP-1.
- * When `WCX-10` lands, this test fails and forces the register to be updated
- * rather than left behind.
+ * This used to record `P1-W11` GAP-1 as an accepted exception: the operator
+ * block, which holds sign-out and the re-authentication link, was
+ * `display: none` below 900 pixels, so an operator on a narrow screen could
+ * not end their session. That is now fixed and the exception is gone. The
+ * test stays, inverted: a breakpoint may only hide things that carry no
+ * operator control, and the allowed list is exhaustive.
  */
 const HIDDEN_AT_A_BREAKPOINT_BY_DESIGN = [
   // Decorative marketing column. Carries no control and, since WCX-05 moved
@@ -146,14 +146,8 @@ const HIDDEN_AT_A_BREAKPOINT_BY_DESIGN = [
   'brand small',
 ];
 
-const RECORDED_EXCEPTIONS = [
-  // GAP-1: the operator block holds sign-out and re-authenticate. Owned by
-  // WCX-10; see the exceptions register in the development runbook.
-  'operator',
-];
-
 describe('narrow viewport', () => {
-  it('hides only what the exceptions register accounts for', () => {
+  it('removes no operator control at any breakpoint', () => {
     const css = readFileSync('src/shared/styles/app.module.css', 'utf8');
     const hidden: string[] = [];
     for (const block of css.matchAll(/@media[^{]+\{([\s\S]*?)\n\}/g)) {
@@ -166,14 +160,14 @@ describe('narrow viewport', () => {
     }
 
     expect(hidden.length).toBeGreaterThan(0);
-    const unaccounted = hidden.filter(
-      (selector) => !HIDDEN_AT_A_BREAKPOINT_BY_DESIGN.includes(selector) && !RECORDED_EXCEPTIONS.includes(selector),
-    );
-    expect(unaccounted, 'a breakpoint hides something the exceptions register does not name').toEqual([]);
+    const unaccounted = hidden.filter((selector) => !HIDDEN_AT_A_BREAKPOINT_BY_DESIGN.includes(selector));
+    expect(
+      unaccounted,
+      'a breakpoint hides a region that is not on the exhaustive allowed list; if it carries an operator control that is GAP-1 returning',
+    ).toEqual([]);
 
-    // The register is not a blanket permission: it names exactly one entry,
-    // and that entry must still be the defect WCX-10 owns.
-    expect(RECORDED_EXCEPTIONS).toEqual(['operator']);
-    expect(hidden).toContain('operator');
+    // Named explicitly so re-adding the rule fails here rather than silently
+    // widening the allowed list.
+    expect(hidden).not.toContain('operator');
   });
 });

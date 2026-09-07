@@ -24,7 +24,8 @@
 .navLink:hover { color: var(--text-primary); }
 .navActive { color: var(--text-primary); background: var(--surface-raised); box-shadow: inset 3px 0 var(--brand-accent); }
 .operator { margin-top: auto; display: grid; gap: var(--space-1); font-size: var(--font-size-5); }
-.operator a, .textButton { justify-self: start; margin-top: var(--space-3); padding: 0; color: var(--brand-accent); border: 0; background: transparent; }
+/* `.textButton` was dropped with the raw sign-out button WCX-04 replaced. */
+.operator a { justify-self: start; margin-top: var(--space-3); padding: 0; color: var(--brand-accent); border: 0; background: transparent; }
 .workspace { min-width: 0; }
 .reauthBanner { padding: var(--space-4) 4vw; color: var(--reauth-text); background: var(--reauth-surface); font-size: var(--font-size-5); }
 .reauthBanner a { font-weight: var(--weight-heavy); }
@@ -204,9 +205,22 @@
 
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }
-  .sidebar { position: static; height: auto; padding: var(--space-6) 4vw; flex-direction: row; align-items: center; gap: var(--space-6); }
+  /* Wraps rather than overflows, so the operator block has somewhere to go. */
+  .sidebar { position: static; height: auto; padding: var(--space-6) 4vw; flex-flow: row wrap; align-items: center; gap: var(--space-4) var(--space-6); }
   .sidebar nav { margin-left: auto; }
-  .operator { display: none; }
+  /*
+   * `P1-W11` GAP-1. This rule was `display: none`, which removed sign-out and
+   * the re-authentication link from every viewport below 900 pixels: an
+   * operator on a narrow screen could not end their session. No operator
+   * control may be removed at any width. The block becomes a row in the bar
+   * instead of disappearing from it.
+   *
+   * This closes the defect, not the design. `WCX-10` owns the information
+   * architecture and replaces this with the disclosure pattern its section 9.3
+   * defines; the invariant that rule enforces is already in force here.
+   */
+  .operator { margin-top: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+  .operator a { margin-top: 0; }
   .twoColumn, .loginPage { grid-template-columns: 1fr; }
   .loginIntro { display: none; }
   .loginPage { width: min(34rem, calc(100% - 2rem)); }
