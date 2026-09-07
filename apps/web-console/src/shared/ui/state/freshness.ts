@@ -1,23 +1,35 @@
-/**
- * Observation age and the interim freshness threshold (WCX-04 section 9.1,
- * OPS-03).
- *
- * `WCX-07` owns the real per-read freshness policy. Until it lands the
- * threshold is one constant declared beside the rule that reads it, so there
- * is exactly one place to change and no screen can pick its own number.
- *
- * A read that succeeded but is older than this is rendered `stale`, not fresh.
- * Staleness is a product concern, not a transport detail: the alternative is
- * presenting an old observation as the current state of a network.
- */
-export const FRESHNESS_LIMIT_MS = 60_000;
+import { staleAfter, type FreshnessClass } from '@shared/api/freshness';
 
-/** True when an observation is older than the policy allows. */
-export function isBeyondFreshness(observedAt: string, now: number = Date.now()): boolean {
+/**
+ * Observation age and the staleness threshold (WCX-04 section 9.1, OPS-03,
+ * WCX-07 section 9.1.4).
+ *
+ * `WCX-04` shipped this as one interim constant beside the rule that read it.
+ * `WCX-07` replaced the constant with the per-class policy: a surface now
+ * declares which freshness class its read belongs to, and the threshold comes
+ * from the same object that sets the refetch interval. One place decides both,
+ * so a cadence change cannot leave the staleness treatment behind.
+ *
+ * A read that succeeded but is older than its class allows is rendered
+ * `stale`, not fresh. Staleness is a product concern, not a transport detail:
+ * the alternative is presenting an old observation as the current state of a
+ * network.
+ */
+export const DEFAULT_FRESHNESS_CLASS: FreshnessClass = 'operational';
+
+/** True when an observation is older than its class allows. */
+export function isBeyondFreshness(
+  observedAt: string,
+  now: number = Date.now(),
+  resourceClass: FreshnessClass = DEFAULT_FRESHNESS_CLASS,
+): boolean {
+  const limit = staleAfter(resourceClass);
+  // A class that never goes stale never goes stale.
+  if (limit === null) return false;
   const observed = Date.parse(observedAt);
   // An unparsable timestamp cannot be shown to be fresh, so it is not.
   if (Number.isNaN(observed)) return true;
-  return now - observed > FRESHNESS_LIMIT_MS;
+  return now - observed > limit;
 }
 
 const UNITS: readonly { limit: number; size: number; one: string; many: string }[] = [

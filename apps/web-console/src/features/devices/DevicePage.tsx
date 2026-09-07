@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router';
 import { deviceEncoding } from '@shared/theme/statusEncoding';
 import { deviceQuery } from './api';
 import { deviceHealthQuery, HealthPanel, HEALTH_TEXT, formatTime } from '@features/health';

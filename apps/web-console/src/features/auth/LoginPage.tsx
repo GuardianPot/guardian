@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router';
 import { toConsoleError } from '@shared/api/error';
 import { textField } from '@shared/forms/textField';
 import { useAuth } from './AuthContext';

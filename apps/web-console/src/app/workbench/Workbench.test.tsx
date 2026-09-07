@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HOSTILE_CORPUS, FORBIDDEN_ELEMENTS } from '@shared/hostile/corpus';
 import { expectNoAxeViolations } from '@shared/testing/axe';

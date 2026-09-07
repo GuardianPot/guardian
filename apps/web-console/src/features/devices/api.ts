@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
-import { retryDelay, retryRead } from '@shared/api/query';
+import { freshness } from '@shared/api/freshness';
 import { request } from '@shared/api/transport';
 import { taintDevice } from '@shared/api/taint';
 import type { DeviceRaw } from '@shared/api/types';
@@ -19,9 +19,7 @@ export const devicesQuery = (environmentID: string) =>
       // no screen below can render one without the contract (WCX-06 9.8).
       (await request<{ devices: DeviceRaw[] }>(`/v1/environments/${environmentID}/devices`, { signal }))
         .devices.map(taintDevice),
-    retry: retryRead,
-    retryDelay,
-    refetchInterval: 5_000,
+    ...freshness('operational'),
   });
 
 export const deviceQuery = (environmentID: string, deviceID: string) =>
@@ -32,7 +30,5 @@ export const deviceQuery = (environmentID: string, deviceID: string) =>
         `/v1/environments/${environmentID}/devices/${deviceID}`,
         { signal },
       )).device),
-    retry: retryRead,
-    retryDelay,
-    refetchInterval: 5_000,
+    ...freshness('operational'),
   });

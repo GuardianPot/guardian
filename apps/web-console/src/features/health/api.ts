@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
-import { retryDelay, retryRead } from '@shared/api/query';
+import { freshness } from '@shared/api/freshness';
 import { request } from '@shared/api/transport';
 import { taintHealthView } from '@shared/api/taint';
 import type { HealthViewRaw } from '@shared/api/types';
@@ -17,9 +17,9 @@ export const environmentHealthQuery = (environmentID: string) =>
     // trust boundary here (WCX-06 section 9.8).
     queryFn: async ({ signal }) =>
       taintHealthView(await request<HealthViewRaw>(`/v1/environments/${environmentID}/health`, { signal })),
+    ...freshness('operational'),
     // A missing projection is an answer, not a transient fault; do not retry.
     retry: false,
-    refetchInterval: 5_000,
   });
 
 export const deviceHealthQuery = (deviceID: string) =>
@@ -27,8 +27,6 @@ export const deviceHealthQuery = (deviceID: string) =>
     queryKey: healthKeys.device(deviceID),
     queryFn: async ({ signal }) =>
       taintHealthView(await request<HealthViewRaw>(`/v1/devices/${deviceID}/health`, { signal })),
+    ...freshness('operational'),
     retry: false,
-    refetchInterval: 5_000,
   });
-
-export { retryDelay, retryRead };

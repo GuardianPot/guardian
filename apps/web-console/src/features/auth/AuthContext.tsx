@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { permitPolling } from '@shared/api/freshness';
 import { authKeys, login as loginRequest, logout as logoutRequest, sessionQuery, type LoginInput } from './api';
 import type { Session } from '@shared/api/types';
 
@@ -19,10 +20,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const session = useQuery(sessionQuery());
 
   const expire = useCallback(() => {
+    // Close the polling gate first. Removing the queries below stops their
+    // intervals, but an interval that fires between these two lines would
+    // still reach the Control Plane on behalf of a session that has ended
+    // (WCX-07 section 8.1).
+    permitPolling(false);
     setCsrf(null);
     queryClient.setQueryData(authKeys.session(), null);
     queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'auth' });
   }, [queryClient]);
+
+  // Polling follows the session, not the component tree: it opens when a
+  // session exists and closes the moment one does not.
+  useEffect(() => { permitPolling(Boolean(session.data)); }, [session.data]);
 
   useEffect(() => {
     window.addEventListener('guardian:unauthorized', expire);

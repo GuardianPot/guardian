@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router';
 import { configEncoding, deviceEncoding } from '@shared/theme/statusEncoding';
 import { devicesQuery } from '@features/devices';
 import {

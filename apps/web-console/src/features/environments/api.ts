@@ -1,5 +1,6 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
-import { DEFAULT_PAGE_SIZE, retryDelay, retryRead } from '@shared/api/query';
+import { DEFAULT_PAGE_SIZE } from '@shared/api/query';
+import { freshness } from '@shared/api/freshness';
 import { request } from '@shared/api/transport';
 import {
   taintEnrollmentSecret,
@@ -33,8 +34,7 @@ export const environmentsQuery = () =>
         `/v1/environments?limit=${DEFAULT_PAGE_SIZE}`,
         { signal },
       )).environments.map(taintEnvironment),
-    retry: retryRead,
-    retryDelay,
+    ...freshness('configuration'),
   });
 
 export const environmentQuery = (environmentID: string) =>
@@ -45,8 +45,7 @@ export const environmentQuery = (environmentID: string) =>
         (await request<{ environment: EnvironmentRaw }>(`/v1/environments/${environmentID}`, { signal }))
           .environment,
       ),
-    retry: retryRead,
-    retryDelay,
+    ...freshness('configuration'),
   });
 
 export const zonesQuery = (environmentID: string) =>
@@ -57,8 +56,7 @@ export const zonesQuery = (environmentID: string) =>
         `/v1/environments/${environmentID}/zones?limit=${DEFAULT_PAGE_SIZE}`,
         { signal },
       )).zones.map(taintZone),
-    retry: retryRead,
-    retryDelay,
+    ...freshness('configuration'),
   });
 
 export async function createEnvironment(displayName: string, csrf: string): Promise<Environment> {

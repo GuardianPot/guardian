@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Suspense, useState } from 'react';
+import { Link, NavLink, Outlet } from 'react-router';
 import { useAuth, useCapability } from '@features/auth';
-import { Banner, Button, InlineMessage, RouteErrorBoundary } from '@shared/ui';
+import { Banner, Button, InlineMessage, LoadingState, RouteErrorBoundary } from '@shared/ui';
 import styles from '@shared/styles/app.module.css';
 import { SHELL_TEXT } from './text';
 
@@ -55,7 +55,17 @@ export function Shell() {
             something to reset, and a screen that throws leaves the sidebar —
             and therefore sign-out — mounted.
           */}
-          <RouteErrorBoundary><Outlet /></RouteErrorBoundary>
+          {/*
+            `Suspense` sits inside the boundary, so a chunk that fails to load
+            throws into the route fallback rather than blanking the console
+            (WCX-07 section 9.9.4). Its fallback is the same `loading` state
+            every other pending read uses, announced once through `status`.
+          */}
+          <RouteErrorBoundary>
+            <Suspense fallback={<LoadingState activity={SHELL_TEXT.loadingScreen} />}>
+              <Outlet />
+            </Suspense>
+          </RouteErrorBoundary>
         </main>
       </div>
     </div>

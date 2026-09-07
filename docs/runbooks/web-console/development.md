@@ -819,6 +819,140 @@ lock a developer out of their own machine for a year. `preload` is deliberately
 absent: it is effectively irreversible for months and is an owner decision, not
 a middleware default.
 
+## Freshness and performance
+
+### One policy, no interval literals
+
+Four queries used to carry a hard-coded five-second interval, and nothing
+stopped the next screen inventing a fifth value. That is not untidiness.
+`WC-D05` chose polling over a server-driven channel **deliberately** and
+recorded a measured condition for reconsidering it — and a trigger cannot be
+evaluated against constants scattered through feature modules.
+
+So a resource declares a class. It never declares an interval.
+
+| Class | Refetch | Stale after | Applies to |
+|---|---|---|---|
+| `critical` | 5 s | 15 s | incident lists and detail (Phase 3), notification counts (Phase 4) |
+| `operational` | 10 s | 30 s | health projections, device inventory, decoy runtime status |
+| `configuration` | 60 s | 5 min | environments, zones, settings |
+| `static` | none | never | organization singleton, enumerations |
+| `once` | none | never | one-time reads such as an enrollment secret |
+| `session` | none | 30 s | the session probe, preserving the Phase 1 cadence |
+
+`@shared/api/freshness.ts` owns what a class means; `test/check-freshness.mjs`
+fails the lint if `refetchInterval`, `staleTime`, `refetchIntervalInBackground`,
+`refetchOnWindowFocus`, or `refetchOnReconnect` appears anywhere else.
+
+The same object supplies the **staleness threshold** the `stale` data state
+renders against, so a cadence change cannot leave the staleness treatment
+behind. `WCX-04` shipped that threshold as one interim constant; it is now
+per class.
+
+Behaviour that follows from the class:
+
+- a hidden tab issues no interval refetch at all;
+- returning to the tab, or focusing the window, refetches a polled class
+  immediately rather than waiting out the remainder of an interval;
+- regaining connectivity refetches everything except `static`, including
+  classes that do not poll — a read taken before an outage is not evidence of
+  anything after it;
+- retry backoff grows but never exceeds eight intervals, so a failing resource
+  keeps being retried and keeps updating its observed age.
+
+### Polling stops with the session
+
+`permitPolling` is a gate the session opens and closes. Signing out already
+removes non-session queries, which stops their intervals, but an interval
+firing between removal and the next tick would still reach the Control Plane
+on behalf of an operator who has left. The gate is consulted by TanStack after
+every fetch, so a session that ends between ticks stops the next one.
+
+A background `401` follows the same expiry path a foreground one does. There is
+no second route into session handling.
+
+### The recorded transport trigger
+
+`TRANSPORT_RECONSIDERATION_TRIGGER` is data, not prose, so the `P5-W9`
+benchmark can assert against it:
+
+> On the `P5-W9` reference environment, if the measured time from a decoy
+> interaction to console visibility exceeds **5 seconds at p95** with the
+> `critical` class active, or if the aggregate request rate on a three-tab
+> operator session exceeds **180 per minute**, a change proposal for a
+> server-driven invalidation channel is opened. Until one of those is
+> *measured*, polling stands.
+
+### Chunks
+
+| Chunk | Contents |
+|---|---|
+| `index` | Vite bootstrap, ~1 KB |
+| `entry` | shell, providers, router, error boundaries, shared transport, shared UI |
+| `login` | the sign-in screen |
+| `feature-<name>` | one per feature under `src/features/` |
+| `vendor-react` | React and React DOM |
+| `vendor-query` | TanStack Query |
+
+Three things about this table are worth knowing before changing it.
+
+**The split point lives in each feature, not in the router.** A feature barrel
+is statically imported by the shell and by other features, so a dynamic
+`import('@features/...')` from `router.tsx` moves nothing — Rollup says as
+much. Each feature therefore exports its own `lazy` route component, which
+keeps `WCX-01`'s rule that a feature is entered only through its public API
+while still giving the bundler a real boundary.
+
+**`sideEffects` matters.** Without `"sideEffects": ["*.css"]` in
+`package.json`, importing one control from the `@shared/ui` barrel keeps the
+whole layer. Adding it cut the largest chunk by a third.
+
+**The modal stack is deliberately outside `entry`.** Radix's dialog brings a
+focus trap, a dismissable layer, a portal, and scroll locking. The sign-in
+screen opens no dialog, and shipping all of that to an unauthenticated visitor
+is what pushed the initial login load over its budget. It now travels with the
+first feature that opens one.
+
+**`vendor-ui` is not emitted.** Radix's module ids never reach `manualChunks`
+under Vite 8's rolldown, so the bundler places it with its consumer instead.
+The outcome is better than the declared table: Radix ships only with the screen
+that opens a dialog, rather than as a chunk every page fetches. Per-chunk
+reporting still gives the attribution the table was for.
+
+### Budgets
+
+`npm run bundle:check` enforces three dimensions and prints every chunk raw and
+gzipped, so growth is attributable to a chunk rather than to "the bundle".
+
+| Dimension | Measured | Budget |
+|---|---:|---:|
+| Initial login load, gzipped | 112 920 | 122 880 |
+| Initial authenticated load, gzipped | 127 640 | 204 800 |
+| Total JavaScript, raw | 410 508 | 460 800 |
+| Total CSS, raw | 25 036 | 32 768 |
+
+A regression above twenty percent against the **committed baseline** in
+`check-bundle.mjs` fails the build and requires owner review (`WC-D30`,
+`PERF-08`). The baseline is a number in that file, not the previous run: a
+change can stay inside a budget while doubling a figure, and only a committed
+baseline catches that. Update it deliberately, in the same commit as the change
+that moved it, with the reason in the message.
+
+The check also asserts that the login chunk pulls no authenticated feature
+chunk, that no chunk name carries a UUID, and that no production source map is
+emitted.
+
+Runtime interaction is not measured here. `WCX-12` measures it, where a
+data-dense screen exists to measure.
+
+### The router
+
+`react-router-dom` was replaced by `react-router@8`. In v7 the DOM package
+became a thin re-export of the core, and only the core has an 8.x line —
+`react-router-dom` stops at 7.18.3. The upgrade was import-path-only:
+typecheck clean, the whole suite unchanged, and every API the console uses
+present with the same signature.
+
 ## Continuous integration
 
 Two workflows, one job each, no conditions.

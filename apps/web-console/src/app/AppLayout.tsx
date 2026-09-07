@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useMatches } from 'react-router-dom';
+import { Outlet, useLocation, useMatches } from 'react-router';
 import { RouteAnnouncer } from './RouteAnnouncer';
 import { screenFromHandle, type ScreenName } from './screens';
 

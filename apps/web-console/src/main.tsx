@@ -1,14 +1,21 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { RouterProvider } from 'react-router-dom';
+import { RouterProvider } from 'react-router';
 import { router } from '@app/router';
 import { AuthProvider } from '@features/auth';
 import { RootErrorBoundary } from '@shared/ui';
 import '@shared/styles/global.css';
 
+/*
+ * No cadence lives here. Every read declares a freshness class in its feature
+ * API module, and `@shared/api/freshness` owns what a class means (WCX-07
+ * section 9.1). A default `staleTime` here would silently override a class for
+ * any query that forgot to declare one, which is exactly the drift this
+ * package exists to remove.
+ */
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false, staleTime: 5_000 }, mutations: { retry: false } },
+  defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
 });
 
 // The root boundary wraps the router, so an exception anywhere below it leaves

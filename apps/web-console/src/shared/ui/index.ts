@@ -50,7 +50,7 @@ export {
   type DataState,
   type DataStateInput,
 } from './state/resolveDataState';
-export { FRESHNESS_LIMIT_MS, formatAge, isBeyondFreshness } from './state/freshness';
+export { DEFAULT_FRESHNESS_CLASS, formatAge, isBeyondFreshness } from './state/freshness';
 
 export { RootErrorBoundary, RouteErrorBoundary } from './boundary/ErrorBoundary';
 export {

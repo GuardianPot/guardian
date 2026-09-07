@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 import { toConsoleError } from '@shared/api/error';
+import { freshness } from '@shared/api/freshness';
 import { request } from '@shared/api/transport';
 import type { Session, SessionCredentials } from '@shared/api/types';
 
@@ -33,8 +34,7 @@ export const sessionQuery = () =>
   queryOptions({
     queryKey: authKeys.session(),
     queryFn: ({ signal }) => readSession(signal),
-    staleTime: 30_000,
-    retry: false,
+    ...freshness('session'),
   });
 
 export function login(input: LoginInput): Promise<SessionCredentials> {

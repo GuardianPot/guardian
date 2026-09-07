@@ -1,8 +1,9 @@
+import { Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EnvironmentsPage } from '@features/environments';
-import { MemoryRouter } from 'react-router-dom';
+import { EnvironmentsRoute } from '@features/environments';
+import { MemoryRouter } from 'react-router';
 import { json, loginHandlers, SignedIn, mockApi } from '@shared/testing/harness';
 import { AuthProvider } from './AuthContext';
 import { useCapability } from './useCapability';
@@ -79,7 +80,7 @@ describe('useCapability', () => {
     render(
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <MemoryRouter><EnvironmentsPage /></MemoryRouter>
+          <MemoryRouter><Suspense fallback={<p>loading</p>}><EnvironmentsRoute /></Suspense></MemoryRouter>
         </AuthProvider>
       </QueryClientProvider>,
     );

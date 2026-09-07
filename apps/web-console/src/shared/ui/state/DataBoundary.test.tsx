@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { ConsoleRequestError, consoleError } from '@shared/api/error';
 import { expectNoAxeViolations } from '@shared/testing/axe';
 import { DataBoundary, type QueryLike } from './DataBoundary';
-import { FRESHNESS_LIMIT_MS } from './freshness';
+import { DEFAULT_FRESHNESS_CLASS } from './freshness';
+import { staleAfter } from '@shared/api/freshness';
+
+/** The staleness threshold of the class these states are rendered for. */
+const STALE_AFTER_MS = staleAfter(DEFAULT_FRESHNESS_CLASS) ?? 0;
 
 /**
  * `DataBoundary` end to end: a query result in, exactly one state out.
@@ -94,7 +98,7 @@ describe('DataBoundary', () => {
   });
 
   it('renders a successful read past its freshness policy as stale', () => {
-    const observedAt = new Date(Date.now() - FRESHNESS_LIMIT_MS - 60_000).toISOString();
+    const observedAt = new Date(Date.now() - STALE_AFTER_MS - 60_000).toISOString();
     renderBoundary(query({ data: ['edge-one'] }), { observedAt });
     expect(screen.getByText('edge-one')).toBeVisible();
     expect(screen.getByText('Showing the last data Guardian received')).toBeVisible();

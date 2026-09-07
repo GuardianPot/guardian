@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import styles from '@shared/styles/app.module.css';
 import { Button } from '@shared/ui/controls/Button';
 import { recordRenderError } from './lastRenderError';

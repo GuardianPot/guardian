@@ -20,4 +20,6 @@ export const SHELL_TEXT = {
   readOnlySession: 'Read-only session restored.',
   beforeChanging: 'before changing configuration or signing out.',
   checkingSession: 'Checking your session',
+  /** Shown while a route's chunk is still arriving (WCX-07 section 9.2.1). */
+  loadingScreen: 'Loading this screen',
 } as const;

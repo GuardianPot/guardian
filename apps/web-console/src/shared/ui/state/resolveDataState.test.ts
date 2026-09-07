@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { consoleError, type ConsoleErrorKind } from '@shared/api/error';
-import { FRESHNESS_LIMIT_MS } from './freshness';
+import { DEFAULT_FRESHNESS_CLASS } from './freshness';
+import { staleAfter } from '@shared/api/freshness';
 import { DATA_STATES, resolveDataState, type DataStateInput } from './resolveDataState';
+
+/** The staleness threshold of the class these states are rendered for. */
+const STALE_AFTER_MS = staleAfter(DEFAULT_FRESHNESS_CLASS) ?? 0;
 
 /**
  * Every row of the `WCX-04` section 9.1 mapping table, asserted.
@@ -106,7 +110,7 @@ describe('resolveDataState — the section 9.1 mapping table', () => {
 
   it('renders a successful read past its freshness policy as stale', () => {
     const now = Date.parse('2026-09-01T12:00:00Z');
-    const observedAt = new Date(now - FRESHNESS_LIMIT_MS - 1).toISOString();
+    const observedAt = new Date(now - STALE_AFTER_MS - 1).toISOString();
     expect(resolveDataState(success({ observedAt, now }))).toBe('stale');
     // And an empty collection past its policy is stale, not a confirmed zero.
     expect(resolveDataState(success({ observedAt, isEmpty: true, now }))).toBe('stale');

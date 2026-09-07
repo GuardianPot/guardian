@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { createEnvironment as createEnvironmentRequest, environmentInvalidation, environmentsQuery } from './api';
 import { useAuth, useCapability } from '@features/auth';
 import { textField } from '@shared/forms/textField';

@@ -1,11 +1,11 @@
-import { Navigate, Outlet, createBrowserRouter, type RouteObject } from 'react-router-dom';
-import { useAuth } from '@features/auth';
+import { Suspense } from 'react';
+import { Navigate, Outlet, createBrowserRouter, type RouteObject } from 'react-router';
+import { LoginRoute, useAuth } from '@features/auth';
+import { DeviceRoute } from '@features/devices';
+import { EnvironmentRoute, EnvironmentsRoute } from '@features/environments';
 import { AppLayout } from '@app/AppLayout';
 import { Shell } from '@app/Shell';
 import { LoadingState, RouteErrorBoundary } from '@shared/ui';
-import { DevicePage } from '@features/devices';
-import { EnvironmentPage, EnvironmentsPage } from '@features/environments';
-import { LoginPage } from '@features/auth';
 import { SHELL_TEXT } from '@app/text';
 import { SCREEN } from '@app/screens';
 
@@ -17,19 +17,19 @@ export function RequireAuth() {
 }
 
 /**
- * The route tree.
+ * Route-level code splitting (WCX-07 section 9.2, decision WC-D06).
  *
- * `AppLayout` is the persistent root: it owns the live region and the
- * route-change focus and title behaviour, so every screen below inherits them
- * without wiring anything (`WCX-05` section 9.2).
+ * `React.lazy` rather than the router's own `lazy`, because `WC-D06` keeps the
+ * explicit route tree without router loaders or actions: the route stays a
+ * plain element and the loading behaviour stays React's.
  *
- * Each screen carries its name in `handle`. That is what the document title
- * and the announcement read, so neither can ever contain backend data.
- *
- * Sign-in is outside the shell and carries its own route boundary. Every
- * screen inside the shell is covered by the boundary the shell wraps its
- * outlet in, which keeps navigation and sign-out reachable during a failure.
+ * Each feature declares its own split point and exports the lazy component
+ * through its public API. Doing it there rather than here is what actually
+ * works: these barrels are statically imported by the shell and by each
+ * other, so a dynamic `import('@features/...')` from this file would move
+ * nothing. Which chunk each module lands in is decided in `vite.config.ts`.
  */
+
 /**
  * The development-only component workbench (WCX-06 section 9.5).
  *
@@ -46,6 +46,21 @@ const workbenchRoutes: RouteObject[] = import.meta.env.DEV
   }]
   : [];
 
+/**
+ * The route tree.
+ *
+ * `AppLayout` is the persistent root: it owns the live region and the
+ * route-change focus and title behaviour, so every screen below inherits them
+ * without wiring anything (`WCX-05` section 9.2).
+ *
+ * Each screen carries its name in `handle`. That is what the document title
+ * and the announcement read, so neither can ever contain backend data.
+ *
+ * Sign-in is outside the shell and carries its own route boundary and its own
+ * `Suspense`. Every screen inside the shell is covered by the boundary and the
+ * `Suspense` the shell wraps its outlet in, which keeps navigation and
+ * sign-out reachable while a chunk loads and if one fails to.
+ */
 export const routes: RouteObject[] = [
   {
     element: <AppLayout />,
@@ -53,7 +68,13 @@ export const routes: RouteObject[] = [
       ...workbenchRoutes,
       {
         path: '/login',
-        element: <RouteErrorBoundary><LoginPage /></RouteErrorBoundary>,
+        element: (
+          <RouteErrorBoundary>
+            <Suspense fallback={<LoadingState activity={SHELL_TEXT.loadingScreen} />}>
+              <LoginRoute />
+            </Suspense>
+          </RouteErrorBoundary>
+        ),
         handle: { screen: SCREEN.signIn },
       },
       {
@@ -61,11 +82,11 @@ export const routes: RouteObject[] = [
         children: [{
           element: <Shell />,
           children: [
-            { path: '/environments', element: <EnvironmentsPage />, handle: { screen: SCREEN.environments } },
-            { path: '/environments/:environmentId', element: <EnvironmentPage />, handle: { screen: SCREEN.environment } },
+            { path: '/environments', element: <EnvironmentsRoute />, handle: { screen: SCREEN.environments } },
+            { path: '/environments/:environmentId', element: <EnvironmentRoute />, handle: { screen: SCREEN.environment } },
             {
               path: '/environments/:environmentId/devices/:deviceId',
-              element: <DevicePage />,
+              element: <DeviceRoute />,
               handle: { screen: SCREEN.device },
             },
           ],

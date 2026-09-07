@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Link, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Link, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RootErrorBoundary, RouteErrorBoundary } from './ErrorBoundary';
 import { clearLastRenderError, readLastRenderError } from './lastRenderError';

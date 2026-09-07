@@ -10,8 +10,12 @@ import {
   StaleState,
   UnknownState,
 } from './states';
-import { FRESHNESS_LIMIT_MS } from './freshness';
+import { DEFAULT_FRESHNESS_CLASS } from './freshness';
+import { staleAfter } from '@shared/api/freshness';
 import { expectNoAxeViolations } from '@shared/testing/axe';
+
+/** The staleness threshold of the class these states are rendered for. */
+const STALE_AFTER_MS = staleAfter(DEFAULT_FRESHNESS_CLASS) ?? 0;
 
 /**
  * The negative assertions that carry `WCX-04` section 8.2, 8.3, and 8.4.
@@ -139,7 +143,7 @@ describe('the eight data states', () => {
     expect(screen.getByText('cached device list')).toBeVisible();
     expect(screen.getByText(/Observed 3 minutes ago/)).toBeVisible();
     expect(screen.getByText(/the channel is closed/)).toBeVisible();
-    expect(FRESHNESS_LIMIT_MS).toBeGreaterThan(0);
+    expect(STALE_AFTER_MS).toBeGreaterThan(0);
   });
 
   it('lists what a partial result could not load and offers a retry', () => {

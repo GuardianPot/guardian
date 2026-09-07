@@ -1,11 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState, type ReactNode } from 'react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Suspense, useState, type ReactNode } from 'react';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RequireAuth } from '@app/router';
-import { EnvironmentsPage } from '@features/environments';
+import { EnvironmentsRoute } from '@features/environments';
 import { SignedIn, environment, json, loginHandlers, mockApi, type MockResponder } from '@shared/testing/harness';
 import { environmentKeys } from '@features/environments';
 import { authKeys } from './api';
@@ -25,7 +25,7 @@ function renderConsole(options: { authenticated: boolean; handlers?: Record<stri
       <Routes>
         <Route path="/login" element={<h1>Sign in</h1>} />
         <Route element={<RequireAuth />}>
-          <Route path="/environments" element={options.children ?? <EnvironmentsPage />} />
+          <Route path="/environments" element={options.children ?? <Suspense fallback={<p>loading</p>}><EnvironmentsRoute /></Suspense>} />
         </Route>
       </Routes>
     </MemoryRouter>
