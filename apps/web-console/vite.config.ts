@@ -127,5 +127,14 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/shared/testing/setup.ts',
     css: true,
+    /*
+     * Above Vitest's five-second default, because `setup.ts` raises Testing
+     * Library's async budget to five. A test that legitimately waits four
+     * seconds for a lazy route under load would otherwise hit the test wall
+     * first and report as a timeout rather than as whatever it was waiting
+     * for. Suites that build a TypeScript program or run ESLint set their own
+     * longer timeouts on top of this.
+     */
+    testTimeout: 20_000,
   },
 });
