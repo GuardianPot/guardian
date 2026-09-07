@@ -19,3 +19,9 @@ bin/
 
 # Claude Code local settings (personal, not shared)
 .claude/settings.local.json
+
+# Created by any `go` command run against the workspace rather than with
+# GOWORK=off. It is a local build artefact: every module pins its own
+# dependencies in its own go.sum, and this file has been committed by accident
+# twice.
+go.work.sum
