@@ -1,6 +1,6 @@
 import { useId, type ReactNode, type RefObject } from 'react';
 import styles from '@shared/styles/app.module.css';
-import { BUTTON_TEXT } from './text';
+import { t } from '@shared/text';
 
 /**
  * The single button (WCX-04 section 9.5).
@@ -66,7 +66,7 @@ export function Button({
         {...(onClick ? { onClick } : {})}
       >
         {children}
-        {pending && <span className={styles.buttonPending} aria-hidden="true">{BUTTON_TEXT.pending}</span>}
+        {pending && <span className={styles.buttonPending} aria-hidden="true">{t('common.working')}</span>}
       </button>
       {unavailable && <span className={styles.disabledReason} id={reasonId}>{disabledReason}</span>}
     </span>

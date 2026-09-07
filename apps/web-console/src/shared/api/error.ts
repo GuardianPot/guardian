@@ -1,3 +1,4 @@
+import { t } from '@shared/text';
 import type { StatusResponse } from './types';
 
 /**
@@ -40,29 +41,23 @@ const RETRYABLE: ReadonlySet<ConsoleErrorKind> = new Set([
 ]);
 
 /**
- * Temporary English text for each kind. `WCX-08` moves these into the
- * operator catalogue keyed by `messageKey` and deletes this map.
+ * The operator-facing text for a classified failure.
+ *
+ * `WCX-02` reserved `errors.<kind>` as the catalogue key and kept a temporary
+ * map here; `WCX-08` deleted that map, so this reads the catalogue directly.
+ * The key and the kind are the same word by construction, which is why the
+ * reservation worked.
  */
-export const CONSOLE_ERROR_TEXT: Readonly<Record<ConsoleErrorKind, string>> = {
-  'unauthenticated': 'Your session is no longer valid. Sign in again.',
-  'reauthentication-required': 'Re-authenticate before changing configuration.',
-  'forbidden': 'This action was refused.',
-  'not-found': 'This record is unavailable or outside this environment.',
-  'validation': 'Guardian rejected the submitted values.',
-  'conflict': 'Another change was recorded first. Reload the current value.',
-  'rate-limited': 'Too many attempts. Wait before trying again.',
-  'unavailable': 'Guardian could not complete the request.',
-  'timeout': 'The request took too long to complete.',
-  'network': 'Guardian could not be reached.',
-  'unexpected': 'Guardian could not complete the request.',
-};
+export function consoleErrorText(kind: ConsoleErrorKind): string {
+  return t(`errors.${kind}`);
+}
 
 /** Raised by the transport so every failure carries a classified shape. */
 export class ConsoleRequestError extends Error {
   readonly consoleError: ConsoleError;
 
   constructor(consoleError: ConsoleError) {
-    super(CONSOLE_ERROR_TEXT[consoleError.kind]);
+    super(consoleErrorText(consoleError.kind));
     this.name = 'ConsoleRequestError';
     this.consoleError = consoleError;
   }

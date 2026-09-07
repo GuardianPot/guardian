@@ -5,7 +5,7 @@ import { InlineMessage } from '@shared/ui/feedback/InlineMessage';
 import styles from '@shared/styles/app.module.css';
 import { BLOCK_LIMIT, transformUntrusted } from './transform';
 import { renderSegment } from './UntrustedText';
-import { UNTRUSTED_TEXT } from './text';
+import { t } from '@shared/text';
 
 /**
  * A multi-line captured payload (WCX-06 section 9.1).
@@ -46,14 +46,14 @@ export function UntrustedBlock({ value, label }: { value: Untrusted; label?: str
   return (
     <div className={styles.untrustedBlock}>
       {transformed.escaped && (
-        <p className={styles.untrustedLegend} id={legendId}>{UNTRUSTED_TEXT.legend}</p>
+        <p className={styles.untrustedLegend} id={legendId}>{t('untrusted.legend')}</p>
       )}
       {/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be focusable or a keyboard user cannot scroll it (WCAG 2.1.1, WCX-06 section 9.7.3); the rule sees a non-interactive role and cannot see that this container overflows */}
       <pre
         className={styles.untrustedPayload}
         tabIndex={0}
         role="group"
-        aria-label={label ?? UNTRUSTED_TEXT.blockLabel}
+        aria-label={label ?? t('untrusted.blockLabel')}
         {...(transformed.escaped ? { 'aria-describedby': legendId } : {})}
       >
         {transformed.segments.map(renderSegment)}
@@ -61,12 +61,12 @@ export function UntrustedBlock({ value, label }: { value: Untrusted; label?: str
       {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
       {transformed.truncated && (
         <p className={styles.untrustedTruncation}>
-          {UNTRUSTED_TEXT.truncatedBlock(BLOCK_LIMIT, transformed.originalLength)}
+          {t('untrusted.truncatedBlock', { shown: BLOCK_LIMIT, original: transformed.originalLength })}
         </p>
       )}
-      <Button variant="quiet" onClick={() => { void copy(); }}>{UNTRUSTED_TEXT.copy}</Button>
-      {copyState === 'copied' && <InlineMessage tone="success">{UNTRUSTED_TEXT.copied}</InlineMessage>}
-      {copyState === 'failed' && <InlineMessage tone="error">{UNTRUSTED_TEXT.copyFailed}</InlineMessage>}
+      <Button variant="quiet" onClick={() => { void copy(); }}>{t('untrusted.copy')}</Button>
+      {copyState === 'copied' && <InlineMessage tone="success">{t('untrusted.copied')}</InlineMessage>}
+      {copyState === 'failed' && <InlineMessage tone="error">{t('untrusted.copyFailed')}</InlineMessage>}
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import styles from '@shared/styles/app.module.css';
-import { SKELETON_TEXT } from './text';
 
 /**
  * A placeholder shape for a first load (WCX-04 section 9.5).
@@ -11,7 +10,7 @@ import { SKELETON_TEXT } from './text';
  */
 export function Skeleton({ lines = 3 }: { lines?: number }) {
   return (
-    <div className={styles.skeleton} role={SKELETON_TEXT.role} aria-hidden="true">
+    <div className={styles.skeleton} role="presentation" aria-hidden="true">
       {Array.from({ length: lines }, (_, index) => (
         <span key={index} className={styles.skeletonLine} />
       ))}

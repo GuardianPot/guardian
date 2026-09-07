@@ -27,6 +27,8 @@ export { UntrustedText } from './untrusted/UntrustedText';
 export { UntrustedBlock } from './untrusted/UntrustedBlock';
 export { BLOCK_LIMIT, TEXT_LIMIT, transformUntrusted, type Segment, type Transformed } from './untrusted/transform';
 
+export { Timestamp, formatAge, parseInstant, type TimestampMode, type TimestampPrecision } from './time/Timestamp';
+
 export { Banner, type BannerTone } from './feedback/Banner';
 export { InlineMessage, type InlineTone } from './feedback/InlineMessage';
 export { PendingOnObject } from './feedback/PendingOnObject';
@@ -50,7 +52,7 @@ export {
   type DataState,
   type DataStateInput,
 } from './state/resolveDataState';
-export { DEFAULT_FRESHNESS_CLASS, formatAge, isBeyondFreshness } from './state/freshness';
+export { DEFAULT_FRESHNESS_CLASS, isBeyondFreshness } from './state/freshness';
 
 export { RootErrorBoundary, RouteErrorBoundary } from './boundary/ErrorBoundary';
 export {

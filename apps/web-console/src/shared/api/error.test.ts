@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CONSOLE_ERROR_TEXT,
+  consoleErrorText,
   ConsoleRequestError,
   consoleError,
   kindForStatus,
@@ -8,6 +8,13 @@ import {
   toConsoleError,
   type ConsoleErrorKind,
 } from './error';
+
+/** Every kind in the taxonomy, shared by the tests that enumerate it. */
+const ALL_KINDS: ConsoleErrorKind[] = [
+  'unauthenticated', 'reauthentication-required', 'forbidden', 'not-found',
+  'validation', 'conflict', 'rate-limited', 'unavailable', 'timeout',
+  'network', 'unexpected',
+];
 
 describe('console error taxonomy', () => {
   it('maps every row of the approved status table', () => {
@@ -57,8 +64,10 @@ describe('console error taxonomy', () => {
     const error = consoleError('unavailable', { statusSlug: hostile, httpStatus: 503 });
     expect(error.statusSlug).toBe(hostile);
     // The rendered text comes from the fixed table, never from the backend.
-    expect(new ConsoleRequestError(error).message).toBe(CONSOLE_ERROR_TEXT.unavailable);
-    expect(Object.values(CONSOLE_ERROR_TEXT)).not.toContain(hostile);
+    expect(new ConsoleRequestError(error).message).toBe(consoleErrorText('unavailable'));
+    // No catalogue entry can contain it either: the text is chosen by kind,
+    // and a slug is never a catalogue key (WCX-08 section 8.1).
+    expect(ALL_KINDS.map(consoleErrorText).join(' ')).not.toContain(hostile);
   });
 
   it('reads a status slug only from a string field', () => {
@@ -69,14 +78,9 @@ describe('console error taxonomy', () => {
   });
 
   it('gives every kind a catalogue key and text entry', () => {
-    const kinds: ConsoleErrorKind[] = [
-      'unauthenticated', 'reauthentication-required', 'forbidden', 'not-found',
-      'validation', 'conflict', 'rate-limited', 'unavailable', 'timeout',
-      'network', 'unexpected',
-    ];
-    for (const kind of kinds) {
+    for (const kind of ALL_KINDS) {
       expect(consoleError(kind).messageKey).toBe(`errors.${kind}`);
-      expect(CONSOLE_ERROR_TEXT[kind]).toBeTruthy();
+      expect(consoleErrorText(kind)).toBeTruthy();
     }
   });
 });

@@ -1,8 +1,7 @@
 import type { EnrollmentSecret } from '@shared/api/types';
-import { Button, Dialog } from '@shared/ui';
+import { Button, Dialog, Timestamp } from '@shared/ui';
 import styles from '@shared/styles/app.module.css';
-import { SECRET_DIALOG_TEXT as TEXT } from './text';
-import { formatTime } from '@features/health';
+import { t, tx } from '@shared/text';
 
 /**
  * The one-time enrollment secret (`W11-C3-A`).
@@ -16,15 +15,16 @@ export function SecretDialog({ secret, onDismiss }: { secret: EnrollmentSecret |
     <Dialog
       open={secret !== null}
       onClose={onDismiss}
-      title={TEXT.title}
-      description={TEXT.description}
-      actions={<Button variant="primary" onClick={onDismiss}>{TEXT.dismiss}</Button>}
+      title={t('environment.secret.title')}
+      description={t('environment.secret.description')}
+      actions={<Button variant="primary" onClick={onDismiss}>{t('environment.secret.dismiss')}</Button>}
     >
       {secret && (
         <div className={styles.secretBox} data-testid="enrollment-secret">
-          <span>{TEXT.label}</span>
+          <span>{t('environment.secret.label')}</span>
           <code>{secret.token}</code>
-          <small>{TEXT.expires(formatTime(secret.expires_at))}</small>
+          {/* Evidence-adjacent: a 15-minute secret needs seconds to be actionable. */}
+          <small>{tx('environment.secret.expires', { time: <Timestamp value={secret.expires_at} precision="second" /> })}</small>
         </div>
       )}
     </Dialog>

@@ -1,6 +1,6 @@
 import styles from '@shared/styles/app.module.css';
-import { formatAge } from '@shared/ui/state/freshness';
-import { PENDING_TEXT } from './text';
+import { formatAge } from '@shared/ui/time/Timestamp';
+import { t } from '@shared/text';
 
 /**
  * The pending-on-object pattern (WCX-04 section 9.4).
@@ -26,8 +26,8 @@ export function PendingOnObject({
 }) {
   return (
     <p className={styles.pendingOnObject} role="status">
-      <span className={styles.pendingLabel}>{PENDING_TEXT.label}</span>
-      <span>{PENDING_TEXT.detail(formatAge(startedAt, now), reason)}</span>
+      <span className={styles.pendingLabel}>{t('common.inProgress')}</span>
+      <span>{t('common.progressDetail', { age: formatAge(startedAt, now), reason })}</span>
     </p>
   );
 }

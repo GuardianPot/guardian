@@ -23,6 +23,7 @@ import {
   StaleState,
   StatusBadge,
   TextField,
+  Timestamp,
   ToastRegion,
   UnknownState,
   UntrustedBlock,
@@ -56,6 +57,7 @@ export const EXERCISED_COMPONENTS = [
   'Dialog',
   'DescriptionList',
   'Skeleton',
+  'Timestamp',
   'Banner',
   'InlineMessage',
   'ToastRegion',
@@ -112,6 +114,10 @@ export function ExerciseEveryComponent({ text }: { text: string }) {
           takes, so the hostile-content test drives them through the whole
           corpus alongside everything else.
         */}
+        <Timestamp value={observedAt} />
+        <Timestamp value={observedAt} precision="second" mode="absoluteWithRelative" uncertainClock />
+        <Timestamp value={null} />
+
         <UntrustedText value={untrusted(text)} />
         <UntrustedBlock value={untrusted(text)} label="Captured transcript" />
 

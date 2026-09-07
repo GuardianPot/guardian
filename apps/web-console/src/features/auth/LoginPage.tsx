@@ -6,7 +6,7 @@ import { useAuth } from './AuthContext';
 import { useCapability } from './useCapability';
 import { Button, InlineMessage, LoadingState, TextField } from '@shared/ui';
 import styles from '@shared/styles/app.module.css';
-import { LOGIN_TEXT as TEXT } from './text';
+import { t } from '@shared/text';
 
 /** Stable so the three inputs can point at the one message that covers them. */
 const LOGIN_ERROR_ID = 'login-error';
@@ -34,7 +34,7 @@ export function LoginPage() {
   const totpRef = useRef<HTMLButtonElement>(null);
   const recoveryRef = useRef<HTMLButtonElement>(null);
   const writeAccess = useCapability('environment.create');
-  if (auth.loading) return <div className={styles.centered}><LoadingState activity={TEXT.checkingSession} /></div>;
+  if (auth.loading) return <div className={styles.centered}><LoadingState activity={t('common.checkingSession')} /></div>;
   if (auth.session && writeAccess.allowed) return <Navigate to="/environments" replace />;
 
   function onMethodKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
@@ -60,7 +60,7 @@ export function LoginPage() {
       event.currentTarget.reset();
       void navigate('/environments', { replace: true });
     } catch (caught) {
-      setError(toConsoleError(caught).kind === 'rate-limited' ? TEXT.rateLimited : TEXT.denied);
+      setError(toConsoleError(caught).kind === 'rate-limited' ? t('auth.rateLimited') : t('auth.denied'));
     } finally {
       setSubmitting(false);
     }
@@ -69,20 +69,20 @@ export function LoginPage() {
   return (
     <main className={styles.loginPage} tabIndex={-1}>
       <section className={styles.loginIntro}>
-        <div className={styles.brandMark} aria-hidden="true">G</div>
-        <p className={styles.eyebrow}>{TEXT.brandEyebrow}</p>
+        <div className={styles.brandMark} aria-hidden="true">{t('common.brandMark')}</div>
+        <p className={styles.eyebrow}>{t('auth.brand')}</p>
         {/*
           A paragraph, not the page heading: this column is hidden below 900
           pixels, and the screen's heading has to exist at every width. See
           `.loginHeadline` in `app.module.css`.
         */}
-        <p className={styles.loginHeadline}>{TEXT.headlineFirst}<br />{TEXT.headlineSecond}</p>
-        <p>{TEXT.intro}</p>
+        <p className={styles.loginHeadline}>{t('auth.headlineFirst')}<br />{t('auth.headlineSecond')}</p>
+        <p>{t('auth.intro')}</p>
       </section>
       <section className={styles.loginCard} aria-labelledby="login-heading">
-        <p className={styles.eyebrow}>{auth.session ? TEXT.restoreEyebrow : TEXT.ownerEyebrow}</p>
-        <h1 id="login-heading" tabIndex={-1}>{auth.session ? TEXT.reauthenticateHeading : TEXT.signInHeading}</h1>
-        <p>{auth.session ? TEXT.reauthenticateIntro : TEXT.signInIntro}</p>
+        <p className={styles.eyebrow}>{t(auth.session ? 'auth.restoreEyebrow' : 'auth.ownerEyebrow')}</p>
+        <h1 id="login-heading" tabIndex={-1}>{t(auth.session ? 'auth.reauthenticateHeading' : 'auth.signInHeading')}</h1>
+        <p>{t(auth.session ? 'auth.reauthenticateIntro' : 'auth.signInIntro')}</p>
         {/*
           A two-option segmented control (WCX-05 section 9.5.3). It stays a
           group of toggle buttons rather than becoming a radiogroup — the
@@ -90,20 +90,20 @@ export function LoginPage() {
           movement an operator expects from a segmented control. Each option
           exposes its state through `aria-pressed`.
         */}
-        <div className={styles.segmented} role="group" aria-label={TEXT.methodGroup}>
+        <div className={styles.segmented} role="group" aria-label={t('auth.methodGroup')}>
           {/*
             The key handler sits on each option rather than on the group.
             Focus is always on an option when an arrow is pressed, so the
             behaviour is identical, and a `group` is not an interactive
             element that should be carrying keyboard listeners.
           */}
-          <button ref={totpRef} type="button" aria-pressed={method === 'totp'} onClick={() => setMethod('totp')} onKeyDown={onMethodKeyDown}>{TEXT.authenticator}</button>
-          <button ref={recoveryRef} type="button" aria-pressed={method === 'recovery'} onClick={() => setMethod('recovery')} onKeyDown={onMethodKeyDown}>{TEXT.recovery}</button>
+          <button ref={totpRef} type="button" aria-pressed={method === 'totp'} onClick={() => setMethod('totp')} onKeyDown={onMethodKeyDown}>{t('auth.methodAuthenticator')}</button>
+          <button ref={recoveryRef} type="button" aria-pressed={method === 'recovery'} onClick={() => setMethod('recovery')} onKeyDown={onMethodKeyDown}>{t('auth.methodRecovery')}</button>
         </div>
         <form onSubmit={(event) => { void submit(event); }} className={styles.form}>
           <TextField
             name="username"
-            label={TEXT.username}
+            label={t('auth.username')}
             autoComplete="username"
             required
             minLength={3}
@@ -112,7 +112,7 @@ export function LoginPage() {
           />
           <TextField
             name="password"
-            label={TEXT.password}
+            label={t('auth.password')}
             type="password"
             autoComplete="current-password"
             required
@@ -127,7 +127,7 @@ export function LoginPage() {
           <TextField
             key={method}
             name="proof"
-            label={method === 'totp' ? TEXT.totpLabel : TEXT.recoveryLabel}
+            label={t(method === 'totp' ? 'auth.totpLabel' : 'auth.recoveryLabel')}
             autoComplete="one-time-code"
             required
             pattern={method === 'totp' ? '[0-9]{6}' : '[A-Za-z0-9_-]{22}'}
@@ -139,7 +139,7 @@ export function LoginPage() {
             three copies would announce the same non-answer three times.
           */}
           {error && <InlineMessage tone="error" id={LOGIN_ERROR_ID}>{error}</InlineMessage>}
-          <Button variant="primary" type="submit" pending={submitting}>{TEXT.submit}</Button>
+          <Button variant="primary" type="submit" pending={submitting}>{t('auth.submit')}</Button>
         </form>
       </section>
     </main>

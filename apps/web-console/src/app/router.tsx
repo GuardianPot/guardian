@@ -6,12 +6,12 @@ import { EnvironmentRoute, EnvironmentsRoute } from '@features/environments';
 import { AppLayout } from '@app/AppLayout';
 import { Shell } from '@app/Shell';
 import { LoadingState, RouteErrorBoundary } from '@shared/ui';
-import { SHELL_TEXT } from '@app/text';
+import { t } from '@shared/text';
 import { SCREEN } from '@app/screens';
 
 export function RequireAuth() {
   const auth = useAuth();
-  if (auth.loading) return <LoadingState activity={SHELL_TEXT.checkingSession} />;
+  if (auth.loading) return <LoadingState activity={t('common.checkingSession')} />;
   if (!auth.session) return <Navigate to="/login" replace />;
   return <Outlet />;
 }
@@ -70,7 +70,7 @@ export const routes: RouteObject[] = [
         path: '/login',
         element: (
           <RouteErrorBoundary>
-            <Suspense fallback={<LoadingState activity={SHELL_TEXT.loadingScreen} />}>
+            <Suspense fallback={<LoadingState activity={t('common.loadingScreen')} />}>
               <LoginRoute />
             </Suspense>
           </RouteErrorBoundary>

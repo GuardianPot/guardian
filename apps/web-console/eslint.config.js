@@ -63,6 +63,112 @@ const featureBoundary = (name, allowedPeers) => {
   };
 };
 
+/**
+ * Attributes whose string value is a token, not a sentence (WCX-08 section
+ * 9.1). Everything not listed here is treated as operator-facing text and must
+ * come from the catalogue, so a new prop is caught by default rather than by
+ * someone remembering to add it to a denylist. `data-*` is exempt by prefix.
+ *
+ * The list is deliberately mechanical: a name is here because the value is a
+ * CSS class, an element id, a URL, a form mechanic, an ARIA token from a fixed
+ * enumeration, or a design-system variant — never because a particular string
+ * looked harmless.
+ */
+const TECHNICAL_ATTRIBUTES = new Set([
+  // identity and structure
+  'className', 'id', 'htmlFor', 'key', 'ref', 'slot', 'form', 'role', 'scope',
+  'colSpan', 'rowSpan', 'hidden', 'open', 'tabIndex', 'style', 'translate',
+  // resources and routing
+  'to', 'href', 'src', 'srcSet', 'sizes', 'path', 'action', 'target', 'rel',
+  'download', 'loading', 'referrerPolicy', 'crossOrigin', 'integrity',
+  // form mechanics
+  'type', 'name', 'method', 'encType', 'accept', 'autoComplete', 'inputMode',
+  'enterKeyHint', 'pattern', 'step', 'min', 'max', 'maxLength', 'minLength',
+  'spellCheck', 'autoCapitalize',
+  // ARIA whose value is a token from a closed enumeration, never prose
+  'aria-hidden', 'aria-live', 'aria-atomic', 'aria-relevant', 'aria-busy',
+  'aria-current', 'aria-modal', 'aria-expanded', 'aria-haspopup',
+  'aria-controls', 'aria-labelledby', 'aria-describedby', 'aria-details',
+  'aria-owns', 'aria-orientation', 'aria-sort', 'aria-disabled',
+  'aria-invalid', 'aria-required', 'aria-pressed', 'aria-selected',
+  'aria-checked', 'aria-level', 'aria-errormessage',
+  // design-system variants from this repository's own components
+  'variant', 'tone', 'precision', 'mode', 'level', 'headingLevel', 'size',
+  'align', 'status', 'state', 'encoding', 'appearance',
+  // document and SVG plumbing
+  'lang', 'dir', 'charSet', 'httpEquiv', 'content', 'dateTime', 'viewBox',
+  'xmlns', 'd', 'fill', 'fillRule', 'clipRule', 'stroke', 'strokeWidth',
+  'strokeLinecap', 'strokeLinejoin', 'width', 'height', 'x', 'y', 'cx', 'cy',
+  'r', 'points', 'preserveAspectRatio', 'focusable',
+]);
+
+/** A run of characters an operator would read as words. */
+const READS_AS_WORDS = /\p{L}/u;
+
+/**
+ * Forbids operator-facing text written at a call site (WCX-08 section 9.1).
+ *
+ * A sentence spread across forty components cannot be reviewed as a whole, and
+ * wording is this product's differentiator: `SRC-07` provenance phrasing and
+ * `EV-04` evidence-before-inference are properties of the words themselves.
+ * So the words live in one catalogue and this rule keeps them there.
+ *
+ * It fires on three shapes, because all three put a sentence in a component:
+ * JSX text, a string literal in a child expression, and a string-valued
+ * attribute whose name is not a technical one.
+ */
+const noLiteralText = {
+  meta: {
+    type: 'problem',
+    docs: { description: 'Operator-facing text must come from the @shared/text catalogue.' },
+    schema: [],
+    messages: {
+      child: 'Operator-facing text belongs in the catalogue. Use t() or tx() from @shared/text.',
+      attribute: 'Operator-facing "{{name}}" text belongs in the catalogue. Use t() from @shared/text, or add the attribute to TECHNICAL_ATTRIBUTES if its value is a token.',
+    },
+  },
+  create(context) {
+    /** The string a literal or expression-free template carries, if any. */
+    const literalString = (node) => {
+      if (!node) return null;
+      if (node.type === 'Literal') return typeof node.value === 'string' ? node.value : null;
+      if (node.type === 'TemplateLiteral' && node.expressions.length === 0) {
+        return node.quasis.map((quasi) => quasi.value.cooked ?? '').join('');
+      }
+      return null;
+    };
+
+    return {
+      JSXText(node) {
+        if (READS_AS_WORDS.test(node.value)) context.report({ node, messageId: 'child' });
+      },
+      JSXExpressionContainer(node) {
+        const parent = node.parent?.type;
+        if (parent !== 'JSXElement' && parent !== 'JSXFragment') return;
+        const value = literalString(node.expression);
+        if (value !== null && READS_AS_WORDS.test(value)) {
+          context.report({ node, messageId: 'child' });
+        }
+      },
+      JSXAttribute(node) {
+        const name = node.name.type === 'JSXIdentifier'
+          ? node.name.name
+          : `${node.name.namespace.name}:${node.name.name.name}`;
+        if (name.startsWith('data-') || TECHNICAL_ATTRIBUTES.has(name)) return;
+        const value = node.value?.type === 'JSXExpressionContainer'
+          ? literalString(node.value.expression)
+          : literalString(node.value);
+        if (value !== null && READS_AS_WORDS.test(value)) {
+          context.report({ node, messageId: 'attribute', data: { name } });
+        }
+      },
+    };
+  },
+};
+
+/** Exported so the rule the suite exercises is the rule the build runs. */
+export const guardianPlugin = { rules: { 'no-literal-text': noLiteralText } };
+
 export default tseslint.config(
   { ignores: ['dist/**', 'node_modules/**', 'src/generated/**', 'src/**/__boundary__/**'] },
   eslint.configs.recommended,
@@ -114,6 +220,27 @@ export default tseslint.config(
       // `h1` and on `main` is required rather than merely tolerated.
       'jsx-a11y/no-noninteractive-tabindex': ['error', { tags: [], roles: ['tabpanel'], allowExpressionValues: true }],
     },
+  },
+  /*
+   * The text catalogue is the only place operator-facing words are written
+   * (WCX-08 section 9.1). Three exemptions, each because the file is fixture
+   * material rather than an operator surface:
+   *
+   * - tests, which have to name the wording they assert on;
+   * - the testing harness, including the fixture that proves this rule fires;
+   * - `app/workbench`, the development-only component gallery. Its labels name
+   *   fixtures ("Denied, no capability"), never product state, and it cannot
+   *   reach a production build — `router.tsx` mounts it behind
+   *   `import.meta.env.DEV` and `check-bundle.mjs` asserts its marker appears
+   *   in no production chunk. Routing fifty gallery captions through the
+   *   catalogue would defeat the catalogue's purpose, which is to be readable
+   *   in one sitting.
+   */
+  {
+    files: ['src/**/*.tsx'],
+    ignores: ['src/**/*.test.tsx', 'src/shared/testing/**', 'src/app/workbench/**'],
+    plugins: { guardian: guardianPlugin },
+    rules: { 'guardian/no-literal-text': 'error' },
   },
   // Default for production modules outside the layers handled below.
   {

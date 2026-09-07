@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { asConsoleError } from '@shared/api/query';
+import { t } from '@shared/text';
 import {
   DegradedState,
   DeniedState,
@@ -25,14 +26,22 @@ export type DataSubject = {
   name: string;
   /** For `unknown`: what would produce an observation. */
   observationSource?: string;
-  /** For `degraded`: the impaired dependency. */
-  dependency?: string;
-  /** For `degraded`: what still answers. */
-  stillWorks?: string;
-  /** For `degraded`: what does not. */
-  doesNotWork?: string;
-  /** For `stale`: why the refresh is not current. */
-  staleReason?: string;
+  /**
+   * For `degraded` and `stale`, all four required.
+   *
+   * `WCX-04` gave these defaults — "An upstream dependency", "the rest of this
+   * console". `WCX-08` removed them: a screen that cannot say which dependency
+   * is impaired should fail the build, not render a shrug. Naming the
+   * dependency is the whole reason this boundary exists (section 9.1), and a
+   * vague default let a screen skip it silently.
+   */
+  dependency: string;
+  /** What still answers. */
+  stillWorks: string;
+  /** What does not. */
+  doesNotWork: string;
+  /** Why the refresh is not current. */
+  staleReason: string;
 };
 
 /** The shape a TanStack Query result satisfies structurally. */
@@ -76,15 +85,6 @@ export type DataBoundaryProps<T> = {
 const defaultIsEmpty = (data: unknown): boolean => Array.isArray(data) && data.length === 0;
 
 /**
- * Fallback wording for a screen that did not name its dependency. Deliberately
- * vague about the cause and specific about the consequence, so it can never
- * read as a working read.
- */
-const DEFAULT_DEPENDENCY = 'An upstream dependency';
-const DEFAULT_STILL_WORKS = 'the rest of this console';
-const DEFAULT_STALE_REASON = 'the last refresh did not finish';
-
-/**
  * The age to show beside stale data.
  *
  * The read's own observation time when it has one, otherwise the moment the
@@ -123,7 +123,7 @@ export function DataBoundary<T>(props: DataBoundaryProps<T>) {
 
   switch (outcome) {
     case 'loading':
-      return <LoadingState activity={`Loading ${subject.name}`} />;
+      return <LoadingState activity={t('states.loading.activity', { subject: subject.name })} />;
     case 'empty':
       return <EmptyState collection={subject.name} action={props.emptyAction} />;
     case 'unknown':
@@ -137,7 +137,7 @@ export function DataBoundary<T>(props: DataBoundaryProps<T>) {
       return (
         <StaleState
           {...(staleAge === undefined ? {} : { observedAt: staleAge })}
-          reason={subject.staleReason ?? DEFAULT_STALE_REASON}
+          reason={subject.staleReason}
           {...(props.now === undefined ? {} : { now: props.now })}
         >
           {query.data === undefined ? null : children(query.data)}
@@ -152,9 +152,9 @@ export function DataBoundary<T>(props: DataBoundaryProps<T>) {
     case 'degraded':
       return (
         <DegradedState
-          dependency={subject.dependency ?? DEFAULT_DEPENDENCY}
-          stillWorks={subject.stillWorks ?? DEFAULT_STILL_WORKS}
-          doesNotWork={subject.doesNotWork ?? subject.name}
+          dependency={subject.dependency}
+          stillWorks={subject.stillWorks}
+          doesNotWork={subject.doesNotWork}
           {...retry}
         />
       );

@@ -3,7 +3,7 @@ import { useLocation } from 'react-router';
 import styles from '@shared/styles/app.module.css';
 import { Button } from '@shared/ui/controls/Button';
 import { recordRenderError } from './lastRenderError';
-import { ROOT_BOUNDARY_TEXT, ROUTE_BOUNDARY_TEXT } from './text';
+import { t } from '@shared/text';
 
 /**
  * Render error containment (WCX-04 section 9.2, remediates `P1-W11` GAP-2).
@@ -68,11 +68,11 @@ export function RootErrorBoundary({ children }: { children: ReactNode }) {
       fallback={() => (
         <main className={styles.centered}>
           <div className={styles.stateBlock} role="alert">
-            <p className={styles.eyebrow}>{ROOT_BOUNDARY_TEXT.product}</p>
-            <p className={styles.stateHeading}>{ROOT_BOUNDARY_TEXT.heading}</p>
-            <p className={styles.stateDetail}>{ROOT_BOUNDARY_TEXT.body}</p>
+            <p className={styles.eyebrow}>{t('common.product')}</p>
+            <p className={styles.stateHeading}>{t('states.rootFailure.heading')}</p>
+            <p className={styles.stateDetail}>{t('states.rootFailure.body')}</p>
             <Button variant="primary" onClick={() => { window.location.reload(); }}>
-              {ROOT_BOUNDARY_TEXT.reload}
+              {t('states.rootFailure.reload')}
             </Button>
           </div>
         </main>
@@ -94,9 +94,9 @@ export function RouteErrorBoundary({ children }: { children: ReactNode }) {
       resetKey={`${location.pathname}${location.search}`}
       fallback={(reset) => (
         <div className={`${styles.stateBlock} ${styles.stateBlocking}`} role="alert">
-          <p className={styles.stateHeading}>{ROUTE_BOUNDARY_TEXT.heading}</p>
-          <p className={styles.stateDetail}>{ROUTE_BOUNDARY_TEXT.body}</p>
-          <Button variant="secondary" onClick={reset}>{ROUTE_BOUNDARY_TEXT.retry}</Button>
+          <p className={styles.stateHeading}>{t('states.screenFailure.heading')}</p>
+          <p className={styles.stateDetail}>{t('states.screenFailure.body')}</p>
+          <Button variant="secondary" onClick={reset}>{t('states.screenFailure.retry')}</Button>
         </div>
       )}
     >

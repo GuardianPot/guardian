@@ -15,12 +15,12 @@ import {
 import type { EnrollmentSecret } from '@shared/api/types';
 import { useAuth, useCapability } from '@features/auth';
 import { textField } from '@shared/forms/textField';
-import { environmentHealthQuery, HealthPanel, HEALTH_TEXT, formatTime } from '@features/health';
+import { environmentHealthQuery, HealthPanel } from '@features/health';
 import { SecretDialog } from './SecretDialog';
-import { Banner, Button, DataBoundary, Panel, StatusBadge, TextField, UntrustedText } from '@shared/ui';
+import { Banner, Button, DataBoundary, Panel, StatusBadge, TextField, Timestamp, UntrustedText } from '@shared/ui';
 import { reveal } from '@shared/api/untrusted';
 import styles from '@shared/styles/app.module.css';
-import { ENVIRONMENT_TEXT as TEXT } from './text';
+import { t, tx } from '@shared/text';
 
 type PageMessage = { text: string; tone: 'informational' | 'blocking' };
 
@@ -64,33 +64,33 @@ export function EnvironmentPage() {
   async function submitRename(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setMessage(null);
     if (!auth.csrf || !environment.data) {
-      return setMessage({ text: TEXT.reauthenticateToRename, tone: 'blocking' });
+      return setMessage({ text: t('environment.reauthenticateToRename'), tone: 'blocking' });
     }
     const form = event.currentTarget;
     try {
       await rename.mutateAsync(textField(new FormData(form), 'display_name'));
-      setMessage({ text: TEXT.renamed, tone: 'informational' });
+      setMessage({ text: t('environment.renamed'), tone: 'informational' });
     } catch {
-      setMessage({ text: TEXT.renameFailed, tone: 'blocking' });
+      setMessage({ text: t('environment.renameFailed'), tone: 'blocking' });
     }
   }
 
   async function submitZone(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setMessage(null);
-    if (!auth.csrf) return setMessage({ text: TEXT.reauthenticateToAddZone, tone: 'blocking' });
+    if (!auth.csrf) return setMessage({ text: t('environment.reauthenticateToAddZone'), tone: 'blocking' });
     const form = event.currentTarget; const data = new FormData(form);
     try {
       await createZone.mutateAsync({ display_name: textField(data, 'display_name'), cidr: textField(data, 'cidr') });
       form.reset();
-      setMessage({ text: TEXT.zoneAdded, tone: 'informational' });
+      setMessage({ text: t('environment.zoneAdded'), tone: 'informational' });
     } catch {
-      setMessage({ text: TEXT.zoneFailed, tone: 'blocking' });
+      setMessage({ text: t('environment.zoneFailed'), tone: 'blocking' });
     }
   }
 
   async function submitEnrollment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setMessage(null);
-    if (!auth.csrf) return setMessage({ text: TEXT.reauthenticateToEnroll, tone: 'blocking' });
+    if (!auth.csrf) return setMessage({ text: t('environment.reauthenticateToEnroll'), tone: 'blocking' });
     const form = event.currentTarget;
     setCreatingSecret(true);
     try {
@@ -98,27 +98,27 @@ export function EnvironmentPage() {
       form.reset(); setSecret(created);
       await environmentInvalidation.afterEnrollmentSecret(queryClient, environmentId);
     } catch {
-      setMessage({ text: TEXT.secretDenied, tone: 'blocking' });
+      setMessage({ text: t('environment.secretDenied'), tone: 'blocking' });
     } finally {
       setCreatingSecret(false);
     }
   }
 
-  const enrollReason = enrollDevice.allowed ? undefined : TEXT.reauthenticateToEnroll;
-  const zoneReason = defineZone.allowed ? undefined : TEXT.reauthenticateToAddZone;
-  const renameReason = updateEnvironment.allowed ? undefined : TEXT.reauthenticateToRename;
+  const enrollReason = enrollDevice.allowed ? undefined : t('environment.reauthenticateToEnroll');
+  const zoneReason = defineZone.allowed ? undefined : t('environment.reauthenticateToAddZone');
+  const renameReason = updateEnvironment.allowed ? undefined : t('environment.reauthenticateToRename');
 
   return (
     <div>
-      <Link className={styles.backLink} to="/environments">{TEXT.back}</Link>
+      <Link className={styles.backLink} to="/environments">{t('environment.back')}</Link>
       <DataBoundary
         query={environment}
         subject={{
-          name: TEXT.loading,
-          dependency: TEXT.dependency,
-          stillWorks: TEXT.stillWorks,
-          doesNotWork: TEXT.doesNotWork,
-          staleReason: TEXT.staleReason,
+          name: t('environment.loading'),
+          dependency: t('common.controlPlane'),
+          stillWorks: t('environment.stillWorks'),
+          doesNotWork: t('environment.doesNotWork'),
+          staleReason: t('environment.staleReason'),
         }}
         onRetry={() => { void environment.refetch(); }}
       >
@@ -126,7 +126,7 @@ export function EnvironmentPage() {
           <>
             <header className={styles.pageHeader}>
               <div>
-                <p className={styles.eyebrow}>{TEXT.eyebrow}</p>
+                <p className={styles.eyebrow}>{t('environment.eyebrow')}</p>
                 <h1 tabIndex={-1}><UntrustedText value={record.display_name} /></h1>
                 <p className={styles.mono}>{record.environment_id}</p>
               </div>
@@ -135,24 +135,24 @@ export function EnvironmentPage() {
             {message && <Banner tone={message.tone}>{message.text}</Banner>}
             <div className={styles.twoColumn}>
               <Panel
-                heading={TEXT.inventoryHeading}
+                heading={t('environment.inventoryHeading')}
                 headingLevel={2}
-                eyebrow={TEXT.inventoryEyebrow}
+                eyebrow={t('environment.inventoryEyebrow')}
                 aside={<span className={styles.panelCount}>{devices.data?.length ?? 0}</span>}
               >
                 <DataBoundary
                   query={devices}
                   subject={{
-                    name: TEXT.deviceCollection,
-                    dependency: TEXT.deviceDependency,
-                    stillWorks: TEXT.deviceStillWorks,
-                    doesNotWork: TEXT.deviceDoesNotWork,
-                    staleReason: TEXT.deviceStaleReason,
+                    name: t('environment.deviceCollection'),
+                    dependency: t('common.controlPlane'),
+                    stillWorks: t('environment.deviceStillWorks'),
+                    doesNotWork: t('environment.deviceDoesNotWork'),
+                    staleReason: t('environment.deviceStaleReason'),
                   }}
                   onRetry={() => { void devices.refetch(); }}
                   emptyAction={
                     enrollDevice.allowed
-                      ? <Button variant="secondary" onClick={() => deviceNameField.current?.focus()}>{TEXT.enrollFirst}</Button>
+                      ? <Button variant="secondary" onClick={() => deviceNameField.current?.focus()}>{t('environment.enrollFirst')}</Button>
                       : undefined
                   }
                 >
@@ -170,12 +170,12 @@ export function EnvironmentPage() {
                   )}
                 </DataBoundary>
               </Panel>
-              <Panel heading={TEXT.enrollHeading} headingLevel={2} eyebrow={TEXT.enrollEyebrow}>
-                <p>{TEXT.enrollIntro}</p>
+              <Panel heading={t('environment.enrollHeading')} headingLevel={2} eyebrow={t('environment.enrollEyebrow')}>
+                <p>{t('environment.enrollIntro')}</p>
                 <form className={styles.form} onSubmit={(event) => { void submitEnrollment(event); }}>
                   <TextField
                     name="device_name"
-                    label={TEXT.deviceName}
+                    label={t('environment.deviceName')}
                     required
                     maxLength={128}
                     inputRef={deviceNameField}
@@ -187,7 +187,7 @@ export function EnvironmentPage() {
                     pending={creatingSecret}
                     {...(enrollReason === undefined ? {} : { disabledReason: enrollReason })}
                   >
-                    {TEXT.createSecret}
+                    {t('environment.createSecret')}
                   </Button>
                 </form>
               </Panel>
@@ -205,12 +205,12 @@ export function EnvironmentPage() {
               // observation is not the current state of a network.
               observedAt={health.data?.received_at ?? null}
               subject={{
-                name: HEALTH_TEXT.environmentSubject,
-                observationSource: HEALTH_TEXT.observationSource,
-                dependency: HEALTH_TEXT.dependency,
-                stillWorks: HEALTH_TEXT.stillWorks,
-                doesNotWork: HEALTH_TEXT.doesNotWork,
-                staleReason: HEALTH_TEXT.staleReason,
+                name: t('health.environmentSubject'),
+                observationSource: t('health.observationSource'),
+                dependency: t('health.dependency'),
+                stillWorks: t('health.stillWorks'),
+                doesNotWork: t('health.doesNotWork'),
+                staleReason: t('health.staleReason'),
               }}
               onRetry={() => { void health.refetch(); }}
             >
@@ -218,23 +218,23 @@ export function EnvironmentPage() {
             </DataBoundary>
             <div className={styles.twoColumn}>
               <Panel
-                heading={TEXT.zonesHeading}
+                heading={t('environment.zonesHeading')}
                 headingLevel={2}
                 aside={<span className={styles.panelCount}>{zones.data?.length ?? 0}</span>}
               >
                 <DataBoundary
                   query={zones}
                   subject={{
-                    name: TEXT.zoneCollection,
-                    dependency: TEXT.zoneDependency,
-                    stillWorks: TEXT.zoneStillWorks,
-                    doesNotWork: TEXT.zoneDoesNotWork,
-                    staleReason: TEXT.zoneStaleReason,
+                    name: t('environment.zoneCollection'),
+                    dependency: t('common.controlPlane'),
+                    stillWorks: t('environment.zoneStillWorks'),
+                    doesNotWork: t('environment.zoneDoesNotWork'),
+                    staleReason: t('environment.zoneStaleReason'),
                   }}
                   onRetry={() => { void zones.refetch(); }}
                   emptyAction={
                     defineZone.allowed
-                      ? <Button variant="secondary" onClick={() => zoneNameField.current?.focus()}>{TEXT.nameFirstZone}</Button>
+                      ? <Button variant="secondary" onClick={() => zoneNameField.current?.focus()}>{t('environment.nameFirstZone')}</Button>
                       : undefined
                   }
                 >
@@ -242,7 +242,7 @@ export function EnvironmentPage() {
                     <ul className={styles.zoneList}>
                       {list.map((zone) => (
                         <li key={zone.zone_id}>
-                          <span><strong><UntrustedText value={zone.display_name} /></strong><small>{TEXT.updated(formatTime(zone.updated_at))}</small></span>
+                          <span><strong><UntrustedText value={zone.display_name} /></strong><small>{tx('environment.zoneUpdated', { time: <Timestamp value={zone.updated_at} /> })}</small></span>
                           <code>{zone.cidr}</code>
                         </li>
                       ))}
@@ -252,7 +252,7 @@ export function EnvironmentPage() {
                 <form className={styles.inlineForm} onSubmit={(event) => { void submitZone(event); }}>
                   <TextField
                     name="display_name"
-                    label={TEXT.zoneName}
+                    label={t('environment.zoneName')}
                     required
                     maxLength={128}
                     inputRef={zoneNameField}
@@ -260,7 +260,7 @@ export function EnvironmentPage() {
                   />
                   <TextField
                     name="cidr"
-                    label={TEXT.zoneCidr}
+                    label={t('environment.zoneCidr')}
                     placeholder="10.20.0.0/24"
                     required
                     maxLength={18}
@@ -272,15 +272,15 @@ export function EnvironmentPage() {
                     pending={createZone.isPending}
                     {...(zoneReason === undefined ? {} : { disabledReason: zoneReason })}
                   >
-                    {TEXT.addZone}
+                    {t('environment.addZone')}
                   </Button>
                 </form>
               </Panel>
-              <Panel heading={TEXT.settingsHeading} headingLevel={2} eyebrow={TEXT.settingsEyebrow}>
+              <Panel heading={t('environment.settingsHeading')} headingLevel={2} eyebrow={t('environment.settingsEyebrow')}>
                 <form className={styles.form} onSubmit={(event) => { void submitRename(event); }}>
                   <TextField
                     name="display_name"
-                    label={TEXT.displayNameLabel}
+                    label={t('environment.displayNameLabel')}
                     /*
                       `reveal` is correct here and nowhere else on this screen:
                       the operator is editing the value, so the field needs the
@@ -298,7 +298,7 @@ export function EnvironmentPage() {
                     pending={rename.isPending}
                     {...(renameReason === undefined ? {} : { disabledReason: renameReason })}
                   >
-                    {TEXT.saveName}
+                    {t('environment.saveName')}
                   </Button>
                 </form>
               </Panel>

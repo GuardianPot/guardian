@@ -4,7 +4,7 @@ import { Dialog } from '@shared/ui/controls/Dialog';
 import { TextField } from '@shared/ui/controls/TextField';
 import { InlineMessage } from '@shared/ui/feedback/InlineMessage';
 import { confirmationFor, stepUpUnavailable, type ConfirmableAction, type StepUpReauthentication } from './levels';
-import { CONFIRM_TEXT } from './text';
+import { t } from '@shared/text';
 
 /**
  * Levels 2 and 3 of the confirmation model (WCX-04 section 9.3, WC-D16).
@@ -67,22 +67,22 @@ export function ConfirmationDialog({
     <Dialog
       open={open}
       onClose={onCancel}
-      title={CONFIRM_TEXT.title(confirmation.effect)}
+      title={confirmation.effect}
       description={
         irreversible
-          ? CONFIRM_TEXT.irreversible(confirmation.effect, objectName)
-          : CONFIRM_TEXT.recoverable(confirmation.effect, objectName)
+          ? t('confirm.irreversible', { effect: confirmation.effect, object: objectName })
+          : t('confirm.recoverable', { effect: confirmation.effect, object: objectName })
       }
       initialFocus={cancelRef}
       actions={
         <>
           <Button variant="quiet" buttonRef={cancelRef} onClick={onCancel}>
-            {CONFIRM_TEXT.cancel}
+            {t('common.cancel')}
           </Button>
           <Button
             variant="destructive"
             onClick={() => { void confirm(); }}
-            {...(confirmBlocked ? { disabledReason: CONFIRM_TEXT.typeToConfirm(objectName) } : {})}
+            {...(confirmBlocked ? { disabledReason: t('confirm.typeToConfirm', { object: objectName }) } : {})}
           >
             {confirmation.effect}
           </Button>
@@ -92,13 +92,13 @@ export function ConfirmationDialog({
       {irreversible && (
         <TextField
           name="confirm_object_name"
-          label={CONFIRM_TEXT.typeLabel}
-          description={CONFIRM_TEXT.typeToConfirm(objectName)}
+          label={t('confirm.typeLabel')}
+          description={t('confirm.typeToConfirm', { object: objectName })}
           value={typed}
           onChange={setTyped}
         />
       )}
-      {stepUpRefused && <InlineMessage tone="error">{CONFIRM_TEXT.stepUpRequired}</InlineMessage>}
+      {stepUpRefused && <InlineMessage tone="error">{t('confirm.stepUpRequired')}</InlineMessage>}
     </Dialog>
   );
 }

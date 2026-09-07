@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { reveal, type Untrusted } from '@shared/api/untrusted';
 import styles from '@shared/styles/app.module.css';
 import { TEXT_LIMIT, transformUntrusted, type Segment } from './transform';
-import { UNTRUSTED_TEXT } from './text';
+import { t } from '@shared/text';
 
 /**
  * A short attacker-influenced value (WCX-06 section 9.1).
@@ -29,7 +29,7 @@ export function UntrustedText({ value }: { value: Untrusted }) {
       {transformed.truncated && (
         <span className={styles.untrustedTruncation}>
           {' '}
-          {UNTRUSTED_TEXT.truncatedText(TEXT_LIMIT, transformed.originalLength)}
+          {t('untrusted.truncatedText', { shown: TEXT_LIMIT, original: transformed.originalLength })}
         </span>
       )}
     </span>
@@ -51,7 +51,7 @@ export function renderSegment(segment: Segment, index: number) {
       key={index}
       className={styles.untrustedEscape}
       role="img"
-      aria-label={UNTRUSTED_TEXT.escapeLabel(segment.description)}
+      aria-label={t('untrusted.escapeLabel', { description: segment.description })}
     >
       {segment.value}
     </span>

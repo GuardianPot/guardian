@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet } from 'react-router';
 import { useAuth, useCapability } from '@features/auth';
 import { Banner, Button, InlineMessage, LoadingState, RouteErrorBoundary } from '@shared/ui';
 import styles from '@shared/styles/app.module.css';
-import { SHELL_TEXT } from './text';
+import { t, tx } from '@shared/text';
 
 export function Shell() {
   const auth = useAuth();
@@ -12,17 +12,17 @@ export function Shell() {
   const signOut = useCapability('session.revoke');
   return (
     <div className={styles.shell}>
-      <a className={styles.skipLink} href="#main-content">{SHELL_TEXT.skipToContent}</a>
+      <a className={styles.skipLink} href="#main-content">{t('common.skipToContent')}</a>
       <aside className={styles.sidebar}>
-        <Link className={styles.brand} to="/environments" aria-label={SHELL_TEXT.homeLabel}>
-          <span className={styles.brandMark} aria-hidden="true">G</span>
-          <span><strong>{SHELL_TEXT.product}</strong><small>{SHELL_TEXT.productScope}</small></span>
+        <Link className={styles.brand} to="/environments" aria-label={t('common.consoleHome')}>
+          <span className={styles.brandMark} aria-hidden="true">{t('common.brandMark')}</span>
+          <span><strong>{t('common.product')}</strong><small>{t('common.productScope')}</small></span>
         </Link>
-        <nav aria-label={SHELL_TEXT.primaryNavigation}>
-          <NavLink to="/environments" className={({ isActive }) => isActive ? styles.navActive : styles.navLink}>{SHELL_TEXT.environments}</NavLink>
+        <nav aria-label={t('common.primaryNavigation')}>
+          <NavLink to="/environments" className={({ isActive }) => isActive ? styles.navActive : styles.navLink}>{t('environments.heading')}</NavLink>
         </nav>
         <div className={styles.operator}>
-          <span>{SHELL_TEXT.signedInAs}</span>
+          <span>{t('common.signedInAs')}</span>
           <strong>{auth.session?.username}</strong>
           {signOut.allowed ? (
             <Button
@@ -31,13 +31,13 @@ export function Shell() {
                 setSignOutError('');
                 // A refused sign-out must stay visible instead of silently
                 // leaving the operator on an apparently ended session.
-                auth.logout().catch(() => setSignOutError(SHELL_TEXT.signOutFailed));
+                auth.logout().catch(() => setSignOutError(t('common.signOutFailed')));
               }}
             >
-              {SHELL_TEXT.signOut}
+              {t('common.signOut')}
             </Button>
           ) : (
-            <Link to="/login">{SHELL_TEXT.reauthenticate}</Link>
+            <Link to="/login">{t('common.reauthenticate')}</Link>
           )}
           {signOutError && <InlineMessage tone="error">{signOutError}</InlineMessage>}
         </div>
@@ -45,7 +45,14 @@ export function Shell() {
       <div className={styles.workspace}>
         {!signOut.allowed && (
           <Banner tone="restricted">
-            {SHELL_TEXT.readOnlySession} <Link to="/login">{SHELL_TEXT.reauthenticate}</Link> {SHELL_TEXT.beforeChanging}
+            {/*
+              One catalogue entry, not three fragments around a link. A
+              sentence assembled at the call site cannot be reviewed as a
+              sentence (WCX-08 section 9.1.6).
+            */}
+            {tx('common.sessionReadOnlyFull', {
+              reauthenticate: <Link to="/login">{t('common.reauthenticate')}</Link>,
+            })}
           </Banner>
         )}
         <main id="main-content" className={styles.main} tabIndex={-1}>
@@ -62,7 +69,7 @@ export function Shell() {
             every other pending read uses, announced once through `status`.
           */}
           <RouteErrorBoundary>
-            <Suspense fallback={<LoadingState activity={SHELL_TEXT.loadingScreen} />}>
+            <Suspense fallback={<LoadingState activity={t('common.loadingScreen')} />}>
               <Outlet />
             </Suspense>
           </RouteErrorBoundary>

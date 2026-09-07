@@ -17,7 +17,7 @@ import {
   useToasts,
 } from '@shared/ui';
 import styles from '@shared/styles/app.module.css';
-import { ENVIRONMENTS_TEXT as TEXT } from './text';
+import { plural, t } from '@shared/text';
 
 export function EnvironmentsPage() {
   const auth = useAuth();
@@ -35,47 +35,47 @@ export function EnvironmentsPage() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
-    if (!auth.csrf) return setError(TEXT.reauthenticateToCreate);
+    if (!auth.csrf) return setError(t('environments.reauthenticateToCreate'));
     const form = event.currentTarget;
     try {
       await create.mutateAsync(textField(new FormData(form), 'display_name'));
       form.reset();
       // A completed action gets a toast; the failure below gets an inline
       // message, never a toast alone (WCX-04 section 9.4).
-      toasts.show(TEXT.created);
+      toasts.show(t('environments.created'));
     } catch {
-      setError(TEXT.createFailed);
+      setError(t('environments.createFailed'));
     }
   }
 
-  const reason = createEnvironment.allowed ? undefined : TEXT.reauthenticateToCreate;
+  const reason = createEnvironment.allowed ? undefined : t('environments.reauthenticateToCreate');
 
   return (
     <div>
       <header className={styles.pageHeader}>
         {/* `tabIndex={-1}` is the route-change focus target (WCX-05 section 9.2.2). */}
-        <div><p className={styles.eyebrow}>{TEXT.eyebrow}</p><h1 tabIndex={-1}>{TEXT.heading}</h1></div>
-        <span className={styles.truthNote}>{TEXT.truthNote}</span>
+        <div><p className={styles.eyebrow}>{t('environments.eyebrow')}</p><h1 tabIndex={-1}>{t('environments.heading')}</h1></div>
+        <span className={styles.truthNote}>{t('environments.truthNote')}</span>
       </header>
       <div className={styles.twoColumn}>
         <Panel
-          heading={TEXT.listHeading}
+          heading={t('environments.listHeading')}
           headingLevel={2}
-          aside={<span className={styles.panelCount}>{TEXT.total(environments.data?.length ?? 0)}</span>}
+          aside={<span className={styles.panelCount}>{t('environments.total', { count: environments.data?.length ?? 0 })}</span>}
         >
           <DataBoundary
             query={environments}
             subject={{
-              name: TEXT.collection,
-              dependency: TEXT.dependency,
-              stillWorks: TEXT.stillWorks,
-              doesNotWork: TEXT.doesNotWork,
-              staleReason: TEXT.staleReason,
+              name: t('environments.collection'),
+              dependency: t('common.controlPlane'),
+              stillWorks: t('environments.stillWorks'),
+              doesNotWork: t('environments.doesNotWork'),
+              staleReason: t('environments.staleReason'),
             }}
             onRetry={() => { void environments.refetch(); }}
             emptyAction={
               createEnvironment.allowed
-                ? <Button variant="secondary" onClick={() => nameField.current?.focus()}>{TEXT.nameFirst}</Button>
+                ? <Button variant="secondary" onClick={() => nameField.current?.focus()}>{t('environments.nameFirst')}</Button>
                 : undefined
             }
           >
@@ -84,7 +84,7 @@ export function EnvironmentsPage() {
                 {list.map((environment) => (
                   <li key={environment.environment_id}>
                     <Link className={styles.environmentCard} to={`/environments/${environment.environment_id}`}>
-                      <span><strong><UntrustedText value={environment.display_name} /></strong><small>{TEXT.zones(environment.zone_count)}</small></span>
+                      <span><strong><UntrustedText value={environment.display_name} /></strong><small>{plural('environments.zoneCount', environment.zone_count)}</small></span>
                       <StatusBadge encoding={configEncoding(environment.status)} />
                     </Link>
                   </li>
@@ -93,12 +93,12 @@ export function EnvironmentsPage() {
             )}
           </DataBoundary>
         </Panel>
-        <Panel heading={TEXT.createHeading} headingLevel={2} eyebrow={TEXT.createEyebrow}>
-          <p>{TEXT.createIntro}</p>
+        <Panel heading={t('environments.createHeading')} headingLevel={2} eyebrow={t('environments.createEyebrow')}>
+          <p>{t('environments.createIntro')}</p>
           <form className={styles.form} onSubmit={(event) => { void submit(event); }}>
             <TextField
               name="display_name"
-              label={TEXT.displayName}
+              label={t('environments.displayName')}
               required
               maxLength={128}
               inputRef={nameField}
@@ -111,7 +111,7 @@ export function EnvironmentsPage() {
               pending={create.isPending}
               {...(reason === undefined ? {} : { disabledReason: reason })}
             >
-              {TEXT.create}
+              {t('environments.create')}
             </Button>
           </form>
         </Panel>

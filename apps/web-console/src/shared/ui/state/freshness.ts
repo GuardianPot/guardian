@@ -32,28 +32,6 @@ export function isBeyondFreshness(
   return now - observed > limit;
 }
 
-const UNITS: readonly { limit: number; size: number; one: string; many: string }[] = [
-  { limit: 60_000, size: 1_000, one: 'second', many: 'seconds' },
-  { limit: 3_600_000, size: 60_000, one: 'minute', many: 'minutes' },
-  { limit: 86_400_000, size: 3_600_000, one: 'hour', many: 'hours' },
-];
-
-/**
- * Renders an observation age in whole units.
- *
- * `WCX-08` replaces this with the canonical timestamp presentation, which
- * pairs relative time with an absolute value. Until then this is only ever
- * shown beside the absolute time the caller already renders.
- */
-export function formatAge(observedAt: string, now: number = Date.now()): string {
-  const observed = Date.parse(observedAt);
-  if (Number.isNaN(observed)) return 'an unknown age';
-  const elapsed = Math.max(0, now - observed);
-  const unit = UNITS.find((candidate) => elapsed < candidate.limit);
-  if (!unit) {
-    const days = Math.floor(elapsed / 86_400_000);
-    return `${days} ${days === 1 ? 'day' : 'days'}`;
-  }
-  const count = Math.floor(elapsed / unit.size);
-  return `${count} ${count === 1 ? unit.one : unit.many}`;
-}
+// `WCX-04` shipped an age formatter here with its unit words inline. `WCX-08`
+// moved both to `time/Timestamp`, so the `stale` state and a relative
+// timestamp read from one implementation and one catalogue.

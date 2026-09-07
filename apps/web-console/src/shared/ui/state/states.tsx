@@ -2,17 +2,8 @@ import type { ReactNode } from 'react';
 import styles from '@shared/styles/app.module.css';
 import { Button } from '@shared/ui/controls/Button';
 import { Skeleton } from '@shared/ui/controls/Skeleton';
-import { formatAge } from './freshness';
-import {
-  DEGRADED_TEXT,
-  DENIED_TEXT,
-  EMPTY_TEXT,
-  ERROR_TEXT,
-  LOADING_TEXT,
-  PARTIAL_TEXT,
-  STALE_TEXT,
-  UNKNOWN_TEXT,
-} from './text';
+import { formatAge } from '@shared/ui/time/Timestamp';
+import { t } from '@shared/text';
 
 /**
  * The eight canonical data states (WCX-04 section 9.1, decision WC-D15).
@@ -42,7 +33,7 @@ function Blocking({ children }: { children: ReactNode }) {
 export function LoadingState({ activity, skeletonLines }: { activity: string; skeletonLines?: number }) {
   return (
     <div className={styles.stateBlock}>
-      <p className={styles.state} role="status">{LOADING_TEXT.announce(activity)}</p>
+      <p className={styles.state} role="status">{t('states.loading.announce', { activity })}</p>
       {skeletonLines !== undefined && <Skeleton lines={skeletonLines} />}
     </div>
   );
@@ -58,8 +49,8 @@ export function LoadingState({ activity, skeletonLines }: { activity: string; sk
 export function EmptyState({ collection, action }: { collection: string; action?: ReactNode }) {
   return (
     <Informational>
-      <p className={styles.stateHeading}>{EMPTY_TEXT.heading(collection)}</p>
-      <p className={styles.stateDetail}>{EMPTY_TEXT.body(collection)}</p>
+      <p className={styles.stateHeading}>{t('states.empty.heading', { collection })}</p>
+      <p className={styles.stateDetail}>{t('states.empty.body', { collection })}</p>
       {action}
     </Informational>
   );
@@ -69,10 +60,10 @@ export function EmptyState({ collection, action }: { collection: string; action?
 export function UnknownState({ subject, observationSource }: { subject: string; observationSource?: string }) {
   return (
     <Informational>
-      <p className={styles.stateHeading}>{UNKNOWN_TEXT.heading}</p>
-      <p className={styles.stateDetail}>{UNKNOWN_TEXT.body(subject)}</p>
+      <p className={styles.stateHeading}>{t('states.unknown.heading')}</p>
+      <p className={styles.stateDetail}>{t('states.unknown.body', { subject })}</p>
       {observationSource !== undefined && (
-        <p className={styles.stateDetail}>{UNKNOWN_TEXT.source(observationSource)}</p>
+        <p className={styles.stateDetail}>{t('states.unknown.source', { source: observationSource })}</p>
       )}
     </Informational>
   );
@@ -100,11 +91,11 @@ export function StaleState({
   return (
     <div className={styles.stateWrapper}>
       <div className={styles.stateBlock} role="status">
-        <p className={styles.stateHeading}>{STALE_TEXT.heading}</p>
+        <p className={styles.stateHeading}>{t('states.stale.heading')}</p>
         {observedAt !== undefined && (
-          <p className={styles.stateDetail}>{STALE_TEXT.age(formatAge(observedAt, now))}</p>
+          <p className={styles.stateDetail}>{t('states.stale.age', { age: formatAge(observedAt, now) })}</p>
         )}
-        <p className={styles.stateDetail}>{STALE_TEXT.reason(reason)}</p>
+        <p className={styles.stateDetail}>{t('states.stale.reason', { reason })}</p>
       </div>
       {children}
     </div>
@@ -124,12 +115,12 @@ export function PartialState({
   return (
     <div className={styles.stateWrapper}>
       <div className={styles.stateBlock} role="status">
-        <p className={styles.stateHeading}>{PARTIAL_TEXT.heading}</p>
-        <p className={styles.stateDetail}>{PARTIAL_TEXT.body}</p>
-        <ul className={styles.stateList} aria-label={PARTIAL_TEXT.listLabel}>
+        <p className={styles.stateHeading}>{t('states.partial.heading')}</p>
+        <p className={styles.stateDetail}>{t('states.partial.body')}</p>
+        <ul className={styles.stateList} aria-label={t('states.partial.listLabel')}>
           {unavailable.map((source) => <li key={source}>{source}</li>)}
         </ul>
-        {onRetry && <Button variant="secondary" onClick={onRetry}>{PARTIAL_TEXT.retry}</Button>}
+        {onRetry && <Button variant="secondary" onClick={onRetry}>{t('states.partial.retry')}</Button>}
       </div>
       {children}
     </div>
@@ -150,10 +141,10 @@ export function DegradedState({
 }) {
   return (
     <Blocking>
-      <p className={styles.stateHeading}>{DEGRADED_TEXT.heading(dependency)}</p>
-      <p className={styles.stateDetail}>{DEGRADED_TEXT.works(stillWorks)}</p>
-      <p className={styles.stateDetail}>{DEGRADED_TEXT.broken(doesNotWork)}</p>
-      {onRetry && <Button variant="secondary" onClick={onRetry}>{DEGRADED_TEXT.retry}</Button>}
+      <p className={styles.stateHeading}>{t('states.degraded.heading', { dependency })}</p>
+      <p className={styles.stateDetail}>{t('states.degraded.works', { detail: stillWorks })}</p>
+      <p className={styles.stateDetail}>{t('states.degraded.broken', { detail: doesNotWork })}</p>
+      {onRetry && <Button variant="secondary" onClick={onRetry}>{t('states.degraded.retry')}</Button>}
     </Blocking>
   );
 }
@@ -167,9 +158,9 @@ export function DegradedState({
 export function DeniedState({ reauthenticate = false }: { reauthenticate?: boolean }) {
   return (
     <Blocking>
-      <p className={styles.stateHeading}>{DENIED_TEXT.heading}</p>
-      <p className={styles.stateDetail}>{DENIED_TEXT.body}</p>
-      {reauthenticate && <p className={styles.stateDetail}>{DENIED_TEXT.reauthenticate}</p>}
+      <p className={styles.stateHeading}>{t('states.denied.heading')}</p>
+      <p className={styles.stateDetail}>{t('states.denied.body')}</p>
+      {reauthenticate && <p className={styles.stateDetail}>{t('states.denied.reauthenticate')}</p>}
     </Blocking>
   );
 }
@@ -178,9 +169,9 @@ export function DeniedState({ reauthenticate = false }: { reauthenticate?: boole
 export function ErrorState({ retryable = false, onRetry }: { retryable?: boolean; onRetry?: () => void }) {
   return (
     <Blocking>
-      <p className={styles.stateHeading}>{ERROR_TEXT.heading}</p>
-      <p className={styles.stateDetail}>{ERROR_TEXT.body}</p>
-      {retryable && onRetry && <Button variant="secondary" onClick={onRetry}>{ERROR_TEXT.retry}</Button>}
+      <p className={styles.stateHeading}>{t('states.error.heading')}</p>
+      <p className={styles.stateDetail}>{t('states.error.body')}</p>
+      {retryable && onRetry && <Button variant="secondary" onClick={onRetry}>{t('states.error.retry')}</Button>}
     </Blocking>
   );
 }

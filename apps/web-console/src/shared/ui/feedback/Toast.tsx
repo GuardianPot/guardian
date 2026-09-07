@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from '@shared/styles/app.module.css';
-import { TOAST_TEXT } from './text';
+import { t } from '@shared/text';
 
 /**
  * Short confirmation of a completed action (WCX-04 section 9.4).
@@ -91,7 +91,7 @@ function Toast({
     >
       <span role="status">{toast.text}</span>
       <button className={styles.toastDismiss} type="button" onClick={() => onDismiss(toast.id)}>
-        {TOAST_TEXT.dismiss}
+        {t('common.dismiss')}
       </button>
     </div>
   );

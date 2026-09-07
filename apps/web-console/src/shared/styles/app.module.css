@@ -164,6 +164,18 @@
 .untrustedLegend { margin: 0; color: var(--text-muted); font-size: var(--font-size-2); line-height: var(--line-height-normal); max-width: 70ch; }
 .untrustedPayload { max-height: 28rem; width: 100%; margin: 0; padding: var(--space-6); overflow: auto; color: var(--text-secondary); border: 1px solid var(--line-subtle); border-radius: var(--radius-3); background: var(--surface-inset); font: var(--font-size-3) ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 
+/*
+ * Timestamps (WCX-08 section 9.3). The zone abbreviation makes every value
+ * longer, so the containers that hold one wrap rather than clip.
+ *
+ * The clock-quality marker uses a neutral token, not a severity one: a device
+ * with a drifting clock is a caveat on a reading, not an incident.
+ */
+.timestamp { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); }
+.timestampRelative { color: var(--text-muted); font-size: var(--font-size-2); }
+.timestampUncertain { padding: 0 var(--space-2); color: var(--text-muted); border: 1px dashed var(--line-strong); border-radius: var(--radius-1); font-size: var(--font-size-1); }
+.timestampUnknown { color: var(--text-muted); font-style: italic; }
+
 /* Confidence (WCX-04 section 9.5). Neutral steps; never a severity colour. */
 .confidence { display: flex; align-items: center; gap: var(--space-4); margin: 0; color: var(--text-secondary); font-size: var(--font-size-3); }
 .confidenceLabel { color: var(--text-muted); }

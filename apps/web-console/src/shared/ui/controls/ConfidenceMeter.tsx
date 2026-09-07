@@ -1,6 +1,6 @@
 import { confidenceEncoding } from '@shared/theme/statusEncoding';
 import styles from '@shared/styles/app.module.css';
-import { CONFIDENCE_METER_TEXT } from './text';
+import { t } from '@shared/text';
 
 /**
  * Confidence as a neutral stepped indicator (WCX-04 section 9.5, WC-D11).
@@ -14,7 +14,7 @@ export function ConfidenceMeter({ value }: { value: string }) {
   const encoding = confidenceEncoding(value);
   return (
     <p className={styles.confidence}>
-      <span className={styles.confidenceLabel}>{CONFIDENCE_METER_TEXT.label}</span>
+      <span className={styles.confidenceLabel}>{t('common.confidence')}</span>
       <span className={styles.confidenceSteps} aria-hidden="true">
         {Array.from({ length: encoding.total }, (_, index) => (
           <span
@@ -23,7 +23,7 @@ export function ConfidenceMeter({ value }: { value: string }) {
           />
         ))}
       </span>
-      <span>{CONFIDENCE_METER_TEXT.value(encoding.label, encoding.filled, encoding.total)}</span>
+      <span>{t('common.confidenceValue', { label: encoding.label, filled: encoding.filled, total: encoding.total })}</span>
     </p>
   );
 }

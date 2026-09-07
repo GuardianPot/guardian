@@ -274,7 +274,16 @@ describe('the layer as a whole', () => {
   it('subscribes to no global interval', () => {
     // Section 9.11. A toast uses a per-instance `setTimeout` cleared on
     // unmount; nothing polls.
-    for (const path of modules) {
+    //
+    // `Timestamp` is the one exception and it is a bounded one: `WCX-08`
+    // section 9.3.5 needs relative time to age, so it holds a per-instance
+    // minute interval that exists only in `absoluteWithRelative` mode and is
+    // cleared on unmount. `Timestamp.test.tsx` asserts both, which is the
+    // property this rule is really about — nothing here subscribes to a
+    // timer the component tree cannot switch off.
+    const polling = modules.filter((path) => !path.endsWith(join('time', 'Timestamp.tsx')));
+    expect(polling.length, 'the exemption must not swallow the layer').toBeGreaterThan(10);
+    for (const path of polling) {
       expect(codeOf(path), path).not.toMatch(/setInterval|requestAnimationFrame/);
     }
   });

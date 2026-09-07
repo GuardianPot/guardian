@@ -953,6 +953,198 @@ became a thin re-export of the core, and only the core has an 8.x line —
 typecheck clean, the whole suite unchanged, and every API the console uses
 present with the same signature.
 
+## Text catalogue and wording rules
+
+Every word an operator reads lives in `src/shared/text/catalogue.ts`. That is
+not tidiness. This product's differentiator is its wording — `SRC-07` requires
+provenance-aware language and `EV-04` requires evidence to precede inference —
+and wording spread across forty components cannot be reviewed as a whole. In
+one file it can be read in one sitting, which is the only way those two rules
+get checked at all.
+
+### Reading and writing text
+
+```tsx
+import { plural, t, tx } from '@shared/text';
+
+t('environments.heading')                      // 'Environments'
+t('environments.total', { count: 12 })         // '12 total'
+plural('environments.zoneCount', 1)            // '1 zone'
+tx('common.sessionReadOnlyFull', {             // a sentence around a control
+  reauthenticate: <Link to="/login">{t('common.reauthenticate')}</Link>,
+})
+```
+
+`t` returns a string and cannot emit markup: a value containing `<img …>`
+becomes those characters. `tx` returns nodes, and still parses nothing — the
+nodes are React elements the caller supplied, never a string to be
+interpreted.
+
+Both are typechecked against the catalogue entry itself. An unknown key does
+not compile, and neither does a call that omits a placeholder the entry needs,
+because the required values are derived from the string with a template-literal
+type. Adding `{count}` to an entry immediately fails every call site that does
+not supply it. `typeFixtures.test.ts` compiles fixtures of each failure through
+the TypeScript API, so the guarantee is proved rather than assumed.
+
+### Key naming
+
+Keys describe **meaning, not wording**. A key has to survive a rewrite of the
+sentence it names.
+
+```text
+devices.enrollment.secretShownOnce      correct
+devices.enrollment.enterThisOnTheHost   wrong — names this draft's phrasing
+```
+
+Flat dotted keys in eleven namespaces: `common`, `auth`, `environments`,
+`environment`, `devices`, `health`, `states`, `confirm`, `untrusted`, `time`,
+`errors`. `catalogue.test.tsx` fails on a twelfth, so a new namespace is a
+decision recorded here rather than a key that drifted in.
+
+Two namespaces are keyed by something outside the catalogue and cannot be
+renamed freely: `errors.*` is keyed by the `messageKey` values `WCX-02`
+reserved, and `health.condition.*` by the backend condition types. Both are
+read with a template key, so the whole sub-namespace has to stay in step with
+the contract.
+
+### The rules the catalogue exists to hold
+
+1. **Provenance-aware phrasing.** `Observed source`, `Reported by`, `Last
+   observed`, `Supplied during authentication` — never an assertion of
+   identity.
+2. **Absence is never phrased as health.** `No health projection has been
+   reported` is correct; `All good` is not. `catalogue.test.tsx` fails on a
+   list of phrases in that family.
+3. **Inference is labelled** as probable, inferred, or suggested.
+4. **Configuration completeness and health never share a word.**
+5. **Error text states what happened and the next action** — never a
+   diagnostic detail, never a submitted value.
+6. **Destructive confirmations name the object and the irreversible effect.**
+
+### What may not go in it
+
+No credential, token, bootstrap value, or recovery code, including as an
+example. `catalogue.test.tsx` scans every entry for eight secret *shapes* —
+JWT, AWS key id, PEM header, long base64 and hex runs, grouped recovery codes,
+credential-carrying URLs, and `token:`-style assignments — rather than for a
+wordlist, because whoever adds an example credential will not name it
+`password`. A planted fixture proves the scan is not vacuous.
+
+No backend or device text either. A device-supplied reason, a condition type,
+a status slug: those are data, rendered through the untrusted components from
+the hostile-content contract, never a catalogue key and never translated.
+
+No entry is composed from another. A sentence assembled from fragments at a
+call site cannot be reviewed as a sentence and cannot later be translated —
+which is why the read-only banner is one entry with a `{reauthenticate}`
+placeholder rather than the three fragments it used to be.
+
+### The lint rule
+
+`guardian/no-literal-text`, defined in `apps/web-console/eslint.config.js`,
+fails the build on operator-facing text written at a call site. It fires on
+JSX text, on a string literal in a child expression, and on a string-valued
+attribute.
+
+Attributes are **default-deny**: every name not in `TECHNICAL_ATTRIBUTES` is
+treated as operator-facing. That list holds CSS classes, element ids, URLs,
+form mechanics, ARIA attributes whose values come from a closed enumeration,
+and this repository's own design-system variants. A new prop is a violation
+until someone adds it, which is the right way round — the alternative, a
+denylist of the four attributes the specification names, would miss
+`heading="Environments"` entirely.
+
+Three exemptions, all fixture material rather than operator surfaces: tests,
+`shared/testing/**`, and `app/workbench/**`, the development-only gallery that
+cannot reach a production build. `literalText.test.ts` asserts the rule is
+configured as an error on a real component file and lints eight fixtures
+through the plugin imported from the config itself, so the rule proved is the
+rule the build runs.
+
+### Size
+
+The catalogue is bundled with the entry chunk and must stay under 12 KiB
+uncompressed, measured as `JSON.stringify(CATALOGUE)`. At the end of `WCX-08`
+it is **12,196 bytes across 208 entries**, 92 bytes inside the budget.
+
+That is tight, and the way to make room is not to shorten sentences. Two
+things do work: `catalogue.test.tsx` fails on any entry no component reads, so
+wording left behind by a deleted screen cannot accumulate; and where several
+keys name the same thing in the same words — five copies of `The Control
+Plane` — they collapse to one key, which is also one place to edit when the
+thing is renamed. Two keys that merely *happen* to share wording today stay
+separate: a heading and a button are free to diverge, and meaning-keyed names
+are the whole point.
+
+## Time presentation
+
+`Timestamp` from `@shared/ui` renders every instant in the console. Its one
+rule, seen from several sides: never claim more about an instant than the data
+supports.
+
+```tsx
+<Timestamp value={health.received_at} precision="second" uncertainClock={degraded} />
+<Timestamp value={zone.updated_at} />
+```
+
+| Prop | Values | Default |
+|---|---|---|
+| `value` | ISO-8601 from the backend, or `null`/`undefined` | required |
+| `precision` | `minute`, `second` | `minute` |
+| `mode` | `absolute`, `absoluteWithRelative` | `absolute` |
+| `uncertainClock` | the source device reported degraded `clock_quality` | `false` |
+
+### Precision
+
+`second` is **mandatory** where ordering is the thing being established, and
+`minute` is permitted elsewhere.
+
+| Surface | Precision | Why |
+|---|---|---|
+| Health projection `received_at` | `second` | A health projection is evidence and its ordering is what an operator reasons about |
+| Enrollment secret expiry | `second` | A 15-minute secret is not actionable to the minute |
+| Attacker journey and audit entries | `second` | Ordering *is* the finding |
+| Health condition transitions | `second` | Same |
+| Zone and environment `updated_at` | `minute` | Configuration edits, not evidence |
+| Device last-seen in a list | `minute` | Scanned, not correlated |
+
+### What it will not do
+
+**Never a bare local time.** The zone abbreviation is always visible, so a
+timestamp copied into an incident report still says which clock it was on.
+`Intl.DateTimeFormat` rejects `timeZoneName` alongside `dateStyle`/`timeStyle`,
+so the format is spelled out component by component — that combination throws
+at render time, in every browser, and is worth knowing before reaching for the
+shorter form.
+
+**Never a fabricated instant.** An absent, empty, or unparseable value renders
+`No timestamp was recorded` — never a default date, never the epoch, never now.
+Parsing is strict ISO-8601 with a time of day, because `Date.parse` is
+permissive by design: it reads `'0'` as the first of January 2000, and a
+best-effort parse here is exactly the fabricated precision the rule forbids.
+
+**Never a relative time alone.** `15 minutes ago` cannot go in a report and
+cannot be compared against a device log, so it appears only beside the absolute
+value, in `absoluteWithRelative` mode. It recomputes once a minute and
+announces nothing when it does: no live region, no `role="status"`. The
+interval exists only in that mode and is cleared on unmount — the shared
+layer's no-polling rule exempts this module on the strength of the two tests
+that assert exactly those two properties.
+
+**Never a silent bad clock.** When the source device's `clock_quality`
+condition is not `True`, the timestamp carries a visible marker and an
+accessible description saying so. `Unknown` counts as degraded: a device that
+has not reported its clock quality has not established that its clock is good.
+The marker uses `--text-muted` and a dashed `--line-strong` border — a neutral
+token, never a severity one. A bad clock is a caveat about evidence quality,
+not an incident, and colouring it as one would be a false signal.
+
+The absolute UTC instant is always retrievable: it is in the accessible
+description, not only in the `title`, because `title` is mouse-only. Age
+formatting (`formatAge`) lives in this module too, so the `stale` state and a
+relative timestamp cannot disagree about how long ago something was.
+
 ## Continuous integration
 
 Two workflows, one job each, no conditions.
