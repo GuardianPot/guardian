@@ -260,8 +260,14 @@ describe('the layer as a whole', () => {
   });
 
   it('renders no HTML from data anywhere in the layer', () => {
+    // `WCX-06` replaced the string check that used to live here with
+    // `test/check-unsafe-dom.mjs`, which runs on lint, covers the whole
+    // console rather than this layer, and also catches `innerHTML`,
+    // `document.write`, and `eval`. What is left here is the property that
+    // matters at this level: every component renders through JSX children,
+    // and none reaches for a raw DOM node.
     for (const path of modules) {
-      expect(codeOf(path), path).not.toContain('dangerouslySetInnerHTML');
+      expect(codeOf(path), path).not.toMatch(/document\.createElement|\.appendChild\(/);
     }
   });
 

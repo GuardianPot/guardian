@@ -1,7 +1,8 @@
 import { queryOptions } from '@tanstack/react-query';
 import { retryDelay, retryRead } from '@shared/api/query';
 import { request } from '@shared/api/transport';
-import type { Device } from '@shared/api/types';
+import { taintDevice } from '@shared/api/taint';
+import type { DeviceRaw } from '@shared/api/types';
 
 export const deviceKeys = {
   all: ['devices'] as const,
@@ -14,8 +15,10 @@ export const devicesQuery = (environmentID: string) =>
   queryOptions({
     queryKey: deviceKeys.list(environmentID),
     queryFn: async ({ signal }) =>
-      (await request<{ devices: Device[] }>(`/v1/environments/${environmentID}/devices`, { signal }))
-        .devices,
+      // The trust boundary: display names are marked untrusted here, once, so
+      // no screen below can render one without the contract (WCX-06 9.8).
+      (await request<{ devices: DeviceRaw[] }>(`/v1/environments/${environmentID}/devices`, { signal }))
+        .devices.map(taintDevice),
     retry: retryRead,
     retryDelay,
     refetchInterval: 5_000,
@@ -25,10 +28,10 @@ export const deviceQuery = (environmentID: string, deviceID: string) =>
   queryOptions({
     queryKey: deviceKeys.detail(environmentID, deviceID),
     queryFn: async ({ signal }) =>
-      (await request<{ device: Device }>(
+      taintDevice((await request<{ device: DeviceRaw }>(
         `/v1/environments/${environmentID}/devices/${deviceID}`,
         { signal },
-      )).device,
+      )).device),
     retry: retryRead,
     retryDelay,
     refetchInterval: 5_000,

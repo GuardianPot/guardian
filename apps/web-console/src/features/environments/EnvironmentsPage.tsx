@@ -13,6 +13,7 @@ import {
   StatusBadge,
   TextField,
   ToastRegion,
+  UntrustedText,
   useToasts,
 } from '@shared/ui';
 import styles from '@shared/styles/app.module.css';
@@ -83,7 +84,7 @@ export function EnvironmentsPage() {
                 {list.map((environment) => (
                   <li key={environment.environment_id}>
                     <Link className={styles.environmentCard} to={`/environments/${environment.environment_id}`}>
-                      <span><strong>{environment.display_name}</strong><small>{TEXT.zones(environment.zone_count)}</small></span>
+                      <span><strong><UntrustedText value={environment.display_name} /></strong><small>{TEXT.zones(environment.zone_count)}</small></span>
                       <StatusBadge encoding={configEncoding(environment.status)} />
                     </Link>
                   </li>

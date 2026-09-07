@@ -23,6 +23,10 @@ export { Skeleton } from './controls/Skeleton';
 export { StatusBadge, StatusGlyph } from './controls/StatusBadge';
 export { TextField } from './controls/TextField';
 
+export { UntrustedText } from './untrusted/UntrustedText';
+export { UntrustedBlock } from './untrusted/UntrustedBlock';
+export { BLOCK_LIMIT, TEXT_LIMIT, transformUntrusted, type Segment, type Transformed } from './untrusted/transform';
+
 export { Banner, type BannerTone } from './feedback/Banner';
 export { InlineMessage, type InlineTone } from './feedback/InlineMessage';
 export { PendingOnObject } from './feedback/PendingOnObject';

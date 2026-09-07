@@ -132,11 +132,36 @@ func (s *Server) routes() http.Handler {
 	return mux
 }
 
+// permissionsPolicy denies every powerful browser feature. The console needs
+// none of them, so an injected frame or a compromised dependency cannot reach
+// a camera, a microphone, a location, or a serial port even if it tries
+// (WCX-06 section 9.4, decision WC-D25).
+const permissionsPolicy = "accelerometer=(), ambient-light-sensor=(), autoplay=(), battery=(), " +
+	"bluetooth=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), " +
+	"gamepad=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), " +
+	"local-fonts=(), magnetometer=(), microphone=(), midi=(), payment=(), " +
+	"picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), " +
+	"serial=(), speaker-selection=(), usb=(), xr-spatial-tracking=()"
+
+// strictTransportSecurity pins HTTPS for a year, including subdomains.
+//
+// `preload` is deliberately absent. Submitting to the preload list is
+// effectively irreversible for months, so it is an owner decision about a
+// deployment topology rather than a header this middleware may take on its own.
+const strictTransportSecurity = "max-age=31536000; includeSubDomains"
+
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self'; script-src 'self'; style-src 'self'")
 		writer.Header().Set("Referrer-Policy", "no-referrer")
 		writer.Header().Set("X-Content-Type-Options", "nosniff")
+		writer.Header().Set("Permissions-Policy", permissionsPolicy)
+		// Only over TLS. A development listener on plain HTTP that sent this
+		// would pin the browser to HTTPS for a host that does not serve it,
+		// locking the developer out of their own machine for a year.
+		if request.TLS != nil {
+			writer.Header().Set("Strict-Transport-Security", strictTransportSecurity)
+		}
 		next.ServeHTTP(writer, request)
 	})
 }

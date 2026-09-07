@@ -25,8 +25,11 @@ import {
   TextField,
   ToastRegion,
   UnknownState,
+  UntrustedBlock,
+  UntrustedText,
   useToasts,
 } from '@shared/ui';
+import { untrusted } from '@shared/api/untrusted';
 
 /**
  * Every component in the layer, on one page, driven by one string.
@@ -68,6 +71,8 @@ export const EXERCISED_COMPONENTS = [
   'DataBoundary',
   'ConfirmationDialog',
   'RouteErrorBoundary',
+  'UntrustedText',
+  'UntrustedBlock',
 ] as const;
 
 /** Fixed at import so the exercise renders identically on every re-render. */
@@ -101,6 +106,14 @@ export function ExerciseEveryComponent({ text }: { text: string }) {
           <Button variant="secondary" onClick={() => setDialogOpen(true)}>Open the dialog</Button>
           <Button variant="destructive" onClick={() => setConfirmOpen(true)}>Revoke the device</Button>
         </Panel>
+
+        {/*
+          The untrusted pair takes the same string every other component here
+          takes, so the hostile-content test drives them through the whole
+          corpus alongside everything else.
+        */}
+        <UntrustedText value={untrusted(text)} />
+        <UntrustedBlock value={untrusted(text)} label="Captured transcript" />
 
         <Banner tone="informational">{text}</Banner>
         <Banner tone="blocking">{text}</Banner>

@@ -149,6 +149,21 @@
 .pendingOnObject { display: flex; align-items: center; gap: var(--space-4); margin: var(--space-3) 0 0; color: var(--text-muted); font-size: var(--font-size-2); }
 .pendingLabel { padding: var(--space-2) var(--space-4); color: var(--text-secondary); border: 1px dashed var(--line-strong); border-radius: var(--radius-pill); font-weight: var(--weight-heavy); }
 
+/*
+ * Untrusted content (WCX-06 section 9.6).
+ *
+ * The escape treatment is deliberately not a severity colour: escaped
+ * characters are ordinary in a deception product, and painting them red would
+ * make every captured transcript look like an incident. It is the muted
+ * treatment plus a dotted underline, so it reads as an annotation.
+ */
+.untrusted { overflow-wrap: anywhere; }
+.untrustedEscape { padding: 0 var(--space-1); color: var(--text-muted); border-bottom: 1px dotted var(--line-strong); font: var(--font-size-2) ui-monospace, SFMono-Regular, Consolas, monospace; }
+.untrustedTruncation { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--font-size-2); }
+.untrustedBlock { display: grid; gap: var(--space-3); justify-items: start; }
+.untrustedLegend { margin: 0; color: var(--text-muted); font-size: var(--font-size-2); line-height: var(--line-height-normal); max-width: 70ch; }
+.untrustedPayload { max-height: 28rem; width: 100%; margin: 0; padding: var(--space-6); overflow: auto; color: var(--text-secondary); border: 1px solid var(--line-subtle); border-radius: var(--radius-3); background: var(--surface-inset); font: var(--font-size-3) ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+
 /* Confidence (WCX-04 section 9.5). Neutral steps; never a severity colour. */
 .confidence { display: flex; align-items: center; gap: var(--space-4); margin: 0; color: var(--text-secondary); font-size: var(--font-size-3); }
 .confidenceLabel { color: var(--text-muted); }

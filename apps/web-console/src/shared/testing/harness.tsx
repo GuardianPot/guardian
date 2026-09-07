@@ -4,7 +4,23 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 import { AuthProvider, useAuth } from '@features/auth';
-import type { Device, Environment, HealthCondition, HealthConditionType, HealthView, Session, Zone } from '@shared/api/types';
+/**
+ * Fixtures are the *wire* shape, not the domain shape (WCX-06 section 9.8).
+ *
+ * These build what the backend sends, so their free-text fields are plain
+ * strings. The feature API modules mark them untrusted on the way in, which is
+ * exactly the step under test — a fixture that arrived pre-marked would skip
+ * the boundary and prove nothing about it.
+ */
+import type {
+  DeviceRaw,
+  EnvironmentRaw,
+  HealthConditionRaw,
+  HealthConditionType,
+  HealthViewRaw,
+  Session,
+  ZoneRaw,
+} from '@shared/api/types';
 
 export const environmentID = '018f1f7e-6d31-7cc5-8db8-17547f78e6c1';
 export const deviceID = '018f1f7e-6d31-7cc5-8db8-17547f78e6c2';
@@ -62,7 +78,7 @@ export function session(): Session {
   };
 }
 
-export function environment(overrides: Partial<Environment> = {}): Environment {
+export function environment(overrides: Partial<EnvironmentRaw> = {}): EnvironmentRaw {
   return {
     environment_id: environmentID,
     organization_id: '018f1f7e-6d31-7cc5-8db8-17547f78e6c0',
@@ -76,7 +92,7 @@ export function environment(overrides: Partial<Environment> = {}): Environment {
   };
 }
 
-export function device(overrides: Partial<Device> = {}): Device {
+export function device(overrides: Partial<DeviceRaw> = {}): DeviceRaw {
   return {
     device_id: deviceID,
     environment_id: environmentID,
@@ -88,7 +104,7 @@ export function device(overrides: Partial<Device> = {}): Device {
   };
 }
 
-export function zone(overrides: Partial<Zone> = {}): Zone {
+export function zone(overrides: Partial<ZoneRaw> = {}): ZoneRaw {
   return {
     zone_id: '018f1f7e-6d31-7cc5-8db8-17547f78e6c5',
     environment_id: environmentID,
@@ -113,8 +129,8 @@ const conditionTypes: HealthConditionType[] = [
 ];
 
 /** Builds the full eight-condition backend projection with an optional override. */
-export function healthView(override: Partial<HealthCondition> & { type?: string } = {}): HealthView {
-  const conditions: HealthCondition[] = conditionTypes.map((type) => ({
+export function healthView(override: Partial<HealthConditionRaw> & { type?: string } = {}): HealthViewRaw {
+  const conditions: HealthConditionRaw[] = conditionTypes.map((type) => ({
     type,
     status: 'True',
     reason: 'observed',

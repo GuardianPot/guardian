@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { HealthCondition, HealthConditionType, HealthView } from '@shared/api/types';
+import type { HealthConditionRaw, HealthConditionType, HealthView } from '@shared/api/types';
+import { taintHealthView } from '@shared/api/taint';
 import { expectNoAxeViolations } from '@shared/testing/axe';
 import { HealthPanel } from './HealthPanel';
 
@@ -17,7 +18,7 @@ const conditionTypes: HealthConditionType[] = [
 
 function healthView(): HealthView {
   const sourceDeviceID = '018f1f7e-6d31-7cc5-8db8-17547f78e6c2';
-  const conditions: HealthCondition[] = conditionTypes.map((type, index) => ({
+  const conditions: HealthConditionRaw[] = conditionTypes.map((type, index) => ({
     type,
     status: index === 0 ? 'False' : 'Unknown',
     reason: index === 0 ? 'channel_disconnected' : 'not_observed',
@@ -25,11 +26,13 @@ function healthView(): HealthView {
     source_device_id: sourceDeviceID,
     last_transition_time: '2026-08-29T12:00:00Z',
   }));
-  return {
+  // Built as the wire shape and marked at the boundary, exactly as the query
+  // does, so the panel is exercised through the real trust boundary.
+  return taintHealthView({
     aggregate: { status: 'False', blocking_type: 'edge_connected', reason: 'channel_disconnected', blocking_device_id: sourceDeviceID },
     conditions,
     received_at: '2026-08-29T12:00:00Z',
-  };
+  });
 }
 
 describe('HealthPanel', () => {

@@ -1,6 +1,7 @@
 import type { HealthView } from '@shared/api/types';
+import { isEmptyUntrusted } from '@shared/api/untrusted';
 import { healthEncoding } from '@shared/theme/statusEncoding';
-import { Panel, StatusBadge } from '@shared/ui';
+import { Panel, StatusBadge, UntrustedText } from '@shared/ui';
 import styles from '@shared/styles/app.module.css';
 import { HEALTH_TEXT } from './text';
 
@@ -30,8 +31,10 @@ export function HealthPanel({ health }: { health: HealthView }) {
         <p className={styles.blocking}>
           {HEALTH_TEXT.blocking}
           {HEALTH_TEXT.conditions[health.aggregate.blocking_type] ?? health.aggregate.blocking_type}
-          {health.aggregate.reason ? ` — ${health.aggregate.reason}` : ''}
-          {health.aggregate.blocking_device_id ? ` · source ${health.aggregate.blocking_device_id}` : ''}
+          {health.aggregate.reason && <> — <UntrustedText value={health.aggregate.reason} /></>}
+          {health.aggregate.blocking_device_id && (
+            <> · source <UntrustedText value={health.aggregate.blocking_device_id} /></>
+          )}
         </p>
       )}
       <ul className={styles.conditionGrid} aria-label={HEALTH_TEXT.conditionsLabel}>
@@ -40,9 +43,16 @@ export function HealthPanel({ health }: { health: HealthView }) {
             <span className={`${styles.conditionDot} ${styles[healthEncoding(condition.status).tone] ?? ''}`} aria-hidden="true" />
             <div>
               <strong>{HEALTH_TEXT.conditions[condition.type] ?? condition.type}</strong>
-              <span>{healthEncoding(condition.status).label} · {condition.reason}</span>
-              {condition.message && <p>{condition.message}</p>}
-              {condition.source_device_id && <small>Source device: {condition.source_device_id}</small>}
+              {/*
+                Reason, message, and source device come from the device itself.
+                A compromised or emulated Edge writes them, so they render
+                through the untrusted contract (WCX-06 section 9.1).
+              */}
+              <span>{healthEncoding(condition.status).label} · <UntrustedText value={condition.reason} /></span>
+              {!isEmptyUntrusted(condition.message) && <p><UntrustedText value={condition.message} /></p>}
+              {condition.source_device_id && (
+                <small>{HEALTH_TEXT.sourceDevice} <UntrustedText value={condition.source_device_id} /></small>
+              )}
             </div>
           </li>
         ))}

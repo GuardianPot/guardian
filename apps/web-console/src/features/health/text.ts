@@ -11,6 +11,7 @@ export const HEALTH_TEXT = {
   heading: 'Eight-condition health',
   conditionsLabel: 'Device health conditions',
   blocking: 'Blocking: ',
+  sourceDevice: 'Source device:',
   receivedAt: (time: string) => `Control Plane received this projection ${time}.`,
   /** Named in the `unknown` state, so absence is about health specifically. */
   environmentSubject: 'the health of this environment',

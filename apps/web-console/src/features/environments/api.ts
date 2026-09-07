@@ -1,7 +1,19 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { DEFAULT_PAGE_SIZE, retryDelay, retryRead } from '@shared/api/query';
 import { request } from '@shared/api/transport';
-import type { EnrollmentSecret, Environment, Zone } from '@shared/api/types';
+import {
+  taintEnrollmentSecret,
+  taintEnvironment,
+  taintZone,
+} from '@shared/api/taint';
+import type {
+  EnrollmentSecret,
+  EnrollmentSecretRaw,
+  Environment,
+  EnvironmentRaw,
+  Zone,
+  ZoneRaw,
+} from '@shared/api/types';
 import { deviceKeys } from '@features/devices';
 
 export const environmentKeys = {
@@ -15,10 +27,12 @@ export const environmentsQuery = () =>
   queryOptions({
     queryKey: environmentKeys.list(),
     queryFn: async ({ signal }) =>
-      (await request<{ environments: Environment[] }>(
+      // The trust boundary (WCX-06 section 9.8): display names are marked
+      // untrusted once, here, so no screen below can render one directly.
+      (await request<{ environments: EnvironmentRaw[] }>(
         `/v1/environments?limit=${DEFAULT_PAGE_SIZE}`,
         { signal },
-      )).environments,
+      )).environments.map(taintEnvironment),
     retry: retryRead,
     retryDelay,
   });
@@ -27,8 +41,10 @@ export const environmentQuery = (environmentID: string) =>
   queryOptions({
     queryKey: environmentKeys.detail(environmentID),
     queryFn: async ({ signal }) =>
-      (await request<{ environment: Environment }>(`/v1/environments/${environmentID}`, { signal }))
-        .environment,
+      taintEnvironment(
+        (await request<{ environment: EnvironmentRaw }>(`/v1/environments/${environmentID}`, { signal }))
+          .environment,
+      ),
     retry: retryRead,
     retryDelay,
   });
@@ -37,20 +53,20 @@ export const zonesQuery = (environmentID: string) =>
   queryOptions({
     queryKey: environmentKeys.zones(environmentID),
     queryFn: async ({ signal }) =>
-      (await request<{ zones: Zone[] }>(
+      (await request<{ zones: ZoneRaw[] }>(
         `/v1/environments/${environmentID}/zones?limit=${DEFAULT_PAGE_SIZE}`,
         { signal },
-      )).zones,
+      )).zones.map(taintZone),
     retry: retryRead,
     retryDelay,
   });
 
 export async function createEnvironment(displayName: string, csrf: string): Promise<Environment> {
-  return (await request<{ environment: Environment }>('/v1/environments', {
+  return taintEnvironment((await request<{ environment: EnvironmentRaw }>('/v1/environments', {
     method: 'POST',
     body: { display_name: displayName },
     csrf,
-  })).environment;
+  })).environment);
 }
 
 export async function updateEnvironment(
@@ -58,10 +74,10 @@ export async function updateEnvironment(
   displayName: string,
   csrf: string,
 ): Promise<Environment> {
-  return (await request<{ environment: Environment }>(
+  return taintEnvironment((await request<{ environment: EnvironmentRaw }>(
     `/v1/environments/${environment.environment_id}`,
     { method: 'PATCH', body: { display_name: displayName }, csrf, etag: environment.revision },
-  )).environment;
+  )).environment);
 }
 
 export async function createZone(
@@ -69,11 +85,11 @@ export async function createZone(
   input: { display_name: string; cidr: string },
   csrf: string,
 ): Promise<Zone> {
-  return (await request<{ zone: Zone }>(`/v1/environments/${environmentID}/zones`, {
+  return taintZone((await request<{ zone: ZoneRaw }>(`/v1/environments/${environmentID}/zones`, {
     method: 'POST',
     body: input,
     csrf,
-  })).zone;
+  })).zone);
 }
 
 /**
@@ -82,16 +98,18 @@ export async function createZone(
  * The result deliberately bypasses the query cache: the secret lives only in
  * route-local state so dismissal, route exit, and unload destroy it.
  */
-export function createEnrollmentSecret(
+export async function createEnrollmentSecret(
   environmentID: string,
   deviceName: string,
   csrf: string,
 ): Promise<EnrollmentSecret> {
-  return request<EnrollmentSecret>(`/v1/environments/${environmentID}/enrollment-tokens`, {
-    method: 'POST',
-    body: { device_name: deviceName },
-    csrf,
-  });
+  return taintEnrollmentSecret(
+    await request<EnrollmentSecretRaw>(`/v1/environments/${environmentID}/enrollment-tokens`, {
+      method: 'POST',
+      body: { device_name: deviceName },
+      csrf,
+    }),
+  );
 }
 
 /** Invalidation lives beside the mutations that cause it, never in a component. */

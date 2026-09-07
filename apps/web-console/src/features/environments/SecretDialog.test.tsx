@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import type { EnrollmentSecret } from '@shared/api/types';
+import { untrusted } from '@shared/api/untrusted';
 import { expectNoAxeViolations } from '@shared/testing/axe';
 import { SecretDialog } from './SecretDialog';
 
@@ -10,7 +11,7 @@ const secret: EnrollmentSecret = {
   token_id: '018f1f7e-6d31-7cc5-8db8-17547f78e6c3',
   device_id: '018f1f7e-6d31-7cc5-8db8-17547f78e6c2',
   environment_id: '018f1f7e-6d31-7cc5-8db8-17547f78e6c1',
-  device_name: 'test-edge',
+  device_name: untrusted('test-edge'),
   token: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   expires_at: '2026-08-29T12:15:00Z',
 };

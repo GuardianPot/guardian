@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { deviceEncoding } from '@shared/theme/statusEncoding';
 import { deviceQuery } from './api';
 import { deviceHealthQuery, HealthPanel, HEALTH_TEXT, formatTime } from '@features/health';
-import { DataBoundary, DescriptionList, StatusBadge } from '@shared/ui';
+import { DataBoundary, DescriptionList, StatusBadge, UntrustedText } from '@shared/ui';
 import styles from '@shared/styles/app.module.css';
 import { DEVICE_TEXT as TEXT } from './text';
 
@@ -30,7 +30,7 @@ export function DevicePage() {
             <header className={styles.pageHeader}>
               <div>
                 <p className={styles.eyebrow}>{TEXT.eyebrow}</p>
-                <h1 tabIndex={-1}>{record.display_name}</h1>
+                <h1 tabIndex={-1}><UntrustedText value={record.display_name} /></h1>
                 <p className={styles.mono}>{record.device_id}</p>
               </div>
               <StatusBadge encoding={deviceEncoding(record.state)} dimension={TEXT.inventoryDimension} />

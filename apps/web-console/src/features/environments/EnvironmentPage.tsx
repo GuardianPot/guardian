@@ -17,7 +17,8 @@ import { useAuth, useCapability } from '@features/auth';
 import { textField } from '@shared/forms/textField';
 import { environmentHealthQuery, HealthPanel, HEALTH_TEXT, formatTime } from '@features/health';
 import { SecretDialog } from './SecretDialog';
-import { Banner, Button, DataBoundary, Panel, StatusBadge, TextField } from '@shared/ui';
+import { Banner, Button, DataBoundary, Panel, StatusBadge, TextField, UntrustedText } from '@shared/ui';
+import { reveal } from '@shared/api/untrusted';
 import styles from '@shared/styles/app.module.css';
 import { ENVIRONMENT_TEXT as TEXT } from './text';
 
@@ -126,7 +127,7 @@ export function EnvironmentPage() {
             <header className={styles.pageHeader}>
               <div>
                 <p className={styles.eyebrow}>{TEXT.eyebrow}</p>
-                <h1 tabIndex={-1}>{record.display_name}</h1>
+                <h1 tabIndex={-1}><UntrustedText value={record.display_name} /></h1>
                 <p className={styles.mono}>{record.environment_id}</p>
               </div>
               <StatusBadge encoding={configEncoding(record.status)} />
@@ -160,7 +161,7 @@ export function EnvironmentPage() {
                       {list.map((device) => (
                         <li key={device.device_id}>
                           <Link to={`/environments/${environmentId}/devices/${device.device_id}`}>
-                            <span><strong>{device.display_name}</strong><small>{device.device_id}</small></span>
+                            <span><strong><UntrustedText value={device.display_name} /></strong><small>{device.device_id}</small></span>
                             <StatusBadge encoding={deviceEncoding(device.state)} />
                           </Link>
                         </li>
@@ -241,7 +242,7 @@ export function EnvironmentPage() {
                     <ul className={styles.zoneList}>
                       {list.map((zone) => (
                         <li key={zone.zone_id}>
-                          <span><strong>{zone.display_name}</strong><small>{TEXT.updated(formatTime(zone.updated_at))}</small></span>
+                          <span><strong><UntrustedText value={zone.display_name} /></strong><small>{TEXT.updated(formatTime(zone.updated_at))}</small></span>
                           <code>{zone.cidr}</code>
                         </li>
                       ))}
@@ -280,7 +281,13 @@ export function EnvironmentPage() {
                   <TextField
                     name="display_name"
                     label={TEXT.displayNameLabel}
-                    defaultValue={record.display_name}
+                    /*
+                      `reveal` is correct here and nowhere else on this screen:
+                      the operator is editing the value, so the field needs the
+                      original. React sets an input value as a property, never
+                      as parsed markup, so nothing is interpreted on the way in.
+                    */
+                    defaultValue={reveal(record.display_name)}
                     required
                     maxLength={128}
                     {...(renameReason === undefined ? {} : { disabledReason: renameReason })}
