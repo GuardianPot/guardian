@@ -4,6 +4,8 @@ import type {
   DeviceRaw,
   EnrollmentSecret,
   EnrollmentSecretRaw,
+  EnrollmentToken,
+  EnrollmentTokenRaw,
   Environment,
   EnvironmentRaw,
   HealthCondition,
@@ -42,6 +44,11 @@ export function taintDevice(raw: DeviceRaw): Device {
 }
 
 export function taintEnrollmentSecret(raw: EnrollmentSecretRaw): EnrollmentSecret {
+  const { device_name: deviceName, ...rest } = raw;
+  return { ...rest, device_name: untrusted(deviceName) };
+}
+
+export function taintEnrollmentToken(raw: EnrollmentTokenRaw): EnrollmentToken {
   const { device_name: deviceName, ...rest } = raw;
   return { ...rest, device_name: untrusted(deviceName) };
 }

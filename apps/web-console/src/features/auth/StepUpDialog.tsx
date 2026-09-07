@@ -48,7 +48,9 @@ export function StepUpDialog({ onSatisfied, onCancelled, onRateLimited }: StepUp
         password: textField(form, 'step_up_password'),
         ...(method.value === 'totp' ? { totp_code: proof } : { recovery_code: proof }),
       });
-      event.currentTarget.reset();
+      // No form reset: the dialog unmounts on success, which destroys the
+      // fields and everything typed into them. Reading `currentTarget` after an
+      // await is also unreliable — React clears it once the handler returns.
       onSatisfied();
     } catch (caught) {
       // Section 9.2.4: a generic denial. The submitted values are never

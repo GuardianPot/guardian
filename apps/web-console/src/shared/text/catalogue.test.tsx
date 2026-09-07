@@ -121,15 +121,18 @@ describe('catalogue hygiene', () => {
     // explaining a decision are what make the catalogue reviewable and they do
     // not survive the bundler.
     //
-    // `WCX-08` section 9.10 set 12 KiB as that package's exit condition, and it
+    // `WCX-08` section 9.10 set 12 KiB as that package's exit condition and it
     // held there at 12,196 bytes. `WCX-09` adds five operator screens whose
     // whole point is stating an irreversible effect in plain words before it
-    // happens, and its own section 9.10 binds the authenticated initial-load
-    // budget rather than this number. So the ceiling moves with the scope; what
-    // does not move is that it is a ceiling, checked here and again by
-    // `check-bundle.mjs` where it actually costs an operator something.
+    // happens — 19,592 bytes at the end of that package — and its own section
+    // 9.10 binds the authenticated initial-load budget rather than this
+    // number.
+    //
+    // So the ceiling moves with the scope. What does not move is that it is a
+    // ceiling, and that the constraint an operator actually pays for is
+    // enforced by `check-bundle.mjs`, which measures the shipped chunk.
     const shipped = Buffer.byteLength(JSON.stringify(CATALOGUE), 'utf8');
-    expect(shipped).toBeLessThan(18 * 1024);
+    expect(shipped).toBeLessThan(20 * 1024);
   });
 
   it('composes no entry from another entry', () => {
@@ -141,7 +144,7 @@ describe('catalogue hygiene', () => {
 
   it('names keys after meaning, in a known namespace', () => {
     const NAMESPACES = [
-      'common', 'auth', 'environments', 'environment', 'devices', 'health',
+      'common', 'auth', 'account', 'environments', 'environment', 'devices', 'health',
       'states', 'confirm', 'stepUp', 'secret', 'untrusted', 'time', 'errors',
     ];
     const stray = KEYS.filter((key) => !NAMESPACES.includes(key.split('.')[0] ?? ''));

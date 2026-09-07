@@ -37,7 +37,7 @@ const NO_APP_IMPORT = {
   message: 'A feature may not import application shell code.',
 };
 
-const FEATURES = ['auth', 'environments', 'devices', 'health'];
+const FEATURES = ['account', 'auth', 'environments', 'devices', 'health'];
 
 /** One boundary block per feature. `allowedPeers` documents approved pairs. */
 const featureBoundary = (name, allowedPeers) => {
@@ -286,6 +286,9 @@ export default tseslint.config(
   //   devices      -> auth    lifecycle actions need the CSRF proof, the
 //                           capability seam, and step-up reauthentication
 //   devices      -> health  renders the backend health projection panel
+  //   account      -> auth    session revocation and password change need the
+  //                           CSRF proof, the capability seam, and step-up
+  featureBoundary('account', ['auth']),
   featureBoundary('auth', []),
   featureBoundary('environments', ['auth', 'health', 'devices']),
   featureBoundary('devices', ['auth', 'health']),

@@ -57,6 +57,14 @@ export type DeviceState = DeviceRaw['state'];
 export type EnrollmentSecretRaw = Schemas['EnrollmentTokenSecret'];
 export type EnrollmentSecret = Omit<EnrollmentSecretRaw, 'device_name'> & { device_name: Untrusted };
 
+/**
+ * A token summary carries a device name and never the token value. The
+ * contract has no field for one here, which is the guarantee itself: the
+ * console cannot list a secret it is never sent.
+ */
+export type EnrollmentTokenRaw = Schemas['EnrollmentTokenSummary'];
+export type EnrollmentToken = Omit<EnrollmentTokenRaw, 'device_name'> & { device_name: Untrusted };
+
 export type HealthConditionRaw = Schemas['HealthCondition'];
 export type HealthCondition = Omit<HealthConditionRaw, 'reason' | 'message' | 'source_device_id'> & {
   reason: Untrusted;

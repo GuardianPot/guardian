@@ -73,13 +73,28 @@ export default defineConfig({
           if (feature) return `feature-${feature[1]}`;
 
           /*
-           * The modal stack is deliberately left out of the entry chunk.
+           * The modal stack stays out of the entry chunk.
            *
            * Radix's dialog brings a focus trap, a dismissable layer, a portal,
            * and scroll locking. The sign-in screen opens no dialog, and
            * shipping all of that to an unauthenticated visitor is what pushed
-           * the initial login load over its budget. Left unassigned, it
-           * travels with the first feature chunk that actually opens one.
+           * the initial login load over its budget in `WCX-07`. Keeping it
+           * unassigned is what holds that, and it still does.
+           *
+           * It does *not* get its own name, and the reason is a limitation
+           * rather than a preference. `WCX-09` gave dialogs to three features
+           * and tried `return 'modals'` here; no such chunk is emitted. Radix
+           * is placed by the bundler's own logic regardless of what this
+           * function returns for the console modules that import it — the same
+           * behaviour `WCX-07` recorded when `vendor-ui` never appeared.
+           *
+           * The observable consequence: the stack travels inside
+           * `feature-account`, and `feature-devices` and
+           * `feature-environments` import that chunk to get it. Every budget
+           * holds and `check-bundle.mjs` reports each chunk by name, so the
+           * cost is visible rather than hidden — but opening a device page
+           * does fetch the account chunk. Revisit if a chunking API that
+           * reaches third-party modules becomes available.
            */
           if (/\/src\/shared\/ui\/(controls\/Dialog|confirm\/|secret\/)/.test(path)) return undefined;
 

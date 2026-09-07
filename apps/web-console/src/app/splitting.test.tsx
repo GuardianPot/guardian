@@ -70,6 +70,7 @@ describe('the route tree after the React Router 8 upgrade', () => {
       '/environments',
       '/environments/:environmentId',
       '/environments/:environmentId/devices/:deviceId',
+      '/account',
     ]);
     expect(children.some((route) => route.path === '/login')).toBe(true);
     // The catch-all still redirects rather than rendering a not-found screen.
@@ -80,6 +81,7 @@ describe('the route tree after the React Router 8 upgrade', () => {
     ['/environments', 'Environments'],
     [`/environments/${environmentID}`, 'Lab'],
     [`/environments/${environmentID}/devices/${deviceID}`, 'edge-one'],
+    ['/account', 'Account'],
   ])('still renders %s', async (entry, heading) => {
     renderApp(entry);
     expect(await screen.findByRole('heading', { name: heading, level: 1 })).toBeVisible();

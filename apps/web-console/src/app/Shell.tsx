@@ -20,6 +20,7 @@ export function Shell() {
         </Link>
         <nav aria-label={t('common.primaryNavigation')}>
           <NavLink to="/environments" className={({ isActive }) => isActive ? styles.navActive : styles.navLink}>{t('environments.heading')}</NavLink>
+          <NavLink to="/account" className={({ isActive }) => isActive ? styles.navActive : styles.navLink}>{t('account.heading')}</NavLink>
         </nav>
         <div className={styles.operator}>
           <span>{t('common.signedInAs')}</span>

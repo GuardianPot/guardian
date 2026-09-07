@@ -132,6 +132,42 @@ export const CATALOGUE = {
   'environment.reauthenticateToAddZone': 'Re-authenticate before adding a zone.',
   'environment.nameFirstZone': 'Name the first zone',
   'environment.zoneUpdated': 'Updated {time}',
+
+  // Zone edit and delete (WCX-09 section 9.4).
+  'environment.zones.editNamed': 'Edit {zone}',
+  'environment.zones.deleteNamed': 'Delete {zone}',
+  'environment.zones.save': 'Save zone',
+  'environment.zones.saveFailed': 'The zone could not be saved. Nothing changed. Use a canonical, non-overlapping RFC1918 CIDR.',
+  'environment.zones.deleteFailed': 'The zone could not be deleted. Nothing changed.',
+  'environment.zones.reauthenticate': 'Re-authenticate before changing a zone.',
+  // A conflict is not a validation failure and must never read like one:
+  // the value was right, someone else was faster (section 9.8.1).
+  'environment.zones.conflict': 'Another change reached this zone first, so nothing was written. Reload to see its current value before editing again.',
+  'environment.zones.reload': 'Reload the current value',
+
+  // Enrollment tokens. No entry here names a token value, because the
+  // Control Plane never sends one to a list (section 8.9).
+  'environment.tokens.eyebrow': 'Open handoffs',
+  'environment.tokens.heading': 'Enrollment tokens',
+  'environment.tokens.intro': 'Each row is one handoff window. Token values are shown once at creation and are never listed, here or anywhere else.',
+  'environment.tokens.caption': 'Enrollment tokens for this environment, newest first',
+  'environment.tokens.collection': 'enrollment tokens',
+  'environment.tokens.columnDevice': 'Device name',
+  'environment.tokens.columnState': 'State',
+  'environment.tokens.columnExpires': 'Expires',
+  'environment.tokens.columnAction': 'Action',
+  'environment.tokens.stateActive': 'Open',
+  'environment.tokens.stateConsumed': 'Used for enrollment',
+  'environment.tokens.stateRevoked': 'Revoked',
+  'environment.tokens.stateExpired': 'Window closed',
+  'environment.tokens.revokeNamed': 'Revoke the token for {device}',
+  'environment.tokens.onlyActive': 'This handoff window is already closed, so there is nothing to revoke.',
+  'environment.tokens.reauthenticate': 'Re-authenticate before revoking a token.',
+  'environment.tokens.revokeFailed': 'The token could not be revoked. Nothing changed.',
+  'environment.tokens.alreadyClosed': 'That handoff window had already closed, so nothing changed. The list now shows its real state.',
+  'environment.tokens.stillWorks': 'the rest of this environment',
+  'environment.tokens.doesNotWork': 'the enrollment token list',
+  'environment.tokens.staleReason': 'the last refresh of the enrollment token list did not return',
   'environment.settingsEyebrow': 'Configuration',
   'environment.settingsHeading': 'Environment settings',
   'environment.displayNameLabel': 'Display name',
@@ -182,6 +218,46 @@ export const CATALOGUE = {
   'devices.reenrollSecret.title': 'Re-enrollment token — shown once',
   'devices.reenrollSecret.description': 'Enter this value directly on the intended Edge host. It leaves this page when you dismiss this dialog and cannot be shown again. The device stays in its current state until enrollment completes.',
   'devices.reenrollSecret.label': 'Re-enrollment token',
+
+  // ─── account (WCX-09) ───────────────────────────────────────────────────
+  'account.eyebrow': 'Owner access',
+  'account.heading': 'Account',
+
+  'account.password.eyebrow': 'Credentials',
+  'account.password.heading': 'Change password',
+  'account.password.intro': 'Changing the password ends every Guardian session for this owner, including this one, and starts a new session here. Guardian asks for a fresh MFA proof before applying it.',
+  'account.password.current': 'Current password',
+  'account.password.next': 'New password',
+  'account.password.policy': 'At least 12 characters, and not your username.',
+  'account.password.reauthenticate': 'Re-authenticate before changing the password.',
+  // Reports what the response confirmed and nothing more (section 8.7). The
+  // Control Plane sends back credentials, not a list of what it revoked, so
+  // the list below is pointed at rather than summarised.
+  'account.password.changed': 'Password changed and this session was replaced. The session list below now shows which sessions survived.',
+  'account.password.rejected': 'The new password does not meet policy, so nothing changed. Use at least 12 characters and a value you have not used here.',
+  'account.password.failed': 'The password could not be changed. Nothing changed, and every session is as it was.',
+
+  'account.sessions.eyebrow': 'Access in force',
+  'account.sessions.heading': 'Sessions',
+  'account.sessions.intro': 'Every session Guardian has issued for this owner, newest first. Revoked sessions stay listed so an ended session is still visible as history.',
+  'account.sessions.caption': 'Guardian sessions for this owner, newest first',
+  'account.sessions.collection': 'sessions',
+  'account.sessions.columnSession': 'Session',
+  'account.sessions.columnCreated': 'Signed in',
+  'account.sessions.columnLastSeen': 'Last seen',
+  'account.sessions.columnExpires': 'Expires',
+  'account.sessions.columnAction': 'Action',
+  'account.sessions.thisSession': 'This session',
+  'account.sessions.revoked': 'Revoked',
+  'account.sessions.useSignOut': 'Use Sign out to end this session.',
+  'account.sessions.revokeNamed': 'Revoke session {session}',
+  'account.sessions.alreadyRevoked': 'This session has already ended, so there is nothing to revoke.',
+  'account.sessions.reauthenticate': 'Re-authenticate before revoking a session.',
+  'account.sessions.revokeFailed': 'The session could not be revoked. It is still active.',
+  'account.sessions.revokeDenied': 'Guardian refused to revoke that session. It is still active.',
+  'account.sessions.stillWorks': 'navigation and sign-out',
+  'account.sessions.doesNotWork': 'the session list',
+  'account.sessions.staleReason': 'the last refresh of the session list did not return',
 
   // ─── health ────────────────────────────────────────────────────────────
   'health.eyebrow': 'Backend health projection',

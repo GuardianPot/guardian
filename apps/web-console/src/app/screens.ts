@@ -15,6 +15,7 @@ export const SCREEN = {
   environments: 'Environments',
   environment: 'Environment',
   device: 'Edge device',
+  account: 'Account',
 } as const;
 
 export type ScreenName = (typeof SCREEN)[keyof typeof SCREEN];

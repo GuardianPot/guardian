@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { permitPolling } from '@shared/api/freshness';
 import { authKeys, login as loginRequest, logout as logoutRequest, sessionQuery, type LoginInput } from './api';
-import type { Session } from '@shared/api/types';
+import type { Session, SessionCredentials } from '@shared/api/types';
 
 type AuthValue = {
   session: Session | null | undefined;
@@ -10,6 +10,20 @@ type AuthValue = {
   loading: boolean;
   login(input: LoginInput): Promise<void>;
   logout(): Promise<void>;
+  /**
+   * Installs credentials the Control Plane issued for an operation other than
+   * sign-in. A password change rotates the session and returns a new proof,
+   * and the one held here stopped being valid the moment it did.
+   */
+  adopt(credentials: SessionCredentials): void;
+  /**
+   * Ends this session locally, exactly as an unauthorized response does.
+   * Revoking the session you are signed in with is a deliberate act rather
+   * than a failure, but everything that follows it is identical — which is
+   * why `WCX-09` section 9.8.5 asks for the existing path rather than a new
+   * one.
+   */
+  expire(): void;
 };
 
 const AuthContext = createContext<AuthValue | null>(null);
@@ -53,6 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await logoutRequest(csrf);
       expire();
     },
+    adopt(credentials) {
+      setCsrf(credentials.csrf_token);
+      queryClient.setQueryData(authKeys.session(), credentials.session);
+    },
+    expire,
   }), [csrf, expire, queryClient, session.data, session.isPending]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

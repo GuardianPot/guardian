@@ -271,3 +271,27 @@
 .lifecycleRow strong { display: block; color: var(--text-primary); }
 .lifecycleRow p { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--font-size-2); line-height: var(--line-height-normal); }
 .stepUpForm { display: grid; gap: var(--space-5); }
+
+/* Tabular operator data (WCX-09 section 9.6.5). A real table, because these
+   are several facts about several rows and a screen reader needs the header
+   association to say which is which. It scrolls inside itself rather than
+   widening the page. */
+.dataTable { display: block; width: 100%; margin: var(--space-5) 0; overflow-x: auto; border-collapse: collapse; font-size: var(--font-size-2); }
+.dataTable caption { margin-bottom: var(--space-4); color: var(--text-muted); text-align: left; }
+.dataTable th, .dataTable td { padding: var(--space-4); text-align: left; vertical-align: top; border-bottom: 1px solid var(--line-subtle); }
+.dataTable thead th { color: var(--text-muted); font-size: var(--font-size-1); font-weight: var(--weight-heavy); text-transform: uppercase; }
+.dataTable tbody th { color: var(--text-primary); font-weight: var(--weight-heavy); overflow-wrap: anywhere; }
+
+/* Zone rows gained edit and delete. The actions wrap under the value rather
+   than compressing it: a CIDR that wraps mid-octet is unreadable. */
+.zoneActions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.zoneEditForm { display: grid; gap: var(--space-4); width: 100%; }
+.zoneConflict { display: grid; gap: var(--space-4); margin-top: var(--space-4); padding: var(--space-5); border: 1px solid var(--line-strong); border-radius: var(--radius-2); }
+.zoneConflict p { margin: 0; color: var(--text-secondary); line-height: var(--line-height-normal); }
+
+/* Session rows carry a state chip beside the identifier (WCX-09 section
+   9.5.3). Neutral tokens: "this session" and "revoked" are facts about
+   access, not severities. */
+.currentSession, .revokedSession { display: inline-block; margin-left: var(--space-3); padding: 0 var(--space-2); border: 1px solid var(--line-strong); border-radius: var(--radius-1); color: var(--text-muted); font-size: var(--font-size-1); font-weight: var(--weight-regular); text-transform: uppercase; }
+.revokedSession { border-style: dashed; }
+.rowNote { color: var(--text-muted); font-size: var(--font-size-2); }

@@ -13,20 +13,25 @@ import {
   zonesQuery,
 } from './api';
 import type { EnrollmentSecret } from '@shared/api/types';
-import { useAuth, useCapability } from '@features/auth';
+import { useAuth, useCapability, useStepUp } from '@features/auth';
 import { textField } from '@shared/forms/textField';
 import { environmentHealthQuery, HealthPanel } from '@features/health';
 import { SecretDialog } from './SecretDialog';
-import { Banner, Button, DataBoundary, Panel, StatusBadge, TextField, Timestamp, UntrustedText } from '@shared/ui';
+import { EnrollmentTokenPanel } from './EnrollmentTokenPanel';
+import { ZoneRow } from './ZoneRow';
+import { Banner, Button, DataBoundary, Panel, StatusBadge, TextField, UntrustedText } from '@shared/ui';
 import { reveal } from '@shared/api/untrusted';
 import styles from '@shared/styles/app.module.css';
-import { t, tx } from '@shared/text';
+import { t } from '@shared/text';
 
 type PageMessage = { text: string; tone: 'informational' | 'blocking' };
 
 export function EnvironmentPage() {
   const { environmentId = '' } = useParams();
   const auth = useAuth();
+  // One step-up per screen, shared by every irreversible action on it: the
+  // mark is per-action, so sharing the prompt cannot share an approval.
+  const stepUp = useStepUp();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<PageMessage | null>(null);
   const [secret, setSecret] = useState<EnrollmentSecret | null>(null);
@@ -193,6 +198,11 @@ export function EnvironmentPage() {
               </Panel>
             </div>
             {/*
+              The handoffs the enrollment form above produces, with the
+              window each one has left. Never a token value (section 8.9).
+            */}
+            <EnrollmentTokenPanel environmentID={environmentId} />
+            {/*
               Health is a separate read with separate truth. Inventory presence
               above says nothing about it, and a missing projection renders as
               `unknown` — never as an empty or a healthy panel.
@@ -241,10 +251,7 @@ export function EnvironmentPage() {
                   {(list) => (
                     <ul className={styles.zoneList}>
                       {list.map((zone) => (
-                        <li key={zone.zone_id}>
-                          <span><strong><UntrustedText value={zone.display_name} /></strong><small>{tx('environment.zoneUpdated', { time: <Timestamp value={zone.updated_at} /> })}</small></span>
-                          <code>{zone.cidr}</code>
-                        </li>
+                        <ZoneRow key={zone.zone_id} zone={zone} stepUp={stepUp} />
                       ))}
                     </ul>
                   )}
@@ -303,6 +310,11 @@ export function EnvironmentPage() {
                 </form>
               </Panel>
             </div>
+            {/*
+              The handoffs the enrollment form above produces, with the
+              window each one has left. Never a token value (section 8.9).
+            */}
+            <EnrollmentTokenPanel environmentID={environmentId} />
           </>
         )}
       </DataBoundary>

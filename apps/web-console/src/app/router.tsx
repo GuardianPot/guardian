@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { Navigate, Outlet, createBrowserRouter, type RouteObject } from 'react-router';
 import { LoginRoute, useAuth } from '@features/auth';
 import { DeviceRoute } from '@features/devices';
+import { AccountRoute } from '@features/account';
 import { EnvironmentRoute, EnvironmentsRoute } from '@features/environments';
 import { AppLayout } from '@app/AppLayout';
 import { Shell } from '@app/Shell';
@@ -89,6 +90,7 @@ export const routes: RouteObject[] = [
               element: <DeviceRoute />,
               handle: { screen: SCREEN.device },
             },
+            { path: '/account', element: <AccountRoute />, handle: { screen: SCREEN.account } },
           ],
         }],
       },
