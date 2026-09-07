@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { HealthCondition, HealthConditionType, HealthView } from '@shared/api/types';
+import { expectNoAxeViolations } from '@shared/testing/axe';
 import { HealthPanel } from './HealthPanel';
 
 const conditionTypes: HealthConditionType[] = [
@@ -40,5 +41,10 @@ describe('HealthPanel', () => {
     expect(screen.getByText(/Blocking: Edge connection/)).toHaveTextContent('source 018f1f7e');
     expect(screen.getByText('<img src=x onerror=alert(1)> remains plain text')).toBeVisible();
     expect(container.querySelector('img')).toBeNull();
+  });
+
+  it('reports no serious or critical axe violation', async () => {
+    const { container } = render(<main><HealthPanel health={healthView()} /></main>);
+    await expectNoAxeViolations(container);
   });
 });

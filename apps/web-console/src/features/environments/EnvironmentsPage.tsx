@@ -52,7 +52,8 @@ export function EnvironmentsPage() {
   return (
     <div>
       <header className={styles.pageHeader}>
-        <div><p className={styles.eyebrow}>{TEXT.eyebrow}</p><h1>{TEXT.heading}</h1></div>
+        {/* `tabIndex={-1}` is the route-change focus target (WCX-05 section 9.2.2). */}
+        <div><p className={styles.eyebrow}>{TEXT.eyebrow}</p><h1 tabIndex={-1}>{TEXT.heading}</h1></div>
         <span className={styles.truthNote}>{TEXT.truthNote}</span>
       </header>
       <div className={styles.twoColumn}>

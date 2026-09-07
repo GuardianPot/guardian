@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import { ACTION_CONFIRMATION, confirmationFor, stepUpUnavailable, type ConfirmableAction } from './levels';
+import { expectNoAxeViolations } from '@shared/testing/axe';
 
 /**
  * The three confirmation levels (WCX-04 section 9.3, WC-D16).
@@ -158,6 +159,21 @@ describe('level 3 confirmation', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Revoke device' }));
 
     expect(confirmed).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports no serious or critical axe violation at either modal level', async () => {
+    const recoverable = render(
+      <ConfirmationDialog action="zone.delete" objectName="Lab zone" open onCancel={() => undefined} onConfirm={() => undefined} />,
+    );
+    await screen.findByRole('dialog');
+    await expectNoAxeViolations(recoverable.baseElement);
+    recoverable.unmount();
+
+    const irreversible = render(
+      <ConfirmationDialog action="device.revoke" objectName="edge-one" open onCancel={() => undefined} onConfirm={() => undefined} />,
+    );
+    await screen.findByRole('dialog');
+    await expectNoAxeViolations(irreversible.baseElement);
   });
 
   it('compares a hostile object name by exact equality and renders it as text', async () => {

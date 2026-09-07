@@ -11,6 +11,7 @@ import {
   UnknownState,
 } from './states';
 import { FRESHNESS_LIMIT_MS } from './freshness';
+import { expectNoAxeViolations } from '@shared/testing/axe';
 
 /**
  * The negative assertions that carry `WCX-04` section 8.2, 8.3, and 8.4.
@@ -69,6 +70,11 @@ describe('the eight data states', () => {
     for (const label of HEALTH_LABELS) {
       expect(screen.queryByText(label, { exact: true }), label).toBeNull();
     }
+  });
+
+  it.each(EVERY_STATE)('reports no serious or critical axe violation for $name', async ({ render: mount }) => {
+    mount();
+    await expectNoAxeViolations(document.body);
   });
 
   it('announces informational states as status and blocking states as alert', () => {

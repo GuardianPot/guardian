@@ -1,4 +1,5 @@
 import eslint from '@eslint/js';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
@@ -76,6 +77,43 @@ export default tseslint.config(
     files: ['src/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },
     rules: reactHooks.configs.recommended.rules,
+  },
+  /*
+   * Accessibility (WCX-05, decision WC-D23).
+   *
+   * `WCAG 2.2 Level AA` is the target and this is the first of its three
+   * enforcement layers: static rules that fail the build. The second is the
+   * component-level axe assertion in `@shared/testing/axe`; the third is the
+   * full-page browser scan in `full.yml`.
+   *
+   * The recommended set runs as errors and keeps its own options — restating a
+   * rule with a bare `'error'` would silently replace them. Only the four rules
+   * below are changed: three the recommended set does not include, and one
+   * whose default is looser than section 9.3 asks for.
+   *
+   * `no-redundant-roles`, `no-noninteractive-element-interactions`, and
+   * `tabindex-no-positive` are section 9.3 requirements that the recommended
+   * set already enforces, so they are deliberately not restated here.
+   *
+   * A suppression must name its reason; `a11ySuppressions.test.ts` fails the
+   * suite if one does not.
+   */
+  {
+    files: ['src/**/*.tsx'],
+    ...jsxA11y.flatConfigs.recommended,
+    rules: {
+      ...jsxA11y.flatConfigs.recommended.rules,
+      // Section 9.6.1: every input has a programmatically associated label.
+      'jsx-a11y/label-has-associated-control': ['error', { assert: 'either' }],
+      // Section 9.6.1 again, from the control's side rather than the label's.
+      'jsx-a11y/control-has-associated-label': 'error',
+      // Section 9.3 prohibits autofocus outright. The recommended default
+      // exempts custom components, which is where a screen would hide one.
+      'jsx-a11y/no-autofocus': ['error', { ignoreNonDOM: false }],
+      // Section 9.2.2 focuses the screen heading, so `tabIndex={-1}` on an
+      // `h1` and on `main` is required rather than merely tolerated.
+      'jsx-a11y/no-noninteractive-tabindex': ['error', { tags: [], roles: ['tabpanel'], allowExpressionValues: true }],
+    },
   },
   // Default for production modules outside the layers handled below.
   {

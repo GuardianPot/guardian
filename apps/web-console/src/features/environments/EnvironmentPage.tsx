@@ -126,7 +126,7 @@ export function EnvironmentPage() {
             <header className={styles.pageHeader}>
               <div>
                 <p className={styles.eyebrow}>{TEXT.eyebrow}</p>
-                <h1>{record.display_name}</h1>
+                <h1 tabIndex={-1}>{record.display_name}</h1>
                 <p className={styles.mono}>{record.environment_id}</p>
               </div>
               <StatusBadge encoding={configEncoding(record.status)} />

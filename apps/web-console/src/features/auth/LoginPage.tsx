@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { toConsoleError } from '@shared/api/error';
 import { textField } from '@shared/forms/textField';
@@ -11,15 +11,39 @@ import { LOGIN_TEXT as TEXT } from './text';
 /** Stable so the three inputs can point at the one message that covers them. */
 const LOGIN_ERROR_ID = 'login-error';
 
+/** The MFA methods, in the order the segmented control presents them. */
+const METHODS = ['totp', 'recovery'] as const;
+type Method = (typeof METHODS)[number];
+
+/** Arrow, Home, and End behaviour for the segmented control (section 9.5.3). */
+function methodForKey(key: string, current: Method): Method | undefined {
+  const index = METHODS.indexOf(current);
+  if (key === 'ArrowLeft' || key === 'ArrowUp') return METHODS[(index + METHODS.length - 1) % METHODS.length];
+  if (key === 'ArrowRight' || key === 'ArrowDown') return METHODS[(index + 1) % METHODS.length];
+  if (key === 'Home') return METHODS[0];
+  if (key === 'End') return METHODS[METHODS.length - 1];
+  return undefined;
+}
+
 export function LoginPage() {
   const auth = useAuth();
   const navigate = useNavigate();
-  const [method, setMethod] = useState<'totp' | 'recovery'>('totp');
+  const [method, setMethod] = useState<Method>('totp');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const totpRef = useRef<HTMLButtonElement>(null);
+  const recoveryRef = useRef<HTMLButtonElement>(null);
   const writeAccess = useCapability('environment.create');
   if (auth.loading) return <div className={styles.centered}><LoadingState activity={TEXT.checkingSession} /></div>;
   if (auth.session && writeAccess.allowed) return <Navigate to="/environments" replace />;
+
+  function onMethodKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    const next = methodForKey(event.key, method);
+    if (next === undefined) return;
+    event.preventDefault();
+    setMethod(next);
+    (next === 'totp' ? totpRef : recoveryRef).current?.focus();
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,20 +67,38 @@ export function LoginPage() {
   }
 
   return (
-    <main className={styles.loginPage}>
+    <main className={styles.loginPage} tabIndex={-1}>
       <section className={styles.loginIntro}>
         <div className={styles.brandMark} aria-hidden="true">G</div>
         <p className={styles.eyebrow}>{TEXT.brandEyebrow}</p>
-        <h1>{TEXT.headlineFirst}<br />{TEXT.headlineSecond}</h1>
+        {/*
+          A paragraph, not the page heading: this column is hidden below 900
+          pixels, and the screen's heading has to exist at every width. See
+          `.loginHeadline` in `app.module.css`.
+        */}
+        <p className={styles.loginHeadline}>{TEXT.headlineFirst}<br />{TEXT.headlineSecond}</p>
         <p>{TEXT.intro}</p>
       </section>
       <section className={styles.loginCard} aria-labelledby="login-heading">
         <p className={styles.eyebrow}>{auth.session ? TEXT.restoreEyebrow : TEXT.ownerEyebrow}</p>
-        <h2 id="login-heading">{auth.session ? TEXT.reauthenticateHeading : TEXT.signInHeading}</h2>
+        <h1 id="login-heading" tabIndex={-1}>{auth.session ? TEXT.reauthenticateHeading : TEXT.signInHeading}</h1>
         <p>{auth.session ? TEXT.reauthenticateIntro : TEXT.signInIntro}</p>
+        {/*
+          A two-option segmented control (WCX-05 section 9.5.3). It stays a
+          group of toggle buttons rather than becoming a radiogroup — the
+          browser suite drives it by button role — and gains the arrow-key
+          movement an operator expects from a segmented control. Each option
+          exposes its state through `aria-pressed`.
+        */}
         <div className={styles.segmented} role="group" aria-label={TEXT.methodGroup}>
-          <button type="button" aria-pressed={method === 'totp'} onClick={() => setMethod('totp')}>{TEXT.authenticator}</button>
-          <button type="button" aria-pressed={method === 'recovery'} onClick={() => setMethod('recovery')}>{TEXT.recovery}</button>
+          {/*
+            The key handler sits on each option rather than on the group.
+            Focus is always on an option when an arrow is pressed, so the
+            behaviour is identical, and a `group` is not an interactive
+            element that should be carrying keyboard listeners.
+          */}
+          <button ref={totpRef} type="button" aria-pressed={method === 'totp'} onClick={() => setMethod('totp')} onKeyDown={onMethodKeyDown}>{TEXT.authenticator}</button>
+          <button ref={recoveryRef} type="button" aria-pressed={method === 'recovery'} onClick={() => setMethod('recovery')} onKeyDown={onMethodKeyDown}>{TEXT.recovery}</button>
         </div>
         <form onSubmit={(event) => { void submit(event); }} className={styles.form}>
           <TextField

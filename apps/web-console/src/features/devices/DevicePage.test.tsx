@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { device, deviceID, environmentID, healthView, json, loginHandlers, renderRoute, stubFetch, type StubHandler } from '@shared/testing/harness';
+import { expectNoAxeViolations } from '@shared/testing/axe';
 import { DevicePage } from './DevicePage';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -95,6 +96,19 @@ describe('DevicePage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Eight-condition health' })).toBeVisible();
     expect(screen.queryByText('Showing the last data Guardian received')).not.toBeInTheDocument();
+  });
+
+  it('reports no serious or critical axe violation with health present or absent', async () => {
+    const withHealth = renderDevice();
+    await screen.findByRole('heading', { name: 'Eight-condition health' });
+    await expectNoAxeViolations(withHealth.container);
+    withHealth.unmount();
+
+    const withoutHealth = renderDevice({
+      [`GET /v1/devices/${deviceID}/health`]: () => json({ error: 'not_found' }, 404),
+    });
+    await screen.findByText(/Guardian holds no observation/);
+    await expectNoAxeViolations(withoutHealth.container);
   });
 
   it('presents a denied device record as refused, not as an absent one', async () => {

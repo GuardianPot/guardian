@@ -4,6 +4,12 @@
  * structural, not thematic, and does not change when `WCX-15` adds the light
  * theme. `check-theme-tokens.mjs` enforces that split.
  */
+/*
+ * Available to assistive technology, absent from the visual layout (WCX-05).
+ * Not `display: none` and not `visibility: hidden`: both remove the node from
+ * the accessibility tree, which is the opposite of what a live region needs.
+ */
+.visuallyHidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
 .shell { min-height: 100vh; display: grid; grid-template-columns: 17rem 1fr; }
 .skipLink { position: fixed; left: var(--space-6); top: -5rem; z-index: 100; padding: var(--space-4) var(--space-6); color: var(--action-primary-contrast); background: var(--action-primary); border-radius: var(--radius-1); }
 .skipLink:focus { top: var(--space-6); }
@@ -168,7 +174,17 @@
 .factGrid dt { color: var(--text-muted); font-size: var(--font-size-2); }
 .factGrid dd { margin: 0; font-weight: var(--weight-bold); overflow-wrap: anywhere; }
 .loginPage { min-height: 100vh; display: grid; grid-template-columns: minmax(0,1.25fr) minmax(22rem,.75fr); align-items: center; gap: clamp(3rem,8vw,9rem); width: min(80rem, calc(100% - 3rem)); margin: 0 auto; padding: 4rem 0; }
-.loginIntro h1 { max-width: 14ch; }
+/*
+ * The marketing headline is a paragraph, not the page heading (WCX-05).
+ *
+ * It used to be the `h1`, and the intro column is hidden below 900 pixels, so
+ * the only `h1` on the sign-in screen disappeared on a narrow viewport: the
+ * heading order started at `h2` and route-change focus had no target. The
+ * heading is now the sign-in card's, which renders at every width; this class
+ * carries what the `h1` element used to contribute visually so nothing moves.
+ */
+.loginHeadline { max-width: 14ch; margin-top: 0; margin-bottom: var(--space-8); font-size: clamp(2rem, 4vw, 3.6rem); font-weight: var(--weight-black); line-height: var(--line-height-tight); letter-spacing: -0.045em; }
+.loginCard h1 { margin-bottom: var(--space-4); font-size: var(--font-size-7); letter-spacing: -0.02em; }
 .loginIntro > p:last-child { max-width: 38rem; color: var(--text-muted); font-size: var(--font-size-6); line-height: var(--line-height-loose); }
 .loginCard { padding: clamp(1.5rem,4vw,2.7rem); border: 1px solid var(--line-subtle); border-radius: var(--radius-panel); background: var(--surface-raised); box-shadow: var(--elevation-2); }
 .loginCard > p:not(.eyebrow) { color: var(--text-muted); line-height: var(--line-height-normal); }

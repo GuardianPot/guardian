@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { configEncoding, deviceEncoding, healthEncoding, severityEncoding } from '@shared/theme/statusEncoding';
+import { expectNoAxeViolations } from '@shared/testing/axe';
 import { Button } from './Button';
 import { ConfidenceMeter } from './ConfidenceMeter';
 import { DescriptionList } from './DescriptionList';
@@ -203,6 +204,33 @@ describe('Dialog', () => {
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
     await waitFor(() => { expect(trigger).toHaveFocus(); });
+  });
+});
+
+describe('accessibility', () => {
+  it('reports no serious or critical axe violation for any control', async () => {
+    const { container } = render(
+      <main>
+        <Panel heading="Edge devices" headingLevel={2} eyebrow="Inventory truth" aside={<StatusBadge encoding={healthEncoding('Unknown')} />}>
+          <TextField name="cidr" label="Private CIDR" description="Use an RFC1918 range." error="That range overlaps." />
+          <TextField name="locked" label="Zone name" disabledReason="Re-authenticate first." />
+          <Button variant="primary">Act</Button>
+          <Button variant="destructive" disabledReason="Re-authenticate first.">Revoke</Button>
+          <Button variant="secondary" pending>Save</Button>
+          <ConfidenceMeter value="Medium" />
+          <Skeleton lines={2} />
+          <DescriptionList label="Device inventory facts" entries={[{ term: 'Inventory state', value: 'active' }]} />
+        </Panel>
+      </main>,
+    );
+    await expectNoAxeViolations(container);
+  });
+
+  it('reports no serious or critical axe violation for an open dialog', async () => {
+    const { baseElement } = render(<DialogHarness />);
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+    await screen.findByRole('dialog');
+    await expectNoAxeViolations(baseElement);
   });
 });
 

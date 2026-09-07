@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ConsoleRequestError, consoleError } from '@shared/api/error';
+import { expectNoAxeViolations } from '@shared/testing/axe';
 import { DataBoundary, type QueryLike } from './DataBoundary';
 import { FRESHNESS_LIMIT_MS } from './freshness';
 
@@ -112,6 +113,22 @@ describe('DataBoundary', () => {
     renderBoundary(failing('unexpected'));
     const text = document.body.textContent ?? '';
     expect(text).not.toMatch(/unexpected|errors\.|\b5\d\d\b/i);
+  });
+
+  it('reports no serious or critical axe violation in any outcome it renders', async () => {
+    for (const result of [
+      query<string[]>({ isPending: true }),
+      query<string[]>({ data: [] }),
+      query<string[]>({ data: ['edge-one'] }),
+      failing<string[]>('forbidden'),
+      failing<string[]>('unavailable'),
+      failing<string[]>('network'),
+      failing<string[]>('not-found'),
+    ]) {
+      const view = renderBoundary(result, { observationShaped: true, onRetry: () => undefined });
+      await expectNoAxeViolations(view.container);
+      view.unmount();
+    }
   });
 
   it('treats an absent projection as unknown rather than as a successful empty read', () => {

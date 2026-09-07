@@ -533,6 +533,110 @@ two new button variants — not a change to anything that already existed.
 `WCX-04` section 9.11 sets the binding constraint as the absolute 32 KiB cap,
 which holds, so this is recorded rather than escalated.
 
+## Accessibility
+
+The conformance target is **WCAG 2.2 Level AA** for every operator-facing
+surface (`WC-D23`). It is a target with teeth: three layers enforce it, and a
+regression fails the build rather than waiting for someone to notice.
+
+`P1-W11` produced good practice without a target — a skip link, landmarks,
+labels, error association, reduced motion — but route changes moved no focus,
+announced nothing, and never changed the document title (GAP-4), and the only
+automated check was a full-page browser scan that runs nightly.
+
+### Three enforcement layers
+
+| Layer | What it sees | Where it runs |
+|---|---|---|
+| `eslint-plugin-jsx-a11y` | what is wrong in the source | `npm run lint`, every commit |
+| axe on rendered components | what is only wrong once rendered — a name that resolves to nothing, a description pointing at an absent id | `npm run test`, every commit |
+| axe on the full page in a real browser | what is only wrong once the cascade resolves — contrast, focus visibility, stacking | `full.yml`, nightly |
+
+Each catches what the one before it cannot. The first two are fast enough to
+run on every change; the third is the only one that sees a real rendering
+engine, which is why `color-contrast` is disabled in the component layer: jsdom
+resolves no cascade and no composited background, so it would measure a colour
+the operator never sees. Contrast is covered instead by the token table in
+`@shared/theme/tokens.ts` and by the browser scan.
+
+The component layer fails on `serious` and `critical`. `moderate` and `minor`
+are collected and printed rather than failed on — a component rendered outside
+a page legitimately has no landmark to sit in — so a new one is visible without
+turning every best-practice heuristic into a build break.
+
+A `jsx-a11y` suppression must state its reason after ESLint's `--` separator.
+`a11yLint.test.ts` fails the suite on one that does not, and also asserts that
+the rules are configured as errors *and* that they actually fire — a rule that
+is configured but silently unloaded looks exactly like a codebase with no
+violations.
+
+### The route-change contract
+
+On every completed navigation, `RouteAnnouncer` does three things:
+
+1. sets `document.title` to `<screen name> — Guardian Console`;
+2. moves focus to the screen's `h1`, which carries `tabIndex={-1}`. When the
+   screen is still loading there is no heading yet, so focus lands on the
+   `main` landmark and follows the heading in when it renders;
+3. announces the screen name through one polite live region that lives in
+   `AppLayout` and is never re-created.
+
+Two details that are easy to get wrong and are asserted:
+
+- **Screen names come from the route definition's `handle`, never from backend
+  data.** An environment's title is "Environment — Guardian Console", not the
+  environment's display name. A title travels outside the document — into a
+  browser tab, a window list, a bookmark — and section 8.1 keeps
+  attacker-supplied content off every such surface.
+- **Focus is claimed, never stolen.** If the operator moved focus themselves
+  while a screen loaded, the late-arriving heading does not take it back.
+
+There is no `ScrollRestoration`, and the sidebar is `position: static` at the
+width where it becomes a horizontal bar, so nothing sticky can cover the
+focused heading.
+
+### Manual checks
+
+Automated conformance is the floor, not the ceiling. Before releasing a screen,
+walk it once by keyboard alone and confirm:
+
+- every control is reachable in an order that matches the visual layout;
+- the focus ring is visible on every control, including on dark surfaces;
+- a dialog traps focus, closes on escape, and returns focus to whatever opened
+  it;
+- a disabled control announces why it is disabled;
+- no announcement repeats on a polled refresh that changed nothing;
+- the screen is usable at 200% zoom and at a 320-pixel width.
+
+### Exceptions register
+
+| Exception | Reason | Owner | Review |
+|---|---|---|---|
+| The operator block, which holds sign-out and re-authenticate, is `display: none` below 900 pixels. A keyboard operator on a narrow viewport cannot reach sign-out. | `P1-W11` GAP-1. Fixing it restores a block to the layout, and visual change is a non-goal of `WCX-05`. | `WCX-10` | When `WCX-10` lands |
+| The sign-in failure message does not name which credential was wrong. | Deliberate. Naming the failing field would tell an attacker whether a username exists. The message still names the correction, which is what section 9.6.5 asks for. | Product | Standing |
+
+`keyboard.test.tsx` pins the first entry: it parses the stylesheet, finds every
+region a breakpoint hides, and fails if one is not accounted for. When `WCX-10`
+removes the rule the test fails and forces this table to be updated rather than
+left behind.
+
+### Cost
+
+The component suite runs 253 tests across 29 files in about 8 seconds wall
+clock on a development machine. The ceiling is 60 seconds; past that, split the
+axe assertions into their own project rather than dropping them.
+
+The bundle grew by 2 020 bytes of JavaScript and 444 of CSS — the live region,
+the announcer, and the route handles. `jsx-a11y` and `axe-core` are
+development-only and ship nothing. JavaScript stands at 403 914 bytes against
+a 460 800 budget, CSS at 24 011 against 32 768.
+
+`eslint-plugin-jsx-a11y@6.10.2` declares a peer range of `eslint ^3 || … || ^9`
+and this repository is on ESLint 10. The plugin works — `a11yLint.test.ts`
+proves the rules fire — but the stale metadata means a *new* `npm install` in
+this workspace needs `--legacy-peer-deps`. `npm ci` is unaffected, so CI is
+unaffected. Drop the flag once upstream ships a release that lists ESLint 10.
+
 ## Continuous integration
 
 Two workflows, one job each, no conditions.

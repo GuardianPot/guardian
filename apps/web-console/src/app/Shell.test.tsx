@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RequireAuth } from '@app/router';
 import { AuthProvider } from '@features/auth';
 import { SignedIn, csrfToken, json, loginHandlers, stubFetch, type StubHandler } from '@shared/testing/harness';
+import { expectNoAxeViolations } from '@shared/testing/axe';
 import { Shell } from './Shell';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -104,6 +105,19 @@ describe('Shell', () => {
     expect(await screen.findByText('Environment workspace')).toBeVisible();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     consoleError.mockRestore();
+  });
+
+  it('reports no serious or critical axe violation, signed in or read-only', async () => {
+    renderShell({ authenticated: true });
+    await screen.findByRole('button', { name: 'Sign out' });
+    await expectNoAxeViolations(document.body);
+    // A second shell alongside the first would duplicate every landmark and
+    // the `main-content` id the skip link targets.
+    cleanup();
+
+    renderShell({ authenticated: false });
+    await screen.findByText(/Read-only session restored\./);
+    await expectNoAxeViolations(document.body);
   });
 
   it('keeps the read-only session banner the browser suite reloads into', async () => {

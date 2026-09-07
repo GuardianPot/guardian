@@ -14,6 +14,7 @@ import {
   type StubHandler,
 } from '@shared/testing/harness';
 import { authKeys } from '@features/auth';
+import { expectNoAxeViolations } from '@shared/testing/axe';
 import { EnvironmentPage } from './EnvironmentPage';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -170,6 +171,25 @@ describe('EnvironmentPage', () => {
     expect(alert).toHaveTextContent(/reports nothing about what is or is not here/);
     expect(screen.queryByRole('heading', { name: 'Edge devices' })).not.toBeInTheDocument();
     expect(screen.queryByText('No private network zones recorded')).not.toBeInTheDocument();
+  });
+
+  it('reports no serious or critical axe violation with health present or absent', async () => {
+    stubFetch(readHandlers({
+      [`GET /v1/environments/${environmentID}/devices`]: () => json({ devices: [device()] }),
+      [`GET /v1/environments/${environmentID}/health`]: () => json(healthView()),
+      [`GET /v1/environments/${environmentID}/zones?limit=200`]: () => json({ zones: [zone()] }),
+    }));
+    const withHealth = renderRoute(<EnvironmentPage />, { path: routePath, entry, authenticated: false });
+    await screen.findByRole('heading', { name: 'Eight-condition health' });
+    await expectNoAxeViolations(withHealth.container);
+    withHealth.unmount();
+
+    // The read-only session renders every control disabled with a reason, which
+    // is the state most likely to leave a control unnamed.
+    stubFetch(readHandlers());
+    const withoutHealth = renderRoute(<EnvironmentPage />, { path: routePath, entry, authenticated: false });
+    await screen.findByRole('heading', { name: 'Lab' });
+    await expectNoAxeViolations(withoutHealth.container);
   });
 
   it('drops the memory-only CSRF proof when a mutation is rejected as unauthorized', async () => {

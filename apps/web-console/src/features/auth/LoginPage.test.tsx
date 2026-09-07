@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from './AuthContext';
 import { requestBody, requestURL } from '@shared/testing/harness';
+import { expectNoAxeViolations } from '@shared/testing/axe';
 import { LoginPage } from './LoginPage';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -40,6 +41,88 @@ describe('LoginPage', () => {
     expect(requestBody(loginCall[1])).toEqual({ username: 'owner', password: 'correct horse battery staple', totp_code: '123456' });
     expect(localStorage).toHaveLength(0);
     expect(sessionStorage).toHaveLength(0);
+  });
+
+  it('carries the screen heading at every width and passes axe', async () => {
+    // The headline used to be the `h1` and sits in a column hidden below 900
+    // pixels, so the sign-in screen lost its only heading on a narrow viewport
+    // and route-change focus had nothing to land on (WCX-05).
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('{}', { status: 401 }))));
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { container } = render(
+      <QueryClientProvider client={queryClient}><AuthProvider><MemoryRouter><LoginPage /></MemoryRouter></AuthProvider></QueryClientProvider>,
+    );
+
+    const heading = await screen.findByRole('heading', { name: 'Sign in', level: 1 });
+    expect(heading).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByRole('main')).toContainElement(heading);
+    expect(screen.queryByRole('heading', { name: /Know what is protected/ })).not.toBeInTheDocument();
+    await expectNoAxeViolations(container);
+  });
+
+  it('operates the MFA method control with arrow keys and exposes its state', async () => {
+    // Section 9.5.3. A segmented control that only responds to Tab and click
+    // is operable but not idiomatic; an operator reaching it with the keyboard
+    // expects the arrows to move between the options.
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('{}', { status: 401 }))));
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}><AuthProvider><MemoryRouter><LoginPage /></MemoryRouter></AuthProvider></QueryClientProvider>,
+    );
+
+    const authenticator = await screen.findByRole('button', { name: 'Authenticator' });
+    const recovery = screen.getByRole('button', { name: 'Recovery code' });
+    expect(authenticator).toHaveAttribute('aria-pressed', 'true');
+    expect(recovery).toHaveAttribute('aria-pressed', 'false');
+
+    authenticator.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(recovery).toHaveFocus();
+    expect(recovery).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Recovery code')).toBeVisible();
+
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(authenticator).toHaveFocus();
+    expect(authenticator).toHaveAttribute('aria-pressed', 'true');
+
+    await userEvent.keyboard('{End}');
+    expect(recovery).toHaveFocus();
+    await userEvent.keyboard('{Home}');
+    expect(authenticator).toHaveFocus();
+    expect(screen.getByLabelText('6-digit authenticator code')).toBeVisible();
+  });
+
+  it('marks required fields programmatically and names the correction on failure', async () => {
+    // Sections 9.6.4 and 9.6.5. `required` is the programmatic marker; the
+    // message says what to do, not only that something went wrong.
+    const fetchMock = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(() =>
+      Promise.resolve(new Response('{}', { status: 401 })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}><AuthProvider><MemoryRouter><LoginPage /></MemoryRouter></AuthProvider></QueryClientProvider>,
+    );
+
+    for (const label of ['Username', 'Password', '6-digit authenticator code']) {
+      expect(await screen.findByLabelText(label), label).toBeRequired();
+    }
+
+    await userEvent.type(screen.getByLabelText('Username'), 'owner');
+    await userEvent.type(screen.getByLabelText('Password'), 'correct horse battery staple');
+    await userEvent.type(screen.getByLabelText('6-digit authenticator code'), '123456');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue securely' }));
+
+    const alerts = await screen.findAllByRole('alert');
+    // Section 9.7.2: one assertive region, not one per field.
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent('Check your credentials and MFA proof.');
+    // Every field the message covers points at it and is marked invalid.
+    for (const label of ['Username', 'Password', '6-digit authenticator code']) {
+      const input = screen.getByLabelText(label);
+      expect(input, label).toHaveAttribute('aria-invalid', 'true');
+      expect(input, label).toHaveAccessibleDescription('Sign-in was denied. Check your credentials and MFA proof.');
+    }
   });
 
   it('renders a generic denied state without reflecting submitted secrets', async () => {

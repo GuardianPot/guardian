@@ -7,6 +7,7 @@ import { Banner } from './Banner';
 import { InlineMessage } from './InlineMessage';
 import { PendingOnObject } from './PendingOnObject';
 import { TOAST_MINIMUM_MS, ToastRegion, useToasts } from './Toast';
+import { expectNoAxeViolations } from '@shared/testing/axe';
 
 /**
  * The three feedback surfaces (WCX-04 section 9.4, WC-D17).
@@ -130,6 +131,24 @@ describe('Toast', () => {
     const css = readFileSync('src/shared/styles/app.module.css', 'utf8');
     expect(css).toMatch(/\.toastRegion\s*\{[^}]*pointer-events:\s*none/);
     expect(css).toMatch(/\.toastDismiss\s*\{[^}]*pointer-events:\s*auto/);
+  });
+});
+
+describe('feedback accessibility', () => {
+  it('reports no serious or critical axe violation on any surface', async () => {
+    const { container } = render(
+      <main>
+        <Banner tone="informational">Read-only session restored.</Banner>
+        <Banner tone="blocking">Zone creation failed.</Banner>
+        <Banner tone="restricted">Read-only session restored.</Banner>
+        <InlineMessage tone="error">Sign-in was denied.</InlineMessage>
+        <InlineMessage tone="success">Environment name updated.</InlineMessage>
+        <PendingOnObject startedAt={new Date().toISOString()} reason="waiting for the Edge" />
+        <ToastHarness />
+      </main>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await expectNoAxeViolations(container);
   });
 });
 

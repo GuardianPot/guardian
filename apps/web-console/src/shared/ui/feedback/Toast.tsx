@@ -78,16 +78,18 @@ function Toast({
     return () => clearTimeout(timer);
   }, [paused, lifetimeMs, onDismiss, toast.id]);
 
+  // Pausing belongs to the card, announcing belongs to the region inside it.
+  // Putting both on one element made a live region carry pointer handlers,
+  // which reads as an interactive element it is not.
   return (
     <div
       className={styles.toast}
-      role="status"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
-      <span>{toast.text}</span>
+      <span role="status">{toast.text}</span>
       <button className={styles.toastDismiss} type="button" onClick={() => onDismiss(toast.id)}>
         {TOAST_TEXT.dismiss}
       </button>

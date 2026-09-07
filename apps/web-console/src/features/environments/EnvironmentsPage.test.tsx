@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { environment, json, loginHandlers, renderRoute, stubFetch, type StubHandler } from '@shared/testing/harness';
+import { expectNoAxeViolations } from '@shared/testing/axe';
 import { EnvironmentsPage } from './EnvironmentsPage';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -103,6 +104,22 @@ describe('EnvironmentsPage', () => {
     expect(alert).toHaveTextContent('The environment could not be created.');
     expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
     expect(screen.queryByText('Environment created.')).not.toBeInTheDocument();
+  });
+
+  it('reports no serious or critical axe violation, listed or empty', async () => {
+    const listed = stubFetch(handlers({
+      'GET /v1/environments?limit=200': () => json({ environments: [environment()] }),
+    }));
+    expect(listed.calls).toEqual([]);
+    const view = renderRoute(<EnvironmentsPage />, { path: routePath, entry: routePath });
+    await screen.findByRole('link', { name: /Lab/ });
+    await expectNoAxeViolations(view.container);
+    view.unmount();
+
+    stubFetch(handlers());
+    const empty = renderRoute(<EnvironmentsPage />, { path: routePath, entry: routePath });
+    await screen.findByText('No environments recorded');
+    await expectNoAxeViolations(empty.container);
   });
 
   it('writes nothing to browser storage while listing and creating', async () => {

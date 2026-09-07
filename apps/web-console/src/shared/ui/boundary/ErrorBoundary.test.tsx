@@ -4,6 +4,7 @@ import { MemoryRouter, Link, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RootErrorBoundary, RouteErrorBoundary } from './ErrorBoundary';
 import { clearLastRenderError, readLastRenderError } from './lastRenderError';
+import { expectNoAxeViolations } from '@shared/testing/axe';
 
 /**
  * `P1-W11` GAP-2: no error boundary existed, so an unexpected exception
@@ -96,6 +97,17 @@ describe('RouteErrorBoundary', () => {
 
     expect(await screen.findByRole('heading', { name: 'Environment workspace' })).toBeVisible();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('reports no serious or critical axe violation in either fallback', async () => {
+    // A fallback is what an operator is left with when everything else failed,
+    // so it is the last place an unreachable control is acceptable.
+    const root = render(<RootErrorBoundary><Explode /></RootErrorBoundary>);
+    await expectNoAxeViolations(root.container);
+    root.unmount();
+
+    const route = render(<ShellHarness initial="/broken" />);
+    await expectNoAxeViolations(route.container);
   });
 
   it('does not leave the document without its language or theme', () => {

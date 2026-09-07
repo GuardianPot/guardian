@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import type { EnrollmentSecret } from '@shared/api/types';
+import { expectNoAxeViolations } from '@shared/testing/axe';
 import { SecretDialog } from './SecretDialog';
 
 const secret: EnrollmentSecret = {
@@ -28,5 +29,32 @@ describe('SecretDialog', () => {
     expect(screen.queryByText(secret.token)).not.toBeInTheDocument();
     expect(localStorage).toHaveLength(0);
     expect(sessionStorage).toHaveLength(0);
+  });
+
+  it('reports no serious or critical axe violation', async () => {
+    const { baseElement } = render(<Harness />);
+    await screen.findByRole('dialog');
+    await expectNoAxeViolations(baseElement);
+  });
+
+  it('announces nothing that contains the secret', async () => {
+    // Section 8.2. A live region is read aloud and is exactly the surface a
+    // one-time secret must never reach; the value lives in the dialog body,
+    // which is not a live region and is not part of the dialog's name or
+    // description.
+    const { baseElement } = render(<Harness />);
+    const dialog = await screen.findByRole('dialog');
+
+    const live = [...baseElement.querySelectorAll('[aria-live], [role="status"], [role="alert"], [role="log"]')];
+    for (const region of live) {
+      expect(region.textContent ?? '', 'a live region must not carry the secret').not.toContain(secret.token);
+    }
+    expect(dialog.getAttribute('aria-label') ?? '').not.toContain(secret.token);
+    const describedBy = dialog.getAttribute('aria-describedby');
+    const description = describedBy ? document.getElementById(describedBy)?.textContent ?? '' : '';
+    expect(description).not.toContain(secret.token);
+    const labelledBy = dialog.getAttribute('aria-labelledby');
+    const label = labelledBy ? document.getElementById(labelledBy)?.textContent ?? '' : '';
+    expect(label).not.toContain(secret.token);
   });
 });
