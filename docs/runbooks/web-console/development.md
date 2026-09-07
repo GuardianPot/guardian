@@ -1145,6 +1145,143 @@ description, not only in the `title`, because `title` is mouse-only. Age
 formatting (`formatAge`) lives in this module too, so the `stale` state and a
 relative timestamp cannot disagree about how long ago something was.
 
+## Operator lifecycle actions
+
+Device disable and revoke, re-enrollment, enrollment-token revocation, zone
+edit and delete, session revocation, and password change. Every one of these
+was already a working, authorised, audited Control Plane operation before the
+console exposed it; `AUTH-06` covers the audit trail and nothing here adds to
+it. What the console adds is the gate.
+
+### The confirmation levels
+
+`src/shared/ui/confirm/levels.ts` is the table, and it is the only place a
+level is decided. A call site names an action, never a level, so a screen
+cannot downgrade a device revoke to a "are you sure?" prompt.
+
+| Action | Level | Why |
+|---|---|---|
+| `zone.rename` | 1 | Reversible configuration edit |
+| `device.enable` | 1 | Reversible, and immediate |
+| `device.disable` | 2 | Reversible by re-enrollment, but it stops a live Edge opening new sessions |
+| `enrollment.revoke` | 2 | Destructive, but a new token can be issued |
+| `zone.delete` | 2 | Destructive; may orphan configuration |
+| `device.revoke` | 3 | Irreversible trust decision |
+| `device.reenroll` | 3 | Re-establishes the trust revocation removed |
+| `session.revoke` | 3 | Immediate access removal |
+| `account.password` | 3 | Credential change |
+
+Level 1 renders no dialog at all — passing a level 1 action to
+`ConfirmationDialog` returns `null` on purpose, so a screen that adds a modal
+to a reversible action gets no modal rather than a wrong one. Level 2 is a
+modal whose confirm button names the effect. Level 3 adds a typed confirmation
+of the object's name and step-up reauthentication.
+
+`device.enable` has no screen. The contract has no re-enable endpoint, so a
+control would fail; `DEVICE_TRANSITIONS` records that the path from `disabled`
+back to `active` does not exist and the device screen says so instead.
+
+### Step-up reauthentication
+
+```tsx
+const stepUp = useStepUp();
+// ...
+<ConfirmationDialog action="device.revoke" objectName={name} open stepUp={stepUp} … />
+{stepUp.element}   // render once, near the action it guards
+```
+
+The prompt opens **before** the confirmation, not after. Asking an operator to
+type a device name and only then telling them to reauthenticate wastes the
+typing and presents the confirmation as if the action were already authorised.
+
+It asks for the password and a fresh MFA proof every time, through the same
+TOTP-or-recovery control the sign-in screen offers — a step-up that quietly
+accepted only TOTP would lock out an operator holding recovery codes precisely
+because they lost the authenticator. It cannot be satisfied by the session
+cookie, and there is no cached proof to accept.
+
+The mark is single-use. `request(action)` reauthenticates and marks one action;
+`consume(action)` spends it and clears it. A second irreversible action finds
+nothing to spend and asks again. Nothing else can read the mark: it is a ref
+inside the hook with no accessor. If you are adding a level 3 action, you get
+this by passing `stepUp` and doing nothing else.
+
+**Known limitation.** Step-up runs the login exchange, so the Control Plane
+issues a new session and the absolute lifetime restarts. `WCX-09` section 8.2
+asks that it not, but the contract offers no endpoint that verifies a password
+and a fresh MFA proof without creating a session. Recorded in
+`security/wcx-09-operator-completeness-review.md` with the follow-up.
+
+### Restore write access is not implemented
+
+Change proposal `0003` approved `POST /v1/auth/csrf` so a reload-restored
+session could regain write access without a full sign-in. It is **not built**.
+The endpoint has to issue a new CSRF proof for an existing session, which means
+updating that session's `csrf_hash`; `auth.Repository` has no such method and
+its only implementation is in `internal/storage/`, which `WCX-09` forbids.
+
+So a reload still costs a full sign-in before any mutation, exactly as before.
+Level 3 actions are unaffected — step-up never depended on that endpoint.
+
+### When a destructive action fails
+
+Nothing is optimistic. A transition returns `204`, the console invalidates the
+queries, and what an operator sees next is whatever the Control Plane returns —
+never a state the console assumed. On failure the displayed state is left
+exactly as it was and the message says so, because an operator unsure whether a
+revoke landed will either repeat it or trust a device they meant to remove.
+
+Three failure shapes, deliberately worded apart:
+
+| What happened | What the operator reads |
+|---|---|
+| The request failed | "… did not complete. Nothing changed on this device." |
+| A revision conflict (`409`/`412`) | "Another change reached this … first, so nothing was written." plus a reload control |
+| A rejected value (`400`) | The policy that was violated, and that nothing changed |
+
+A conflict is not a validation failure and must never read like one: the value
+was right, someone else was faster. Presenting it as invalid input sends the
+operator to fix the wrong thing. Zone edit and delete both send `If-Match` with
+the revision the operator was looking at, and there is no retry path that drops
+the header — that retry would overwrite a change the console never showed
+anyone.
+
+### One-time material
+
+Enrollment secrets and re-enrollment tokens both go through
+`OneTimeSecretDialog` in `@shared/ui`. One implementation, because the rules it
+holds are the kind only ever broken by a copy drifting:
+
+- the value is a prop, never state in the dialog and never in a query cache.
+  The caller holds it in route-local state, so route exit destroys it;
+- dismissal unmounts the dialog, so the value leaves the DOM;
+- `pagehide` dismisses it too, so a closed or reloaded tab leaves nothing in a
+  restored page or a back-forward cache entry;
+- there is no copy control, no reveal toggle, and no second read path.
+
+`oneTimeSecret.test.tsx` asserts that last point at the source level, not just
+behaviourally: the dialog contains no `useState` or `useRef`, no `queryOptions`
+names an issuing endpoint, and exactly two modules in the console read a
+`.token` field. Adding a third is a deliberate act that fails a test first.
+
+Enrollment token *lists* never carry a value. That is not a filter — the
+contract's `EnrollmentTokenSummary` has no token field, so the console is never
+sent one.
+
+### Sessions
+
+The current session is labelled `This session` and has no revoke control; its
+action cell points at sign-out. Two paths to the same effect is one an operator
+can take by mistake while aiming at a stolen session. Revoked sessions stay
+listed, because a session that ended is exactly the row an intrusion
+investigation needs.
+
+Password change revokes every session for the owner server-side and returns
+fresh credentials, which the console installs immediately — the proof it held a
+moment earlier is dead. It does **not** say how many sessions ended, because
+the response does not say: it points at the session list instead. If you are
+tempted to add a count here, the response still will not contain one.
+
 ## Continuous integration
 
 Two workflows, one job each, no conditions.

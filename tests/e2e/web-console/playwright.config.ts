@@ -8,7 +8,9 @@ if (!resultsDir) throw new Error('GUARDIAN_E2E_RESULTS_DIR is required');
 
 export default defineConfig({
   testDir: '.',
-  testMatch: 'onboarding.spec.ts',
+  // Both browser specs. `onboarding` is the Phase 1 gate journey;
+  // `operator-lifecycle` is `WCX-09`'s step-up gate and runs on one engine.
+  testMatch: /(onboarding|operator-lifecycle).spec.ts$/,
   // `WCX-06` added the keyboard traversal at two viewports, three more axe
   // scans, and the hostile display-name round trip to the onboarding flow.
   // Each is real browser work on top of an already long journey.

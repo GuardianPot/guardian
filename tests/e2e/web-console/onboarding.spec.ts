@@ -99,6 +99,10 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
   await page.getByRole('link', { name: 'Re-authenticate' }).first().click();
   await signIn(page, recoveryCodes[projectIndex * 2 + 1]);
   await page.getByRole('link', { name: new RegExp(environmentName) }).click();
+  // Captured now, because the display name is replaced with a hostile
+  // fixture later in this flow and the link can no longer be found by name.
+  const environmentPath = new URL(page.url()).pathname;
+  expect(environmentPath).toMatch(/^\/environments\/[0-9a-f-]{36}$/);
 
   const csrfFailure = await page.evaluate(async () => (await fetch('/v1/environments', {
     method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'invalid' }, body: '{"display_name":"denied"}',
@@ -117,14 +121,14 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
   expect(await runEdgeEnrollment(edgeConfig, runtimeConfig, Buffer.from('invalid\n'))).not.toBe(0);
   await page.getByLabel('Device name').fill(`edge-${testInfo.project.name}`);
   await page.getByRole('button', { name: 'Create one-time secret' }).click();
-  const secretLocator = page.getByTestId('enrollment-secret').locator('code');
+  const secretLocator = page.getByTestId('one-time-secret').locator('code');
   const secretText = await secretLocator.textContent();
   expect(secretText).toMatch(/^[A-Za-z0-9_-]{43}$/);
   const enrollmentInput = Buffer.from(`${secretText}\n`);
   expect(await runEdgeEnrollment(edgeConfig, runtimeConfig, enrollmentInput)).toBe(0);
   enrollmentInput.fill(0);
   await page.getByRole('button', { name: 'I have stored it securely' }).click();
-  await expect(page.getByTestId('enrollment-secret')).toHaveCount(0);
+  await expect(page.getByTestId('one-time-secret')).toHaveCount(0);
   await expect(page).not.toHaveURL(new RegExp(secretText!));
 
   // WCX-06 section 10.3.2: every control is reachable by keyboard alone at a
@@ -205,6 +209,64 @@ test('real owner onboarding, Edge enrollment, health degradation, and recovery',
   await expect(page.getByText(/Blocking: Event spool/)).toHaveText(/capacity_critical/);
   expect(dialogs).toEqual([]);
   connection.close();
+
+  // ── WCX-09 section 10.3.1 and 10.3.3 ────────────────────────────────────
+  //
+  // Attached to this flow rather than to a file of its own because both need
+  // what it already built: a live environment, an enrolled Edge, and a zone.
+  // Recreating those to test a revoke would double the most expensive part of
+  // the suite.
+  //
+  // Level 3 actions are not exercised here. Each one costs a recovery code and
+  // bootstrap issues ten, of which this flow already spends two per engine;
+  // `operator-lifecycle.spec.ts` runs the step-up gate once, on one engine,
+  // out of what is left. Section 10.3.2's revoke and 10.3.2a's re-enrollment
+  // are therefore covered by `DeviceLifecycle.test.tsx` against a mocked
+  // Control Plane and are recorded as a browser-coverage gap.
+  await page.goto(environmentPath);
+
+  // The token this flow created is listed as used, and its value is nowhere.
+  const tokenTable = page.getByRole('table', { name: /Enrollment tokens for this environment/ });
+  await expect(tokenTable).toBeVisible();
+  await expect(tokenTable.getByText('Used for enrollment')).toBeVisible();
+  expect(await page.content(), 'no token value may appear in the document').not.toContain(secretText!);
+
+  // A second token, listed as open, then revoked at level 2 — no step-up, so
+  // no recovery code. The device must then be unable to enrol with it.
+  const spareDevice = `spare-${testInfo.project.name}`;
+  await page.getByLabel('Device name').fill(spareDevice);
+  await page.getByRole('button', { name: 'Create one-time secret' }).click();
+  const spareSecret = await page.getByTestId('one-time-secret').locator('code').textContent();
+  expect(spareSecret).toMatch(/^[A-Za-z0-9_-]{43}$/);
+  await page.getByRole('button', { name: 'I have stored it securely' }).click();
+
+  const revokeSpare = page.getByRole('button', { name: `Revoke the token for ${spareDevice}` });
+  await expect(revokeSpare).toBeEnabled();
+  await revokeSpare.click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Revoke enrollment token' }).click();
+  await expect(revokeSpare).toBeDisabled();
+
+  // The revocation is real, not presentational: the Edge is refused.
+  const revokedInput = Buffer.from(`${spareSecret}\n`);
+  expect(await runEdgeEnrollment(edgeConfig, runtimeConfig, revokedInput)).not.toBe(0);
+  revokedInput.fill(0);
+
+  // Zone rename and delete (10.3.3), both under optimistic concurrency. Level
+  // 1 and level 2, so neither costs a recovery code.
+  const zoneName = `Zone ${testInfo.project.name}`;
+  const zoneRow = page.getByRole('listitem').filter({ hasText: zoneName });
+  await zoneRow.getByRole('button', { name: `Edit ${zoneName}` }).click();
+  const editedName = `${zoneName} edited`;
+  await zoneRow.getByLabel('Zone name').fill(editedName);
+  await zoneRow.getByRole('button', { name: 'Save zone' }).click();
+  await expect(page.getByText(editedName)).toBeVisible();
+
+  const editedRow = page.getByRole('listitem').filter({ hasText: editedName });
+  await editedRow.getByRole('button', { name: `Delete ${editedName}` }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete zone' }).click();
+  await expect(page.getByText(editedName)).toHaveCount(0);
+
+  expect(dialogs).toEqual([]);
 
   await context.clearCookies();
   await page.reload();
