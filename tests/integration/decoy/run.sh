@@ -15,25 +15,40 @@ cleanup() {
 }
 trap cleanup EXIT
 
-free_port() {
-  python3 - <<'PY'
-import socket
-with socket.socket() as sock:
-    sock.bind(("127.0.0.1", 0))
-    print(sock.getsockname()[1])
-PY
-}
+# The boundary greps below are the evidence, not a formality. `if rg ...` treats
+# a missing rg as "no match", which would pass every one of them silently, so
+# the tool is required up front rather than discovered by its absence.
+for tool in docker rg go; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "required tool not found: $tool" >&2
+    exit 1
+  fi
+done
 
 random_secret() {
-  tr -d '-' </proc/sys/kernel/random/uuid
+  # od and /dev/urandom rather than /proc/sys/kernel/random/uuid, which exists
+  # only on Linux. This runner should work on any developer machine.
+  head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n'
 }
 
 export GUARDIAN_POSTGRES_DB=guardian
 export GUARDIAN_POSTGRES_USER=guardian
 export GUARDIAN_POSTGRES_PASSWORD="guardian-decoy-$(random_secret)"
-export GUARDIAN_POSTGRES_PORT="${GUARDIAN_P2_W15_POSTGRES_PORT:-$(free_port)}"
+# 0 asks Docker for an ephemeral port and we read back what it chose. This
+# needs no Python and, unlike picking a free port first, has no window in which
+# something else can take the port between the probe and the bind.
+export GUARDIAN_POSTGRES_PORT="${GUARDIAN_P2_W15_POSTGRES_PORT:-0}"
 
 docker compose --file "$compose_file" --project-name "$project_name" up --detach --wait --wait-timeout 90
+
+if [ "$GUARDIAN_POSTGRES_PORT" = "0" ]; then
+  published="$(docker compose --file "$compose_file" --project-name "$project_name" port postgres 5432)"
+  GUARDIAN_POSTGRES_PORT="${published##*:}"
+  if ! [ "$GUARDIAN_POSTGRES_PORT" -gt 0 ] 2>/dev/null; then
+    echo "could not read the published PostgreSQL port: $published" >&2
+    exit 1
+  fi
+fi
 
 export GUARDIAN_TEST_DATABASE_URL="postgres://${GUARDIAN_POSTGRES_USER}:${GUARDIAN_POSTGRES_PASSWORD}@127.0.0.1:${GUARDIAN_POSTGRES_PORT}/${GUARDIAN_POSTGRES_DB}?sslmode=disable"
 
@@ -51,10 +66,15 @@ fi
 # AC-SEC-002 in the direction this package can prove: the decoy packages reach
 # neither device identity nor a privileged operation. The Go boundary test
 # asserts the same thing; this is the grep an auditor can run by hand.
+#
+# Comment lines are excluded. `runtime.go` names containerd in prose, because
+# describing the seam P2-W3 will fill is exactly what that comment is for, and
+# a package is not reaching for an authority by explaining which one it lacks.
+# The check is about imports and calls.
 if rg -n \
   'internal/identity|internal/devicepki|internal/privileged|internal/privclient|os/exec|containerd' \
   "$repo_root/apps/edge-agent/internal/decoy" \
-  --glob '!*_test.go'; then
+  --glob '!*_test.go' | rg -v ':[0-9]+:[[:space:]]*//'; then
   echo "P2-W15 Edge decoy package reached identity, PKI, privileged, or runtime authority" >&2
   exit 1
 fi

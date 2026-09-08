@@ -10,9 +10,9 @@
 -- The pair constraint is a CHECK rather than a lookup table, so extending the
 -- vocabulary means replacing it. Every existing pair is carried over verbatim;
 -- `auth.csrf.reissued` is the only addition.
-ALTER TABLE guardian_audit.events DROP CONSTRAINT audit_action_object_pair;
+ALTER TABLE guardian_audit.records DROP CONSTRAINT audit_action_object_pair;
 
-ALTER TABLE guardian_audit.events ADD CONSTRAINT audit_action_object_pair CHECK ((action, object_type) IN (
+ALTER TABLE guardian_audit.records ADD CONSTRAINT audit_action_object_pair CHECK ((action, object_type) IN (
     ('auth.bootstrap_token.created', 'bootstrap_token'),
     ('auth.bootstrap.succeeded', 'user'),
     ('auth.bootstrap.failed', 'bootstrap_token'),

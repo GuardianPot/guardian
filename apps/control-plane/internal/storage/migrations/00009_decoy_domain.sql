@@ -8,8 +8,9 @@
 -- eventually be read as "this decoy is deployed" when all anyone knows is that
 -- someone once asked for it, and a deception product that misreports its own
 -- coverage is worse than one that admits it does not know.
-
-CREATE SCHEMA guardian_deception;
+--
+-- guardian_deception is created by 00001_foundation, which reserved a schema
+-- per domain up front. This migration fills it in rather than creating it.
 
 -- The composite key a decoy needs so its zone cannot belong to a different
 -- environment than the decoy does. zones already has an equivalent index; this
@@ -124,9 +125,9 @@ CREATE TABLE guardian_deception.decoy_conditions (
 -- The audit vocabulary gains five decoy pairs. The constraint is a CHECK
 -- rather than a lookup table, so extending it means replacing it; every
 -- existing pair is carried over verbatim.
-ALTER TABLE guardian_audit.events DROP CONSTRAINT audit_action_object_pair;
+ALTER TABLE guardian_audit.records DROP CONSTRAINT audit_action_object_pair;
 
-ALTER TABLE guardian_audit.events ADD CONSTRAINT audit_action_object_pair CHECK ((action, object_type) IN (
+ALTER TABLE guardian_audit.records ADD CONSTRAINT audit_action_object_pair CHECK ((action, object_type) IN (
     ('auth.bootstrap_token.created', 'bootstrap_token'),
     ('auth.bootstrap.succeeded', 'user'),
     ('auth.bootstrap.failed', 'bootstrap_token'),

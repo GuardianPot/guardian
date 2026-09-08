@@ -74,6 +74,46 @@ type GuardianAuthUser struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 }
 
+type GuardianDeceptionDecoy struct {
+	DecoyID          pgtype.UUID        `json:"decoy_id"`
+	EnvironmentID    pgtype.UUID        `json:"environment_id"`
+	ZoneID           pgtype.UUID        `json:"zone_id"`
+	DisplayName      string             `json:"display_name"`
+	NameKey          string             `json:"name_key"`
+	DecoyFamily      string             `json:"decoy_family"`
+	Persona          string             `json:"persona"`
+	InteractionLevel string             `json:"interaction_level"`
+	Address          netip.Addr         `json:"address"`
+	Pack             string             `json:"pack"`
+	PackVersion      string             `json:"pack_version"`
+	PackDigest       pgtype.Text        `json:"pack_digest"`
+	DesiredState     string             `json:"desired_state"`
+	Revision         int64              `json:"revision"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+type GuardianDeceptionDecoyCondition struct {
+	DecoyID            pgtype.UUID        `json:"decoy_id"`
+	ConditionType      string             `json:"condition_type"`
+	Status             string             `json:"status"`
+	ReasonCode         string             `json:"reason_code"`
+	Message            string             `json:"message"`
+	ObservedRevision   pgtype.Numeric     `json:"observed_revision"`
+	LastTransitionTime pgtype.Timestamptz `json:"last_transition_time"`
+}
+
+type GuardianDeceptionDecoyObservedState struct {
+	DecoyID           pgtype.UUID        `json:"decoy_id"`
+	ReportingDeviceID pgtype.UUID        `json:"reporting_device_id"`
+	ReportID          pgtype.UUID        `json:"report_id"`
+	ObservedState     string             `json:"observed_state"`
+	LastInteractionAt pgtype.Timestamptz `json:"last_interaction_at"`
+	DesiredRevision   pgtype.Int8        `json:"desired_revision"`
+	ObservedAt        pgtype.Timestamptz `json:"observed_at"`
+	ReportedAt        pgtype.Timestamptz `json:"reported_at"`
+}
+
 type GuardianDevicesCertificate struct {
 	Serial            string             `json:"serial"`
 	DeviceID          pgtype.UUID        `json:"device_id"`

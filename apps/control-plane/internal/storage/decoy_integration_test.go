@@ -225,7 +225,7 @@ WHERE device_id = $1`, fixture.deviceID); err != nil {
 	// 10.1.7: every lifecycle transition emitted its audit event and the
 	// vocabulary migration accepted each new pair.
 	rows, err := fixture.store.pool.Query(ctx, `
-SELECT action FROM guardian_audit.events
+SELECT action FROM guardian_audit.records
 WHERE object_type = 'decoy' AND object_id = $1
 ORDER BY sequence`, decoy.DecoyID)
 	if err != nil {
