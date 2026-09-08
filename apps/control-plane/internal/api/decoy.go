@@ -50,12 +50,13 @@ func (s *Server) handleListDecoys(writer http.ResponseWriter, request *http.Requ
 	if _, ok := s.authorizeEnvironment(writer, request, false); !ok {
 		return
 	}
-	if !s.decoyAvailable(writer) {
+	if !s.decoyAvailable(writer, request) {
 		return
 	}
 	limit, err := parseEnvironmentListLimit(request.URL)
 	if err != nil {
-		writeStatus(writer, http.StatusBadRequest, "invalid_request")
+		s.writeError(writer, request, http.StatusBadRequest, "invalid_request",
+			errorDetail{code: codeDecoyRequestInvalid})
 		return
 	}
 	items, err := s.decoyService.ListDecoys(request.Context(), request.PathValue("environmentId"), limit)
@@ -70,7 +71,7 @@ func (s *Server) handleGetDecoy(writer http.ResponseWriter, request *http.Reques
 	if _, ok := s.authorizeEnvironment(writer, request, false); !ok {
 		return
 	}
-	if !s.decoyAvailable(writer) {
+	if !s.decoyAvailable(writer, request) {
 		return
 	}
 	item, err := s.decoyService.Decoy(
@@ -88,15 +89,15 @@ func (s *Server) handleCreateDecoy(writer http.ResponseWriter, request *http.Req
 	if !ok {
 		return
 	}
-	mutation, ok := decoyMutation(writer, request, actor)
+	mutation, ok := s.decoyMutation(writer, request, actor)
 	if !ok {
 		return
 	}
-	if !s.decoyAvailable(writer) {
+	if !s.decoyAvailable(writer, request) {
 		return
 	}
 	var input decoyWriteRequest
-	if !decodeEnvironmentJSON(writer, request, &input) {
+	if !s.decodeEnvironmentJSON(writer, request, resourceDecoy, &input) {
 		return
 	}
 	item, err := s.decoyService.CreateDecoy(
@@ -118,19 +119,19 @@ func (s *Server) handleUpdateDecoy(writer http.ResponseWriter, request *http.Req
 	if !ok {
 		return
 	}
-	mutation, ok := decoyMutation(writer, request, actor)
+	mutation, ok := s.decoyMutation(writer, request, actor)
 	if !ok {
 		return
 	}
-	revision, ok := requireStrongRevision(writer, request)
+	revision, ok := s.requireStrongRevision(writer, request, resourceDecoy)
 	if !ok {
 		return
 	}
-	if !s.decoyAvailable(writer) {
+	if !s.decoyAvailable(writer, request) {
 		return
 	}
 	var input decoyWriteRequest
-	if !decodeEnvironmentJSON(writer, request, &input) {
+	if !s.decodeEnvironmentJSON(writer, request, resourceDecoy, &input) {
 		return
 	}
 	item, err := s.decoyService.UpdateDecoy(
@@ -160,15 +161,15 @@ func (s *Server) handleDecoyTransition(writer http.ResponseWriter, request *http
 	if !ok {
 		return
 	}
-	mutation, ok := decoyMutation(writer, request, actor)
+	mutation, ok := s.decoyMutation(writer, request, actor)
 	if !ok {
 		return
 	}
-	revision, ok := requireStrongRevision(writer, request)
+	revision, ok := s.requireStrongRevision(writer, request, resourceDecoy)
 	if !ok {
 		return
 	}
-	if !s.decoyAvailable(writer) {
+	if !s.decoyAvailable(writer, request) {
 		return
 	}
 	transition := s.decoyService.DisableDecoy
@@ -191,15 +192,15 @@ func (s *Server) handleDeleteDecoy(writer http.ResponseWriter, request *http.Req
 	if !ok {
 		return
 	}
-	mutation, ok := decoyMutation(writer, request, actor)
+	mutation, ok := s.decoyMutation(writer, request, actor)
 	if !ok {
 		return
 	}
-	revision, ok := requireStrongRevision(writer, request)
+	revision, ok := s.requireStrongRevision(writer, request, resourceDecoy)
 	if !ok {
 		return
 	}
-	if !s.decoyAvailable(writer) {
+	if !s.decoyAvailable(writer, request) {
 		return
 	}
 	err := s.decoyService.RemoveDecoy(
@@ -309,42 +310,94 @@ func observedBody(observed deception.Observation) map[string]any {
 	return body
 }
 
-func (s *Server) decoyAvailable(writer http.ResponseWriter) bool {
+func (s *Server) decoyAvailable(writer http.ResponseWriter, request *http.Request) bool {
 	if s.decoyService == nil {
-		writeStatus(writer, http.StatusServiceUnavailable, "decoy_service_unavailable")
+		s.writeError(writer, request, http.StatusServiceUnavailable, "decoy_service_unavailable",
+			errorDetail{code: codeDecoyUnavailable, retryAfter: environmentUnavailableRetryAfter})
 		return false
 	}
 	return true
 }
 
+// writeDecoyError maps one domain error onto the CP-0004 contract. Every HTTP
+// status and every `status` slug is exactly what P2-W15 returned; `code` and
+// `field_errors` are added beside them.
+//
+// This is the reason change proposal 0004 exists: the decoy form has seven
+// interdependent fields, and a single slug could not say which one was refused.
+// The attribution comes from the domain validator that made the decision or
+// from a conflict sentinel that names one field by construction. Nothing here
+// reads the request body, so no submitted value can reach the response.
 func (s *Server) writeDecoyError(writer http.ResponseWriter, request *http.Request, err error) {
+	violation, hasField := deception.ViolationOf(err)
+	fields := func(field fieldPath, reason fieldReason) []fieldError {
+		return []fieldError{{Field: field, Code: reason}}
+	}
 	switch {
 	case errors.Is(err, deception.ErrAddressOutsideZone):
-		writeStatus(writer, http.StatusBadRequest, "address_outside_zone")
+		s.writeError(writer, request, http.StatusBadRequest, "address_outside_zone",
+			errorDetail{
+				code:   codeDecoyAddressOutsideZone,
+				fields: fields("address", "outside_zone"),
+			})
 	case errors.Is(err, deception.ErrUnknownPack):
-		writeStatus(writer, http.StatusBadRequest, "unknown_pack")
+		s.writeError(writer, request, http.StatusBadRequest, "unknown_pack",
+			errorDetail{
+				code:   codeDecoyPackUnknown,
+				fields: fields("pack_version", "unknown"),
+			})
 	case errors.Is(err, deception.ErrDecoyBudgetExhausted):
-		writeStatus(writer, http.StatusConflict, "decoy_budget_exhausted")
+		// The environment is full. No single field is wrong, so none is named:
+		// marking one would tell the operator to change something that is fine.
+		s.writeError(writer, request, http.StatusConflict, "decoy_budget_exhausted",
+			errorDetail{code: codeDecoyBudgetExhausted})
 	case errors.Is(err, deception.ErrInvalidInput):
-		writeStatus(writer, http.StatusBadRequest, "invalid_request")
+		var attributed []fieldError
+		if hasField {
+			attributed = fields(fieldPath(violation.Field), fieldReason(violation.Reason))
+		}
+		s.writeError(writer, request, http.StatusBadRequest, "invalid_request",
+			errorDetail{code: codeDecoyRequestInvalid, fields: attributed})
 	case errors.Is(err, deception.ErrNotFound):
-		writeStatus(writer, http.StatusNotFound, "not_found")
+		// A zone reference the operator supplied in the body is distinguishable
+		// from a decoy or environment that does not exist, because the domain
+		// attributed the first to `zone_id` and cannot attribute the others.
+		if hasField && violation.Field == deception.FieldZoneID {
+			s.writeError(writer, request, http.StatusNotFound, "not_found",
+				errorDetail{code: codeDecoyZoneNotFound, fields: fields("zone_id", "unknown")})
+			return
+		}
+		s.writeError(writer, request, http.StatusNotFound, "not_found",
+			errorDetail{code: codeDecoyNotFound})
 	case errors.Is(err, deception.ErrNameConflict):
-		writeStatus(writer, http.StatusConflict, "name_conflict")
+		s.writeError(writer, request, http.StatusConflict, "name_conflict",
+			errorDetail{
+				code:   codeDecoyNameConflicting,
+				fields: fields("display_name", "conflicting"),
+			})
 	case errors.Is(err, deception.ErrAddressConflict):
-		writeStatus(writer, http.StatusConflict, "address_conflict")
+		s.writeError(writer, request, http.StatusConflict, "address_conflict",
+			errorDetail{
+				code:   codeDecoyAddressConflicting,
+				fields: fields("address", "conflicting"),
+			})
 	case errors.Is(err, deception.ErrPreconditionFailed):
-		writeStatus(writer, http.StatusPreconditionFailed, "precondition_failed")
+		s.writeError(writer, request, http.StatusPreconditionFailed, "precondition_failed",
+			errorDetail{code: codeDecoyRevisionStale})
 	default:
-		s.logger.ErrorContext(request.Context(), "decoy operation failed")
-		writeStatus(writer, http.StatusInternalServerError, "internal_error")
+		s.writeError(writer, request, http.StatusInternalServerError, "internal_error",
+			errorDetail{code: codeInternalUnexpected})
 	}
 }
 
 // decoyMutation reuses the environment request-identity rules so one mutation
 // header contract covers the whole owner API.
-func decoyMutation(writer http.ResponseWriter, request *http.Request, actor string) (deception.Mutation, bool) {
-	mutation, ok := environmentMutation(writer, request, actor)
+func (s *Server) decoyMutation(
+	writer http.ResponseWriter,
+	request *http.Request,
+	actor string,
+) (deception.Mutation, bool) {
+	mutation, ok := s.environmentMutation(writer, request, resourceDecoy, actor)
 	if !ok {
 		return deception.Mutation{}, false
 	}

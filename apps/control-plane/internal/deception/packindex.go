@@ -1,7 +1,5 @@
 package deception
 
-import "fmt"
-
 // PackEntry is one row of the server-side pack index.
 //
 // The index exists so that no API field ever carries a container image
@@ -45,21 +43,22 @@ func Packs() []PackEntry {
 // its pack would render as one thing in the console and behave as another.
 func ResolvePack(pack, version string, family Family) (PackEntry, error) {
 	if !family.Valid() {
-		return PackEntry{}, fmt.Errorf("%w: family is outside the closed DC-01 set", ErrInvalidInput)
+		return PackEntry{}, violate(FieldFamily, ReasonUnsupported, ErrInvalidInput)
 	}
 	for _, entry := range packIndex {
 		if entry.Pack != pack || entry.Version != version {
 			continue
 		}
 		if entry.Family != family {
-			return PackEntry{}, fmt.Errorf(
-				"%w: pack %s@%s is a %s pack, not %s", ErrInvalidInput, pack, version, entry.Family, family,
-			)
+			return PackEntry{}, violate(FieldPack, ReasonUnsupported, ErrInvalidInput)
 		}
 		if err := InteractionLevelFor(entry.Family, entry.InteractionLevel); err != nil {
 			return PackEntry{}, err
 		}
 		return entry, nil
 	}
-	return PackEntry{}, fmt.Errorf("%w: %s@%s", ErrUnknownPack, pack, version)
+	// The pack name alone may be valid, so the pair is what is unknown. It is
+	// attributed to the version because the console offers packs as a closed
+	// list and the version is the half an operator can get wrong.
+	return PackEntry{}, violate(FieldPackVersion, ReasonUnknown, ErrUnknownPack)
 }

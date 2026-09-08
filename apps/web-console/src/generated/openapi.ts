@@ -921,9 +921,46 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * @description The Guardian error body (change proposal 0004, Option B). `status` is required and keeps every value and meaning it had in Phase 1, so a client that reads only `status` is unaffected by this contract. Every other property is optional: endpoints are migrated incrementally, and an endpoint that has not been migrated returns `{"status": "..."}` alone.
+         *     There is deliberately no free-text operator-facing message here or in `FieldError`. All operator wording lives in the console text catalogue (`WCX-08`), so it stays reviewable in one place; the fields below are stable machine identifiers a console maps to that catalogue.
+         */
         StatusResponse: {
             status: string;
+            code?: components["schemas"]["ErrorCode"];
+            /** @description Field-level rejections, when the failure can be attributed to one or more request-body fields. Absent when no field is at fault, such as a stale revision or an exhausted decoy budget. */
+            field_errors?: components["schemas"]["FieldError"][];
+            /**
+             * Format: int32
+             * @description A back-off hint in whole seconds. It is a hint only; the Control Plane makes no promise about being ready when it elapses. Absent rather than null when there is no hint, matching every other optional field here, so the console's absent-by-default handling covers it without a null case.
+             */
+            retry_after?: number;
+            /** @description An opaque correlation identifier, safe to display and the only field from this contract permitted in the `WCX-15` diagnostic report. It is 16 bytes of cryptographic randomness, hex-encoded. Nothing is derivable from it: it carries no timestamp, counter, or sequence, and no environment, zone, decoy, device, session, or actor identity. It is unrelated to the caller-supplied `X-Request-ID` mutation header, which is never echoed. */
+            request_id?: string;
         };
+        /**
+         * @description The closed Guardian error-code vocabulary. It is a reviewed contract surface, exactly as the audit action vocabulary is, and it is enumerated here so a drifted code fails contract linting. A code the console does not recognise falls back to the generic entry for its `status`; it is never rendered verbatim.
+         *     Each entry is a machine identifier only. No entry names an internal table, column, host, file, query, or dependency.
+         * @enum {string}
+         */
+        ErrorCode: "internal.unexpected" | "environment.request.invalid" | "environment.not_found" | "environment.display_name.conflicting" | "environment.revision.required" | "environment.revision.stale" | "environment.unavailable" | "zone.request.invalid" | "zone.not_found" | "zone.display_name.conflicting" | "zone.cidr.overlapping" | "zone.revision.required" | "zone.revision.stale" | "decoy.request.invalid" | "decoy.not_found" | "decoy.zone.not_found" | "decoy.display_name.conflicting" | "decoy.address.conflicting" | "decoy.address.outside_zone" | "decoy.pack.unknown" | "decoy.budget.exhausted" | "decoy.revision.required" | "decoy.revision.stale" | "decoy.unavailable";
+        /** @description One field-level rejection from a closed vocabulary. */
+        FieldError: {
+            field: components["schemas"]["FieldPath"];
+            code: components["schemas"]["FieldErrorCode"];
+            /** @description A console text-catalogue key, never a sentence. No Guardian endpoint emits one today: the console has no per-code catalogue entry to key against, and supplying a key that does not exist would assert wording nothing has reviewed. Declared so the rule is recorded where the contract is. */
+            message_key?: string;
+        };
+        /**
+         * @description The closed set of request-body field paths an error may name. It names a field and never echoes a submitted value: returning a rejected password, token, display name, address, or persona string in an error response would be an information-disclosure path, so no field in this contract can carry one.
+         * @enum {string}
+         */
+        FieldPath: "display_name" | "cidr" | "zone_id" | "family" | "persona" | "address" | "pack" | "pack_version";
+        /**
+         * @description The closed set of machine reasons one field may be rejected for. These are identifiers a console maps to its own wording, never sentences.
+         * @enum {string}
+         */
+        FieldErrorCode: "malformed" | "out_of_range" | "unsupported" | "unknown" | "outside_zone" | "conflicting";
         HealthView: {
             aggregate: components["schemas"]["HealthAggregate"];
             /** @description All eight blocking conditions in canonical order. */
@@ -1491,7 +1528,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
             /** @description Session, CSRF, or exact-origin validation failed. */
             401: {
@@ -1505,7 +1544,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
             /** @description TLS is required. */
             426: {
@@ -1579,7 +1620,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
             /** @description Session, CSRF, or exact-origin validation failed. */
             401: {
@@ -1600,7 +1643,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
             /** @description The strong revision ETag is stale. */
             412: {
@@ -1705,7 +1750,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
             /** @description Session, CSRF, or exact-origin validation failed. */
             401: {
@@ -1726,7 +1773,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
             /** @description TLS is required. */
             426: {
@@ -1874,7 +1923,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
             /** @description Session, CSRF, or exact-origin validation failed. */
             401: {
@@ -1895,7 +1946,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
             /** @description The strong revision ETag is stale. */
             412: {
@@ -1995,12 +2048,14 @@ export interface operations {
         };
         responses: {
             201: components["responses"]["DecoyResponse"];
-            /** @description The request is invalid, the pack version is not in the index, or the address is outside the zone. */
+            /** @description The request is invalid, the pack version is not in the index, or the address is outside the zone. `field_errors` names the offending request-body field. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
             /** @description Session, CSRF, or exact-origin validation failed. */
             401: {
@@ -2009,19 +2064,23 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The environment or zone does not exist. */
+            /** @description The environment or zone does not exist. `decoy.zone.not_found` distinguishes a `zone_id` the operator supplied from an environment that does not exist. */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
-            /** @description The normalized name or address conflicts in this environment, or the environment already holds the 64 decoys the device channel can carry. */
+            /** @description The normalized name or address conflicts in this environment, or the environment already holds the 64 decoys the device channel can carry. The budget case names no field, because none is wrong. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
             /** @description TLS is required. */
             426: {
@@ -2164,12 +2223,14 @@ export interface operations {
         };
         responses: {
             200: components["responses"]["DecoyResponse"];
-            /** @description The strict bounded request, pack reference, placement, or ETag is invalid. */
+            /** @description The strict bounded request, pack reference, placement, or ETag is invalid. `field_errors` names the offending request-body field. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
             /** @description Session, CSRF, or exact-origin validation failed. */
             401: {
@@ -2183,14 +2244,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
             /** @description The normalized name or address conflicts in this environment. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
             };
             /** @description The strong revision ETag is stale. */
             412: {

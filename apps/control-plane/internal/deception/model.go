@@ -348,18 +348,15 @@ func UnreportedObservation(decoyID string, observedAt time.Time) Observation {
 // wide.
 func NormalizeName(value string) (NormalizedName, error) {
 	if !utf8.ValidString(value) {
-		return NormalizedName{}, fmt.Errorf("%w: display name must be valid UTF-8", ErrInvalidInput)
+		return NormalizedName{}, violate(FieldDisplayName, ReasonMalformed, ErrInvalidInput)
 	}
 	display := norm.NFC.String(strings.TrimSpace(value))
 	if display == "" || utf8.RuneCountInString(display) > MaxNameRunes || len(display) > MaxNameBytes {
-		return NormalizedName{}, fmt.Errorf(
-			"%w: display name must contain 1..%d code points and at most %d bytes",
-			ErrInvalidInput, MaxNameRunes, MaxNameBytes,
-		)
+		return NormalizedName{}, violate(FieldDisplayName, ReasonOutOfRange, ErrInvalidInput)
 	}
 	for _, r := range display {
 		if unicode.IsControl(r) {
-			return NormalizedName{}, fmt.Errorf("%w: display name contains a control character", ErrInvalidInput)
+			return NormalizedName{}, violate(FieldDisplayName, ReasonMalformed, ErrInvalidInput)
 		}
 	}
 	return NormalizedName{DisplayName: display, NameKey: norm.NFC.String(cases.Fold().String(display))}, nil
@@ -370,14 +367,14 @@ func NormalizeName(value string) (NormalizedName, error) {
 // literal is rejected rather than coerced.
 func NormalizeAddress(value string) (string, error) {
 	if value == "" || strings.TrimSpace(value) != value {
-		return "", fmt.Errorf("%w: address must not be empty or padded", ErrInvalidInput)
+		return "", violate(FieldAddress, ReasonMalformed, ErrInvalidInput)
 	}
 	address, err := netip.ParseAddr(value)
 	if err != nil || !address.Is4() || address.String() != value {
-		return "", fmt.Errorf("%w: address must be a canonical IPv4 host address", ErrInvalidInput)
+		return "", violate(FieldAddress, ReasonMalformed, ErrInvalidInput)
 	}
 	if !address.IsPrivate() {
-		return "", fmt.Errorf("%w: address must be inside an RFC1918 range", ErrInvalidInput)
+		return "", violate(FieldAddress, ReasonOutOfRange, ErrInvalidInput)
 	}
 	return address.String(), nil
 }
@@ -389,22 +386,22 @@ func NormalizeAddress(value string) (string, error) {
 func AddressWithinZone(address, cidr string) error {
 	parsedAddress, err := netip.ParseAddr(address)
 	if err != nil || !parsedAddress.Is4() {
-		return fmt.Errorf("%w: address is not a canonical IPv4 host address", ErrInvalidInput)
+		return violate(FieldAddress, ReasonMalformed, ErrInvalidInput)
 	}
+	// The prefix is the stored zone, not a submitted field, so a non-canonical
+	// one names no request-body field: it is a storage fault, not the
+	// operator's mistake, and attributing it to `address` would misdirect them.
 	prefix, err := netip.ParsePrefix(cidr)
 	if err != nil || !prefix.Addr().Is4() || prefix != prefix.Masked() {
 		return fmt.Errorf("%w: zone prefix is not canonical", ErrInvalidInput)
 	}
 	if !prefix.Contains(parsedAddress) {
-		return fmt.Errorf("%w: %s is outside %s", ErrAddressOutsideZone, address, cidr)
+		return violate(FieldAddress, ReasonOutsideZone, ErrAddressOutsideZone)
 	}
 	if prefix.Bits() <= 30 {
 		network := prefix.Addr()
-		if parsedAddress == network {
-			return fmt.Errorf("%w: %s is the zone network address", ErrAddressOutsideZone, address)
-		}
-		if parsedAddress == broadcastOf(prefix) {
-			return fmt.Errorf("%w: %s is the zone broadcast address", ErrAddressOutsideZone, address)
+		if parsedAddress == network || parsedAddress == broadcastOf(prefix) {
+			return violate(FieldAddress, ReasonOutsideZone, ErrAddressOutsideZone)
 		}
 	}
 	return nil

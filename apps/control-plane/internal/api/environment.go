@@ -72,12 +72,12 @@ func (s *Server) handleGetOrganization(writer http.ResponseWriter, request *http
 	if _, ok := s.authorizeEnvironment(writer, request, false); !ok {
 		return
 	}
-	if !s.environmentAvailable(writer) {
+	if !s.environmentAvailable(writer, request) {
 		return
 	}
 	organization, err := s.environmentService.Organization(request.Context())
 	if err != nil {
-		s.writeEnvironmentError(writer, request, err)
+		s.writeEnvironmentError(writer, request, resourceEnvironment, err)
 		return
 	}
 	writeJSON(writer, http.StatusOK, map[string]any{"organization": organization})
@@ -87,17 +87,18 @@ func (s *Server) handleListEnvironments(writer http.ResponseWriter, request *htt
 	if _, ok := s.authorizeEnvironment(writer, request, false); !ok {
 		return
 	}
-	if !s.environmentAvailable(writer) {
+	if !s.environmentAvailable(writer, request) {
 		return
 	}
 	limit, err := parseEnvironmentListLimit(request.URL)
 	if err != nil {
-		writeStatus(writer, http.StatusBadRequest, "invalid_request")
+		s.writeError(writer, request, http.StatusBadRequest, "invalid_request",
+			errorDetail{code: codeEnvironmentRequestInvalid})
 		return
 	}
 	items, err := s.environmentService.ListEnvironments(request.Context(), limit)
 	if err != nil {
-		s.writeEnvironmentError(writer, request, err)
+		s.writeEnvironmentError(writer, request, resourceEnvironment, err)
 		return
 	}
 	writeJSON(writer, http.StatusOK, map[string]any{"environments": items})
@@ -108,24 +109,24 @@ func (s *Server) handleCreateEnvironment(writer http.ResponseWriter, request *ht
 	if !ok {
 		return
 	}
-	mutation, ok := environmentMutation(writer, request, actor)
+	mutation, ok := s.environmentMutation(writer, request, resourceEnvironment, actor)
 	if !ok {
 		return
 	}
-	if !s.environmentAvailable(writer) {
+	if !s.environmentAvailable(writer, request) {
 		return
 	}
 	var input struct {
 		DisplayName string `json:"display_name"`
 	}
-	if !decodeEnvironmentJSON(writer, request, &input) {
+	if !s.decodeEnvironmentJSON(writer, request, resourceEnvironment, &input) {
 		return
 	}
 	item, err := s.environmentService.CreateEnvironment(
 		request.Context(), input.DisplayName, mutation,
 	)
 	if err != nil {
-		s.writeEnvironmentError(writer, request, err)
+		s.writeEnvironmentError(writer, request, resourceEnvironment, err)
 		return
 	}
 	writeRevisionJSON(writer, http.StatusCreated, item.Revision, map[string]any{"environment": item})
@@ -135,12 +136,12 @@ func (s *Server) handleGetEnvironment(writer http.ResponseWriter, request *http.
 	if _, ok := s.authorizeEnvironment(writer, request, false); !ok {
 		return
 	}
-	if !s.environmentAvailable(writer) {
+	if !s.environmentAvailable(writer, request) {
 		return
 	}
 	item, err := s.environmentService.Environment(request.Context(), request.PathValue("environmentId"))
 	if err != nil {
-		s.writeEnvironmentError(writer, request, err)
+		s.writeEnvironmentError(writer, request, resourceEnvironment, err)
 		return
 	}
 	writeRevisionJSON(writer, http.StatusOK, item.Revision, map[string]any{"environment": item})
@@ -151,21 +152,21 @@ func (s *Server) handleUpdateEnvironment(writer http.ResponseWriter, request *ht
 	if !ok {
 		return
 	}
-	mutation, ok := environmentMutation(writer, request, actor)
+	mutation, ok := s.environmentMutation(writer, request, resourceEnvironment, actor)
 	if !ok {
 		return
 	}
-	revision, ok := requireStrongRevision(writer, request)
+	revision, ok := s.requireStrongRevision(writer, request, resourceEnvironment)
 	if !ok {
 		return
 	}
-	if !s.environmentAvailable(writer) {
+	if !s.environmentAvailable(writer, request) {
 		return
 	}
 	var input struct {
 		DisplayName string `json:"display_name"`
 	}
-	if !decodeEnvironmentJSON(writer, request, &input) {
+	if !s.decodeEnvironmentJSON(writer, request, resourceEnvironment, &input) {
 		return
 	}
 	item, err := s.environmentService.UpdateEnvironment(
@@ -173,7 +174,7 @@ func (s *Server) handleUpdateEnvironment(writer http.ResponseWriter, request *ht
 		mutation,
 	)
 	if err != nil {
-		s.writeEnvironmentError(writer, request, err)
+		s.writeEnvironmentError(writer, request, resourceEnvironment, err)
 		return
 	}
 	writeRevisionJSON(writer, http.StatusOK, item.Revision, map[string]any{"environment": item})
@@ -183,17 +184,18 @@ func (s *Server) handleListZones(writer http.ResponseWriter, request *http.Reque
 	if _, ok := s.authorizeEnvironment(writer, request, false); !ok {
 		return
 	}
-	if !s.environmentAvailable(writer) {
+	if !s.environmentAvailable(writer, request) {
 		return
 	}
 	limit, err := parseEnvironmentListLimit(request.URL)
 	if err != nil {
-		writeStatus(writer, http.StatusBadRequest, "invalid_request")
+		s.writeError(writer, request, http.StatusBadRequest, "invalid_request",
+			errorDetail{code: codeZoneRequestInvalid})
 		return
 	}
 	items, err := s.environmentService.ListZones(request.Context(), request.PathValue("environmentId"), limit)
 	if err != nil {
-		s.writeEnvironmentError(writer, request, err)
+		s.writeEnvironmentError(writer, request, resourceZone, err)
 		return
 	}
 	writeJSON(writer, http.StatusOK, map[string]any{"zones": items})
@@ -204,18 +206,18 @@ func (s *Server) handleCreateZone(writer http.ResponseWriter, request *http.Requ
 	if !ok {
 		return
 	}
-	mutation, ok := environmentMutation(writer, request, actor)
+	mutation, ok := s.environmentMutation(writer, request, resourceZone, actor)
 	if !ok {
 		return
 	}
-	if !s.environmentAvailable(writer) {
+	if !s.environmentAvailable(writer, request) {
 		return
 	}
 	var input struct {
 		DisplayName string `json:"display_name"`
 		CIDR        string `json:"cidr"`
 	}
-	if !decodeEnvironmentJSON(writer, request, &input) {
+	if !s.decodeEnvironmentJSON(writer, request, resourceZone, &input) {
 		return
 	}
 	item, err := s.environmentService.CreateZone(
@@ -223,7 +225,7 @@ func (s *Server) handleCreateZone(writer http.ResponseWriter, request *http.Requ
 		mutation,
 	)
 	if err != nil {
-		s.writeEnvironmentError(writer, request, err)
+		s.writeEnvironmentError(writer, request, resourceZone, err)
 		return
 	}
 	writeRevisionJSON(writer, http.StatusCreated, item.Revision, map[string]any{"zone": item})
@@ -233,14 +235,14 @@ func (s *Server) handleGetZone(writer http.ResponseWriter, request *http.Request
 	if _, ok := s.authorizeEnvironment(writer, request, false); !ok {
 		return
 	}
-	if !s.environmentAvailable(writer) {
+	if !s.environmentAvailable(writer, request) {
 		return
 	}
 	item, err := s.environmentService.Zone(
 		request.Context(), request.PathValue("environmentId"), request.PathValue("zoneId"),
 	)
 	if err != nil {
-		s.writeEnvironmentError(writer, request, err)
+		s.writeEnvironmentError(writer, request, resourceZone, err)
 		return
 	}
 	writeRevisionJSON(writer, http.StatusOK, item.Revision, map[string]any{"zone": item})
@@ -251,22 +253,22 @@ func (s *Server) handleUpdateZone(writer http.ResponseWriter, request *http.Requ
 	if !ok {
 		return
 	}
-	mutation, ok := environmentMutation(writer, request, actor)
+	mutation, ok := s.environmentMutation(writer, request, resourceZone, actor)
 	if !ok {
 		return
 	}
-	revision, ok := requireStrongRevision(writer, request)
+	revision, ok := s.requireStrongRevision(writer, request, resourceZone)
 	if !ok {
 		return
 	}
-	if !s.environmentAvailable(writer) {
+	if !s.environmentAvailable(writer, request) {
 		return
 	}
 	var input struct {
 		DisplayName string `json:"display_name"`
 		CIDR        string `json:"cidr"`
 	}
-	if !decodeEnvironmentJSON(writer, request, &input) {
+	if !s.decodeEnvironmentJSON(writer, request, resourceZone, &input) {
 		return
 	}
 	item, err := s.environmentService.UpdateZone(
@@ -275,7 +277,7 @@ func (s *Server) handleUpdateZone(writer http.ResponseWriter, request *http.Requ
 		mutation,
 	)
 	if err != nil {
-		s.writeEnvironmentError(writer, request, err)
+		s.writeEnvironmentError(writer, request, resourceZone, err)
 		return
 	}
 	writeRevisionJSON(writer, http.StatusOK, item.Revision, map[string]any{"zone": item})
@@ -286,15 +288,15 @@ func (s *Server) handleDeleteZone(writer http.ResponseWriter, request *http.Requ
 	if !ok {
 		return
 	}
-	mutation, ok := environmentMutation(writer, request, actor)
+	mutation, ok := s.environmentMutation(writer, request, resourceZone, actor)
 	if !ok {
 		return
 	}
-	revision, ok := requireStrongRevision(writer, request)
+	revision, ok := s.requireStrongRevision(writer, request, resourceZone)
 	if !ok {
 		return
 	}
-	if !s.environmentAvailable(writer) {
+	if !s.environmentAvailable(writer, request) {
 		return
 	}
 	err := s.environmentService.RemoveZone(
@@ -302,7 +304,7 @@ func (s *Server) handleDeleteZone(writer http.ResponseWriter, request *http.Requ
 		mutation,
 	)
 	if err != nil {
-		s.writeEnvironmentError(writer, request, err)
+		s.writeEnvironmentError(writer, request, resourceZone, err)
 		return
 	}
 	writer.Header().Set("Cache-Control", "no-store")
@@ -335,70 +337,123 @@ func (s *Server) authorizeEnvironment(writer http.ResponseWriter, request *http.
 	return actor, true
 }
 
-func (s *Server) environmentAvailable(writer http.ResponseWriter) bool {
+// environmentUnavailableRetryAfter is the back-off hint on a 503. It is a hint
+// and nothing more: the console may retry sooner or later, and the Control
+// Plane makes no promise about being ready when it elapses.
+const environmentUnavailableRetryAfter = 5
+
+func (s *Server) environmentAvailable(writer http.ResponseWriter, request *http.Request) bool {
 	if s.environmentService == nil {
-		writeStatus(writer, http.StatusServiceUnavailable, "environment_service_unavailable")
+		s.writeError(writer, request, http.StatusServiceUnavailable, "environment_service_unavailable",
+			errorDetail{code: codeEnvironmentUnavailable, retryAfter: environmentUnavailableRetryAfter})
 		return false
 	}
 	return true
 }
 
-func (s *Server) writeEnvironmentError(writer http.ResponseWriter, request *http.Request, err error) {
+// writeEnvironmentError maps one domain error onto the CP-0004 contract. The
+// HTTP status and the `status` slug are exactly what P1-W3 returned; `code` and
+// `field_errors` are added beside them.
+//
+// The field attribution comes from the domain, never from the request: a
+// conflict sentinel names exactly one field by construction, and a validation
+// failure carries the field the validator rejected. Nothing here reads the
+// submitted body.
+func (s *Server) writeEnvironmentError(
+	writer http.ResponseWriter,
+	request *http.Request,
+	subject resource,
+	err error,
+) {
 	switch {
 	case errors.Is(err, environment.ErrInvalidInput):
-		writeStatus(writer, http.StatusBadRequest, "invalid_request")
+		var fields []fieldError
+		if violation, ok := environment.ViolationOf(err); ok {
+			fields = []fieldError{{
+				Field: fieldPath(violation.Field), Code: fieldReason(violation.Reason),
+			}}
+		}
+		s.writeError(writer, request, http.StatusBadRequest, "invalid_request",
+			errorDetail{code: subject.code("request.invalid"), fields: fields})
 	case errors.Is(err, environment.ErrNotFound):
-		writeStatus(writer, http.StatusNotFound, "not_found")
+		s.writeError(writer, request, http.StatusNotFound, "not_found",
+			errorDetail{code: subject.code("not_found")})
 	case errors.Is(err, environment.ErrNameConflict):
-		writeStatus(writer, http.StatusConflict, "name_conflict")
+		s.writeError(writer, request, http.StatusConflict, "name_conflict",
+			errorDetail{
+				code:   subject.code("display_name.conflicting"),
+				fields: []fieldError{{Field: "display_name", Code: "conflicting"}},
+			})
 	case errors.Is(err, environment.ErrCIDRConflict):
-		writeStatus(writer, http.StatusConflict, "cidr_conflict")
+		s.writeError(writer, request, http.StatusConflict, "cidr_conflict",
+			errorDetail{
+				code:   codeZoneCIDROverlapping,
+				fields: []fieldError{{Field: "cidr", Code: "conflicting"}},
+			})
 	case errors.Is(err, environment.ErrPreconditionFailed):
-		writeStatus(writer, http.StatusPreconditionFailed, "precondition_failed")
+		s.writeError(writer, request, http.StatusPreconditionFailed, "precondition_failed",
+			errorDetail{code: subject.code("revision.stale")})
 	default:
-		s.logger.ErrorContext(request.Context(), "environment operation failed")
-		writeStatus(writer, http.StatusInternalServerError, "internal_error")
+		s.writeError(writer, request, http.StatusInternalServerError, "internal_error",
+			errorDetail{code: codeInternalUnexpected})
 	}
 }
 
-func decodeEnvironmentJSON(writer http.ResponseWriter, request *http.Request, destination any) bool {
-	if contentTypes := request.Header.Values("Content-Type"); len(contentTypes) != 1 || contentTypes[0] != "application/json" {
-		writeStatus(writer, http.StatusBadRequest, "invalid_request")
+func (s *Server) decodeEnvironmentJSON(
+	writer http.ResponseWriter,
+	request *http.Request,
+	subject resource,
+	destination any,
+) bool {
+	reject := func() bool {
+		s.writeError(writer, request, http.StatusBadRequest, "invalid_request",
+			errorDetail{code: subject.code("request.invalid")})
 		return false
+	}
+	if contentTypes := request.Header.Values("Content-Type"); len(contentTypes) != 1 || contentTypes[0] != "application/json" {
+		return reject()
 	}
 	request.Body = http.MaxBytesReader(writer, request.Body, maximumEnvironmentRequestBytes)
 	decoder := json.NewDecoder(request.Body)
 	decoder.DisallowUnknownFields()
+	// The decoder error names the offending key, and an unknown key is one the
+	// caller chose, so it is never surfaced. A malformed body is a request-shape
+	// failure with no field to attribute.
 	if err := decoder.Decode(destination); err != nil {
-		writeStatus(writer, http.StatusBadRequest, "invalid_request")
-		return false
+		return reject()
 	}
 	if err := decoder.Decode(new(any)); !errors.Is(err, io.EOF) {
-		writeStatus(writer, http.StatusBadRequest, "invalid_request")
-		return false
+		return reject()
 	}
 	return true
 }
 
-func requireStrongRevision(writer http.ResponseWriter, request *http.Request) (int64, bool) {
+func (s *Server) requireStrongRevision(
+	writer http.ResponseWriter,
+	request *http.Request,
+	subject resource,
+) (int64, bool) {
+	invalid := func() (int64, bool) {
+		s.writeError(writer, request, http.StatusBadRequest, "invalid_request",
+			errorDetail{code: subject.code("request.invalid")})
+		return 0, false
+	}
 	values := request.Header.Values("If-Match")
 	if len(values) == 0 {
-		writeStatus(writer, http.StatusPreconditionRequired, "precondition_required")
+		s.writeError(writer, request, http.StatusPreconditionRequired, "precondition_required",
+			errorDetail{code: subject.code("revision.required")})
 		return 0, false
 	}
 	if len(values) != 1 {
-		writeStatus(writer, http.StatusBadRequest, "invalid_request")
-		return 0, false
+		return invalid()
 	}
 	value := values[0]
 	if len(value) < 3 || value[0] != '"' || value[len(value)-1] != '"' || strings.Contains(value, ",") {
-		writeStatus(writer, http.StatusBadRequest, "invalid_request")
-		return 0, false
+		return invalid()
 	}
 	revision, err := strconv.ParseInt(value[1:len(value)-1], 10, 64)
 	if err != nil || revision < 1 || strconv.FormatInt(revision, 10) != value[1:len(value)-1] {
-		writeStatus(writer, http.StatusBadRequest, "invalid_request")
-		return 0, false
+		return invalid()
 	}
 	return revision, true
 }
@@ -428,20 +483,33 @@ func parseEnvironmentListLimit(requestURL *url.URL) (int32, error) {
 	return int32(limit), nil
 }
 
-func environmentMutation(writer http.ResponseWriter, request *http.Request, actor string) (environment.Mutation, bool) {
+// environmentMutation reads the caller-supplied X-Request-ID, which is the
+// caller's own idempotency key and is unrelated to the CP-0004 `request_id`
+// this server generates. The two are deliberately not connected: echoing a
+// caller-chosen string back in an error body would put caller input in a field
+// the contract promises is opaque and server-generated.
+func (s *Server) environmentMutation(
+	writer http.ResponseWriter,
+	request *http.Request,
+	subject resource,
+	actor string,
+) (environment.Mutation, bool) {
+	reject := func() (environment.Mutation, bool) {
+		s.writeError(writer, request, http.StatusBadRequest, "invalid_request",
+			errorDetail{code: subject.code("request.invalid")})
+		return environment.Mutation{}, false
+	}
 	values := request.Header.Values("X-Request-ID")
 	if len(values) == 0 {
 		return environment.Mutation{ActorID: actor}, true
 	}
 	if len(values) != 1 || values[0] == "" || len(values[0]) > environment.MaxRequestIDBytes ||
 		strings.TrimSpace(values[0]) != values[0] {
-		writeStatus(writer, http.StatusBadRequest, "invalid_request")
-		return environment.Mutation{}, false
+		return reject()
 	}
 	for _, r := range values[0] {
 		if r < 0x20 || r == 0x7f {
-			writeStatus(writer, http.StatusBadRequest, "invalid_request")
-			return environment.Mutation{}, false
+			return reject()
 		}
 	}
 	return environment.Mutation{ActorID: actor, RequestID: values[0]}, true

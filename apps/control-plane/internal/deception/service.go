@@ -171,17 +171,23 @@ type Input struct {
 }
 
 func (i Input) normalize() (Write, error) {
+	// A malformed zone reference is a 404 rather than a 400, and has been since
+	// P2-W15. The field attribution is additive: the status keeps its meaning
+	// and the console additionally learns which body field caused it.
 	if !ValidUUIDv7(i.ZoneID) {
-		return Write{}, ErrNotFound
+		return Write{}, violate(FieldZoneID, ReasonUnknown, ErrNotFound)
 	}
 	name, err := NormalizeName(i.DisplayName)
 	if err != nil {
 		return Write{}, err
 	}
 	family := Family(i.Family)
+	if !family.Valid() {
+		return Write{}, violate(FieldFamily, ReasonUnsupported, ErrInvalidInput)
+	}
 	persona := Persona(i.Persona)
-	if !family.Valid() || !persona.Valid() {
-		return Write{}, ErrInvalidInput
+	if !persona.Valid() {
+		return Write{}, violate(FieldPersona, ReasonUnsupported, ErrInvalidInput)
 	}
 	address, err := NormalizeAddress(i.Address)
 	if err != nil {

@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net"
@@ -230,11 +229,4 @@ func (s *Server) listenTLS() (net.Listener, error) {
 		ClientAuth:   tls.VerifyClientCertIfGiven,
 		ClientCAs:    clientRoots,
 	})
-}
-
-func writeStatus(writer http.ResponseWriter, code int, status string) {
-	writer.Header().Set("Content-Type", "application/json")
-	writer.Header().Set("Cache-Control", "no-store")
-	writer.WriteHeader(code)
-	_ = json.NewEncoder(writer).Encode(map[string]string{"status": status})
 }

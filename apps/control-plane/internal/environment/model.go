@@ -89,20 +89,15 @@ type Repository interface {
 
 func NormalizeName(value string) (NormalizedName, error) {
 	if !utf8.ValidString(value) {
-		return NormalizedName{}, fmt.Errorf("%w: display name must be valid UTF-8", ErrInvalidInput)
+		return NormalizedName{}, violate(FieldDisplayName, ReasonMalformed, ErrInvalidInput)
 	}
 	display := norm.NFC.String(strings.TrimSpace(value))
 	if display == "" || utf8.RuneCountInString(display) > MaxNameRunes || len(display) > MaxNameBytes {
-		return NormalizedName{}, fmt.Errorf(
-			"%w: display name must contain 1..%d code points and at most %d bytes",
-			ErrInvalidInput,
-			MaxNameRunes,
-			MaxNameBytes,
-		)
+		return NormalizedName{}, violate(FieldDisplayName, ReasonOutOfRange, ErrInvalidInput)
 	}
 	for _, r := range display {
 		if unicode.IsControl(r) {
-			return NormalizedName{}, fmt.Errorf("%w: display name contains a control character", ErrInvalidInput)
+			return NormalizedName{}, violate(FieldDisplayName, ReasonMalformed, ErrInvalidInput)
 		}
 	}
 	return NormalizedName{DisplayName: display, NameKey: norm.NFC.String(cases.Fold().String(display))}, nil
@@ -110,14 +105,14 @@ func NormalizeName(value string) (NormalizedName, error) {
 
 func NormalizePrivateIPv4Prefix(value string) (string, error) {
 	if value == "" || strings.TrimSpace(value) != value {
-		return "", fmt.Errorf("%w: CIDR must not be empty or padded", ErrInvalidInput)
+		return "", violate(FieldCIDR, ReasonMalformed, ErrInvalidInput)
 	}
 	prefix, err := netip.ParsePrefix(value)
 	if err != nil || !prefix.IsValid() || !prefix.Addr().Is4() || prefix.Bits() <= 0 {
-		return "", fmt.Errorf("%w: CIDR must be a canonical private IPv4 prefix", ErrInvalidInput)
+		return "", violate(FieldCIDR, ReasonMalformed, ErrInvalidInput)
 	}
 	if prefix != prefix.Masked() || prefix.String() != value {
-		return "", fmt.Errorf("%w: CIDR contains host bits or is not canonical", ErrInvalidInput)
+		return "", violate(FieldCIDR, ReasonMalformed, ErrInvalidInput)
 	}
 	privateRoots := [...]netip.Prefix{
 		netip.MustParsePrefix("10.0.0.0/8"),
@@ -129,7 +124,7 @@ func NormalizePrivateIPv4Prefix(value string) (string, error) {
 			return prefix.String(), nil
 		}
 	}
-	return "", fmt.Errorf("%w: CIDR must be wholly contained by an RFC1918 range", ErrInvalidInput)
+	return "", violate(FieldCIDR, ReasonOutOfRange, ErrInvalidInput)
 }
 
 func NormalizeListLimit(limit int32) (int32, error) {
