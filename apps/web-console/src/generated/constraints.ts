@@ -123,5 +123,23 @@ export const CONSTRAINTS = {
         "pattern": "^[A-Za-z0-9_-]{22}$"
       }
     }
+  },
+  "AuthPasswordChangeRequest": {
+    "required": [
+      "current_password",
+      "new_password"
+    ],
+    "fields": {
+      "current_password": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1024
+      },
+      "new_password": {
+        "type": "string",
+        "minLength": 12,
+        "maxLength": 1024
+      }
+    }
   }
 } as const;

@@ -3,7 +3,7 @@ id: WCX-11
 phase: 2
 wave: capability
 title: Form and validation stack with decoy management UI
-status: approved-for-implementation
+status: delivered
 risk: high
 components:
   - web-console
@@ -373,7 +373,35 @@ Stop and request owner review if any of the following occurs:
 - change proposal `0004` is unapproved and form-level errors prove
   insufficient for a multi-field decoy configuration.
 
-## 13. Deliverables
+## 13. Delivery notes
+
+Delivered 2026-09-08. Two things the package assumed did not hold, and both
+were Product Owner decisions rather than judgement calls made here.
+
+**The performance budget.** `WC-D21` requires React Hook Form, which is 29 KB
+raw on its own against 3.9 KB of headroom under the old 450 KiB ceiling; the
+full stack is 36 KB. No version of this package fitted. Measured, put to the
+owner, and the budget was raised to 560 KiB with the sign-in load raised to
+160 KiB. The reasoning sits in `check-bundle.mjs` beside the numbers.
+
+**Section 9.11 against scope item 2.** 9.11 said the form stack must stay out
+of the sign-in chunk; scope item 2 said to migrate the sign-in form onto it.
+Those cannot both hold. The owner chose the migration, so the sign-in screen
+loads the stack and there is no build assertion excluding it.
+
+Scope item 2 named four forms. Section 11.1 says *all* existing forms with *no*
+constraint hand-copied, which is the wider of the two, so the zone edit row, the
+password panel, and the step-up dialog were migrated as well. Nothing in the
+console now reads a form value out of a submit event.
+
+**Not executed here.** `task web:e2e` cannot run on a Windows checkout: the
+Control Plane refuses a master key file whose mode is not 0600, and `chmod` is
+inert on this filesystem, so Go sees 0666. The check is right and was not
+weakened. `decoy-management.spec.ts` is written, registered, and discovered by
+Playwright; the `full` workflow runs it on Linux. The Phase 2 exit-gate
+evidence is therefore pending that run.
+
+## 14. Deliverables
 
 The form and validation stack with schema derivation and the unsaved-changes
 guard, migrated existing forms, the decoy list satisfying `UX-06`, decoy

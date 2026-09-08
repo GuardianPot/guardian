@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { toConsoleError } from '@shared/api/error';
-import { textField } from '@shared/forms/textField';
+import { FormMessage, maxLengthOf, schemaFor, useConsoleForm } from '@shared/forms';
 import { useAuth, useCapability, useStepUp } from '@features/auth';
 import {
   Button,
@@ -31,6 +31,19 @@ import { accountInvalidation, changePassword } from './api';
  * carry is a list of what it revoked, so the message says the session list
  * below now shows the outcome rather than narrating a count nobody sent.
  */
+/*
+ * Bounds from the contract (WCX-11 section 8.2). These were 12 and 1024 typed
+ * beside the controls; the twelve-character minimum in particular is a security
+ * parameter, and a copy of one drifts silently away from the value the Control
+ * Plane actually enforces.
+ */
+const passwordSchema = schemaFor<'AuthPasswordChangeRequest', { current_password: string; new_password: string }>(
+  'AuthPasswordChangeRequest',
+  ['current_password', 'new_password'],
+);
+const CURRENT_LIMIT = maxLengthOf('AuthPasswordChangeRequest', 'current_password') ?? 1024;
+const NEW_LIMIT = maxLengthOf('AuthPasswordChangeRequest', 'new_password') ?? 1024;
+
 export function PasswordPanel() {
   const auth = useAuth();
   const client = useQueryClient();
@@ -44,18 +57,18 @@ export function PasswordPanel() {
   const username = auth.session?.username ?? '';
   const blocked = capability.allowed ? undefined : t('account.password.reauthenticate');
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    setFailed('');
-    setChanged(false);
-    // Held in component state only for the moment between the form and the
-    // confirmation, and cleared on every exit below.
-    setConfirming({
-      current: textField(form, 'current_password'),
-      next: textField(form, 'new_password'),
-    });
-  }
+  const form = useConsoleForm<{ current_password: string; new_password: string }>({
+    schema: passwordSchema,
+    defaultValues: { current_password: '', new_password: '' },
+    onSubmit: (values) => {
+      setFailed('');
+      setChanged(false);
+      // Held in component state only for the moment between the form and the
+      // confirmation, and cleared on every exit below.
+      setConfirming({ current: values.current_password, next: values.new_password });
+      return Promise.resolve();
+    },
+  });
 
   async function apply(input: { current: string; next: string }) {
     setConfirming(null);
@@ -95,7 +108,8 @@ export function PasswordPanel() {
       eyebrow={t('account.password.eyebrow')}
     >
       <p>{t('account.password.intro')}</p>
-      <form className={styles.form} onSubmit={submit}>
+      <form className={styles.form} onSubmit={(event) => { void form.submit(event); }}>
+        <FormMessage error={form.formError} unattached={form.unattached} id={form.formErrorId} />
         {/*
           A hidden username field is what lets a password manager attach the
           new password to the right account. It is the operator's own name
@@ -104,21 +118,22 @@ export function PasswordPanel() {
         <input type="hidden" name="username" autoComplete="username" value={username} readOnly />
         <TextField
           name="current_password"
+          registration={form.form.register('current_password')}
           label={t('account.password.current')}
           type="password"
           autoComplete="current-password"
           required
-          maxLength={1024}
+          maxLength={CURRENT_LIMIT}
           {...(blocked === undefined ? {} : { disabledReason: blocked })}
         />
         <TextField
           name="new_password"
+          registration={form.form.register('new_password')}
           label={t('account.password.next')}
           type="password"
           autoComplete="new-password"
           required
-          minLength={12}
-          maxLength={1024}
+          maxLength={NEW_LIMIT}
           description={t('account.password.policy')}
           {...(blocked === undefined ? {} : { disabledReason: blocked })}
         />

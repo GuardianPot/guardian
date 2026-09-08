@@ -27,6 +27,7 @@ const SCHEMAS = [
   'ZoneWriteRequest',
   'DecoyWriteRequest',
   'AuthLoginRequest',
+  'AuthPasswordChangeRequest',
 ];
 
 /** The constraint keywords a validator can act on. Everything else is prose. */

@@ -1,8 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { toConsoleError } from '@shared/api/error';
 import { reveal } from '@shared/api/untrusted';
-import { textField } from '@shared/forms/textField';
+import { FormMessage, maxLengthOf, schemaFor, useConsoleForm } from '@shared/forms';
 import type { Zone } from '@shared/api/types';
 import { useAuth, useCapability } from '@features/auth';
 import type { StepUp } from '@features/auth';
@@ -32,6 +32,13 @@ import { deleteZone, environmentInvalidation, updateZone } from './api';
  * Rename is level 1 and edits inline. Delete is level 2 and goes through the
  * confirmation, which names the zone.
  */
+const zoneSchema = schemaFor<'ZoneWriteRequest', { display_name: string; cidr: string }>(
+  'ZoneWriteRequest',
+  ['display_name', 'cidr'],
+);
+const NAME_LIMIT = maxLengthOf('ZoneWriteRequest', 'display_name') ?? 512;
+const CIDR_LIMIT = maxLengthOf('ZoneWriteRequest', 'cidr') ?? 18;
+
 export function ZoneRow({ zone, stepUp }: { zone: Zone; stepUp: StepUp }) {
   const auth = useAuth();
   const client = useQueryClient();
@@ -46,32 +53,31 @@ export function ZoneRow({ zone, stepUp }: { zone: Zone; stepUp: StepUp }) {
   const name = reveal(zone.display_name);
   const environmentID = zone.environment_id;
 
-  async function save(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    setFailed('');
-    setConflict(false);
-    if (!auth.csrf) {
-      setFailed(t('environment.zones.reauthenticate'));
-      return;
-    }
-    setBusy(true);
-    try {
-      await updateZone(environmentID, zone, {
-        display_name: textField(form, 'display_name'),
-        cidr: textField(form, 'cidr'),
-      }, auth.csrf);
-      await environmentInvalidation.afterZoneWrite(client, environmentID);
-      setEditing(false);
-    } catch (caught) {
-      // `conflict` covers 409 and 412 in the WCX-02 taxonomy. Both mean the
-      // stored value is not what this form was built from.
-      if (toConsoleError(caught).kind === 'conflict') setConflict(true);
-      else setFailed(t('environment.zones.saveFailed'));
-    } finally {
-      setBusy(false);
-    }
-  }
+  const form = useConsoleForm<{ display_name: string; cidr: string }>({
+    schema: zoneSchema,
+    defaultValues: { display_name: name, cidr: zone.cidr },
+    onSubmit: async (values) => {
+      setFailed('');
+      setConflict(false);
+      if (!auth.csrf) {
+        setFailed(t('environment.zones.reauthenticate'));
+        return;
+      }
+      setBusy(true);
+      try {
+        await updateZone(environmentID, zone, values, auth.csrf);
+        await environmentInvalidation.afterZoneWrite(client, environmentID);
+        setEditing(false);
+      } catch (caught) {
+        // `conflict` covers 409 and 412 in the WCX-02 taxonomy. Both mean the
+        // stored value is not what this form was built from.
+        if (toConsoleError(caught).kind === 'conflict') setConflict(true);
+        else setFailed(t('environment.zones.saveFailed'));
+      } finally {
+        setBusy(false);
+      }
+    },
+  });
 
   async function destroy() {
     setConfirming(false);
@@ -103,20 +109,29 @@ export function ZoneRow({ zone, stepUp }: { zone: Zone; stepUp: StepUp }) {
   return (
     <li>
       {editing ? (
-        <form className={styles.zoneEditForm} onSubmit={(event) => { void save(event); }}>
+        <form className={styles.zoneEditForm} onSubmit={(event) => { void form.submit(event); }}>
+          <FormMessage error={form.formError} unattached={form.unattached} id={form.formErrorId} />
           <TextField
             name="display_name"
             label={t('environment.zoneName')}
             defaultValue={name}
             required
-            maxLength={128}
+            maxLength={NAME_LIMIT}
+            registration={form.form.register('display_name')}
+            {...(form.form.formState.errors.display_name?.message === undefined
+              ? {}
+              : { error: String(form.form.formState.errors.display_name.message) })}
           />
           <TextField
             name="cidr"
             label={t('environment.zoneCidr')}
             defaultValue={zone.cidr}
             required
-            maxLength={18}
+            maxLength={CIDR_LIMIT}
+            registration={form.form.register('cidr')}
+            {...(form.form.formState.errors.cidr?.message === undefined
+              ? {}
+              : { error: String(form.form.formState.errors.cidr.message) })}
           />
           <Button variant="primary" type="submit" pending={busy}>{t('environment.zones.save')}</Button>
           <Button variant="quiet" onClick={() => { setEditing(false); setFailed(''); setConflict(false); }}>

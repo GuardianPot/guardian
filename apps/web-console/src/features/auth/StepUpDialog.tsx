@@ -1,6 +1,6 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { toConsoleError } from '@shared/api/error';
-import { textField } from '@shared/forms/textField';
+import { schemaFor, useConsoleForm } from '@shared/forms';
 import { Button, Dialog, InlineMessage, TextField } from '@shared/ui';
 import { t } from '@shared/text';
 import styles from '@shared/styles/app.module.css';
@@ -30,39 +30,68 @@ export type StepUpDialogProps = {
 /** Stable, so the three inputs can point at the one message covering them. */
 const STEP_UP_ERROR_ID = 'step-up-error';
 
+/*
+ * The same contract-derived validator sign-in uses, on the same three fields.
+ * One proof control satisfies either `totp_code` or `recovery_code`; the
+ * operator's method choice decides which, and both bounds come from the
+ * contract rather than from a pattern typed here.
+ */
+const stepUpSchema = schemaFor<'AuthLoginRequest', { step_up_username: string; step_up_password: string; step_up_proof: string }>(
+  'AuthLoginRequest',
+  [],
+  {
+    step_up_username: ['username'],
+    step_up_password: ['password'],
+    step_up_proof: ['totp_code', 'recovery_code'],
+  },
+);
+
 export function StepUpDialog({ onSatisfied, onCancelled, onRateLimited }: StepUpDialogProps) {
   const auth = useAuth();
   const method = useMfaMethod();
   const [error, setError] = useState<ReactNode>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const proof = textField(form, 'step_up_proof');
-    setError(null);
-    setSubmitting(true);
-    try {
-      await auth.login({
-        username: textField(form, 'step_up_username'),
-        password: textField(form, 'step_up_password'),
-        ...(method.value === 'totp' ? { totp_code: proof } : { recovery_code: proof }),
-      });
-      // No form reset: the dialog unmounts on success, which destroys the
-      // fields and everything typed into them. Reading `currentTarget` after an
-      // await is also unreliable — React clears it once the handler returns.
-      onSatisfied();
-    } catch (caught) {
-      // Section 9.2.4: a generic denial. The submitted values are never
-      // reflected, and the reason never distinguishes a wrong password from an
-      // unknown account. Rate limiting is the one case that closes the dialog,
-      // because retrying is exactly what must not happen next.
-      const limited = toConsoleError(caught).kind === 'rate-limited';
-      setError(limited ? t('auth.rateLimited') : t('auth.denied'));
-      setSubmitting(false);
-      if (limited) onRateLimited();
-    }
-  }
+  const form = useConsoleForm<{ step_up_username: string; step_up_password: string; step_up_proof: string }>({
+    schema: stepUpSchema,
+    defaultValues: { step_up_username: '', step_up_password: '', step_up_proof: '' },
+    onSubmit: async (values) => {
+      setError(null);
+      setSubmitting(true);
+      try {
+        await auth.login({
+          username: values.step_up_username,
+          password: values.step_up_password,
+          ...(method.value === 'totp'
+            ? { totp_code: values.step_up_proof }
+            : { recovery_code: values.step_up_proof }),
+        });
+        // No form reset: the dialog unmounts on success, which destroys the
+        // fields and everything typed into them.
+        onSatisfied();
+      } catch (caught) {
+        // Section 9.2.4: a generic denial. The submitted values are never
+        // reflected, and the reason never distinguishes a wrong password from
+        // an unknown account. Rate limiting is the one case that closes the
+        // dialog, because retrying is exactly what must not happen next.
+        const limited = toConsoleError(caught).kind === 'rate-limited';
+        setError(limited ? t('auth.rateLimited') : t('auth.denied'));
+        setSubmitting(false);
+        if (limited) onRateLimited();
+      }
+    },
+  });
+
+  /*
+   * The proof the stack holds is cleared when the method changes, for the same
+   * reason sign-in does it: the control is remounted on `key`, and React Hook
+   * Form would otherwise carry an authenticator code into a recovery-code
+   * submission while the input looked empty.
+   */
+  useEffect(() => {
+    form.form.setValue('step_up_proof', '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [method.value]);
 
   return (
     <Dialog
@@ -79,9 +108,10 @@ export function StepUpDialog({ onSatisfied, onCancelled, onRateLimited }: StepUp
         </>
       }
     >
-      <form id="step-up-form" className={styles.stepUpForm} onSubmit={(event) => { void submit(event); }}>
+      <form id="step-up-form" className={styles.stepUpForm} onSubmit={(event) => { void form.submit(event); }}>
         <TextField
           name="step_up_username"
+          registration={form.form.register('step_up_username')}
           label={t('auth.username')}
           autoComplete="username"
           required
@@ -89,6 +119,7 @@ export function StepUpDialog({ onSatisfied, onCancelled, onRateLimited }: StepUp
         />
         <TextField
           name="step_up_password"
+          registration={form.form.register('step_up_password')}
           label={t('auth.password')}
           type="password"
           autoComplete="current-password"
@@ -103,6 +134,7 @@ export function StepUpDialog({ onSatisfied, onCancelled, onRateLimited }: StepUp
         <TextField
           key={method.value}
           name="step_up_proof"
+          registration={form.form.register('step_up_proof')}
           label={method.value === 'totp' ? t('auth.totpLabel') : t('auth.recoveryLabel')}
           // A one-time proof is never remembered, so the browser is told not
           // to offer a stored one.
