@@ -147,7 +147,7 @@ describe('catalogue hygiene', () => {
     const NAMESPACES = [
       'common', 'auth', 'account', 'environments', 'environment', 'devices', 'health',
       'home', 'scope', 'notFound', 'states', 'confirm', 'stepUp', 'secret',
-      'untrusted', 'time', 'errors',
+      'untrusted', 'time', 'errors', 'forms',
     ];
     const stray = KEYS.filter((key) => !NAMESPACES.includes(key.split('.')[0] ?? ''));
     expect(stray, 'add the namespace to this list and to the runbook first').toEqual([]);

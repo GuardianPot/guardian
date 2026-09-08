@@ -1,4 +1,4 @@
-import { consoleError, ConsoleRequestError, kindForStatus, statusSlug } from './error';
+import { consoleError, ConsoleRequestError, errorContract, kindForStatus, statusSlug } from './error';
 
 /**
  * The single HTTP transport. Its security behaviour is fixed:
@@ -67,9 +67,15 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     if (response.status === 401 && !options.allowUnauthorized) {
       window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
     }
+    // One parse for both halves of the body: the Phase 1 `status` slug and the
+    // optional change-proposal-0004 fields. A body that is absent or not JSON
+    // yields neither, which is the unmigrated-endpoint path and is not an error.
     let slug: string | undefined;
+    let contract: ReturnType<typeof errorContract> = {};
     try {
-      slug = statusSlug(await response.clone().json());
+      const body: unknown = await response.clone().json();
+      slug = statusSlug(body);
+      contract = errorContract(body);
     } catch {
       slug = undefined;
     }
@@ -77,6 +83,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       consoleError(kindForStatus(response.status, sessionActive), {
         httpStatus: response.status,
         ...(slug === undefined ? {} : { statusSlug: slug }),
+        ...contract,
       }),
     );
   }

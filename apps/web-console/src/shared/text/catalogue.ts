@@ -438,6 +438,42 @@ export const CATALOGUE = {
   'errors.timeout': 'The request took too long to complete.',
   'errors.network': 'Guardian could not be reached.',
   'errors.unexpected': 'Guardian could not complete the request.',
+
+  // Field-level rejections (change proposal 0004). The backend names a field
+  // and a machine reason from two closed vocabularies; the wording is here.
+  // A reason this console has not been taught falls back to `rejected`, so a
+  // backend string is never rendered in a field message.
+  //
+  // None of these quotes the submitted value. The operator can see what they
+  // typed; repeating it back adds nothing and the contract forbids the backend
+  // sending it.
+  'errors.field.malformed': 'This is not a valid value for this field.',
+  'errors.field.outOfRange': 'This value is outside the allowed range.',
+  'errors.field.unsupported': 'Guardian does not support this value.',
+  'errors.field.unknown': 'Guardian could not find this.',
+  'errors.field.outsideZone': 'This address is not inside the selected zone.',
+  'errors.field.conflicting': 'Another record in this environment already uses this.',
+  'errors.field.rejected': 'Guardian rejected this value.',
+  // Section 9.9 and the change proposal's failure behaviour: a field the
+  // console does not have is surfaced rather than dropped, because a dropped
+  // rejection reason hides why a save failed.
+  'errors.field.unattached': 'Guardian rejected a value this screen cannot show. Review the form and try again.',
+
+  // ─── forms ─────────────────────────────────────────────────────────────
+  // Client-side validation messages (WCX-11 section 9.1). Deliberately
+  // generic per keyword rather than per field: a message naming the exact
+  // bound would be a second copy of the contract, drifting the moment the
+  // contract moves. The Control Plane remains authoritative either way.
+  'forms.field.required': 'This field is required.',
+  'forms.field.tooShort': 'This value is too short.',
+  'forms.field.tooLong': 'This value is too long.',
+  'forms.field.pattern': 'This is not a valid format for this field.',
+  'forms.field.choice': 'Choose one of the listed options.',
+  'forms.unsaved.title': 'Discard unsaved changes?',
+  'forms.unsaved.body':
+    'This form has changes Guardian has not saved. Leaving discards them; nothing has been written.',
+  'forms.unsaved.discard': 'Discard changes',
+  'forms.unsaved.stay': 'Keep editing',
 } as const;
 
 export type CatalogueKey = keyof typeof CATALOGUE;

@@ -997,16 +997,23 @@ devices.enrollment.secretShownOnce      correct
 devices.enrollment.enterThisOnTheHost   wrong — names this draft's phrasing
 ```
 
-Flat dotted keys in eleven namespaces: `common`, `auth`, `environments`,
+Flat dotted keys in twelve namespaces: `common`, `auth`, `environments`,
 `environment`, `devices`, `health`, `states`, `confirm`, `untrusted`, `time`,
-`errors`. `catalogue.test.tsx` fails on a twelfth, so a new namespace is a
-decision recorded here rather than a key that drifted in.
+`errors`, `forms`. `catalogue.test.tsx` fails on a thirteenth, so a new
+namespace is a decision recorded here rather than a key that drifted in.
 
-Two namespaces are keyed by something outside the catalogue and cannot be
+`forms.*` is `WCX-11`'s: the client-side validation messages and the
+unsaved-changes prompt. Its entries are deliberately generic per constraint
+keyword — "This value is too long", never "at most 128 characters" — because a
+message naming the bound would be a second copy of the contract, drifting the
+moment the contract moves.
+
+Three namespaces are keyed by something outside the catalogue and cannot be
 renamed freely: `errors.*` is keyed by the `messageKey` values `WCX-02`
-reserved, and `health.condition.*` by the backend condition types. Both are
-read with a template key, so the whole sub-namespace has to stay in step with
-the contract.
+reserved, `errors.field.*` by the closed field-reason vocabulary that change
+proposal 0004 added to `openapi/guardian.yaml`, and `health.condition.*` by the
+backend condition types. All three are read with a template key, so the whole
+sub-namespace has to stay in step with the contract.
 
 ### The rules the catalogue exists to hold
 

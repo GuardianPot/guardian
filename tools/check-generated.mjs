@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
@@ -59,4 +59,27 @@ if (existsSync(committed)) {
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }
+}
+
+// The runtime constraints the form validators derive from (WCX-11 section 8.2).
+// A `maxLength` is not a type, so it cannot live in `openapi.ts`; it is
+// generated separately and checked here for the same reason. A stale file means
+// a form accepts input the Control Plane rejects, which is precisely the drift
+// section 8.2 forbids hand-copying to avoid.
+const constraints = "apps/web-console/src/generated/constraints.ts";
+if (existsSync(constraints)) {
+  const before = readFileSync(constraints, "utf8");
+  execFileSync("npm", ["run", "generate:constraints", "-w", "@guardianpot/web-console"], {
+    stdio: "pipe",
+    shell: process.platform === "win32",
+  });
+  const after = readFileSync(constraints, "utf8");
+  if (before.replace(/\r\n/g, "\n") !== after.replace(/\r\n/g, "\n")) {
+    writeFileSync(constraints, before);
+    console.error(
+      `${constraints} is stale. Run "npm run generate:constraints -w @guardianpot/web-console" and commit the result.`
+    );
+    process.exit(1);
+  }
+  console.log("Web Console contract constraints are current.");
 }

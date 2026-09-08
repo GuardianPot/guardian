@@ -14,14 +14,19 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "bundle:check": "node test/check-bundle.mjs",
-    "generate:api": "npx --yes openapi-typescript@7.13.0 ../../openapi/guardian.yaml --output src/generated/openapi.ts"
+    "generate:api": "npm run generate:types && npm run generate:constraints",
+    "generate:types": "npx --yes openapi-typescript@7.13.0 ../../openapi/guardian.yaml --output src/generated/openapi.ts",
+    "generate:constraints": "node scripts/generate-constraints.mjs"
   },
   "dependencies": {
+    "@hookform/resolvers": "5.9.1",
     "@tanstack/react-query": "5.102.8",
     "radix-ui": "1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "react-router": "8.3.1"
+    "react-hook-form": "7.87.0",
+    "react-router": "8.3.1",
+    "valibot": "1.4.2"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
