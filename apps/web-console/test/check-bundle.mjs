@@ -117,16 +117,37 @@ for (const entry of entries) {
  * change that moved them, with the reason in the message.
  */
 const BASELINE = {
-  loginLoad: 112_920,
-  authenticatedLoad: 127_640,
-  javascriptBytes: 410_508,
+  loginLoad: 148_053,
+  authenticatedLoad: 151_952,
+  javascriptBytes: 514_339,
   cssBytes: 25_036,
 };
 
+/*
+ * `WCX-11` raised two of these, on an explicit Product Owner decision taken on
+ * 2026-09-08 after the cost was measured rather than estimated.
+ *
+ * `WC-D21` requires React Hook Form with a Standard Schema validator. Measured
+ * against the console as it stood, the libraries alone are +36 KB raw — React
+ * Hook Form is 29 KB of that — against 3.9 KB of headroom under the old 450 KiB
+ * ceiling. There was no version of `WCX-11` that fitted, so the choice put to
+ * the owner was the budget, a different library, or deferring the package. The
+ * budget was raised.
+ *
+ * The login budget moved for the second half of the same decision. Section 9.11
+ * said the form stack must stay out of the sign-in chunk while scope item 2
+ * said to migrate the sign-in form onto it; those cannot both hold, and the
+ * owner chose the migration. The sign-in screen therefore loads the stack, and
+ * the ceiling reflects it.
+ *
+ * These are ceilings, not targets. The twenty-percent regression check below
+ * still applies against the recorded baseline, so the next package cannot drift
+ * into the new headroom without the same conversation.
+ */
 const budgets = [
-  { name: 'initial login load (gzip)', value: loginLoad, budget: 120 * 1024, baseline: BASELINE.loginLoad },
+  { name: 'initial login load (gzip)', value: loginLoad, budget: 160 * 1024, baseline: BASELINE.loginLoad },
   { name: 'initial authenticated load (gzip)', value: authenticatedLoad, budget: 200 * 1024, baseline: BASELINE.authenticatedLoad },
-  { name: 'total JavaScript (raw)', value: javascriptBytes, budget: 450 * 1024, baseline: BASELINE.javascriptBytes },
+  { name: 'total JavaScript (raw)', value: javascriptBytes, budget: 560 * 1024, baseline: BASELINE.javascriptBytes },
   { name: 'total CSS (raw)', value: cssBytes, budget: 32 * 1024, baseline: BASELINE.cssBytes },
 ];
 

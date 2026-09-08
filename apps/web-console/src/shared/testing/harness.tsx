@@ -12,6 +12,9 @@ import { AuthProvider, useAuth } from '@features/auth';
  * the boundary and prove nothing about it.
  */
 import type {
+  DecoyObservationRaw,
+  DecoyRaw,
+  DecoyViewRaw,
   DeviceRaw,
   EnvironmentRaw,
   HealthConditionRaw,
@@ -108,6 +111,51 @@ const conditionTypes: HealthConditionType[] = [
 ];
 
 /** Builds the full eight-condition backend projection with an optional override. */
+export const decoyID = '018f1f7e-6d31-7cc5-8db8-17547f78e6c5';
+export const zoneID = '018f1f7e-6d31-7cc5-8db8-17547f78e6c6';
+
+/**
+ * A decoy as the wire carries it.
+ *
+ * The default is the honest one: nothing has reported on this decoy, so the
+ * observed state is `unknown`, every condition is `Unknown`, and there is no
+ * report metadata. A fixture that defaulted to `deployed` would let a screen
+ * pass its tests while claiming coverage nothing established.
+ */
+export function decoyView(
+  overrides: { decoy?: Partial<DecoyRaw>; observed?: Partial<DecoyObservationRaw> } = {},
+): DecoyViewRaw {
+  return {
+    decoy: {
+      decoy_id: decoyID,
+      environment_id: environmentID,
+      zone_id: zoneID,
+      display_name: 'Finance file server',
+      family: 'smb',
+      persona: 'windows_file_service_host',
+      interaction_level: 'low',
+      address: '10.20.0.40',
+      pack: 'smb-fileshare',
+      pack_version: '0.1.0',
+      pack_digest: null,
+      desired_state: 'deployed',
+      revision: 3,
+      created_at: '2026-09-08T12:00:00.000Z',
+      updated_at: '2026-09-08T12:00:00.000Z',
+      ...overrides.decoy,
+    },
+    observed: {
+      observed_state: 'unknown',
+      reporting_device_id: null,
+      reported_at: null,
+      last_interaction_at: null,
+      desired_revision: null,
+      conditions: [],
+      ...overrides.observed,
+    },
+  };
+}
+
 export function healthView(override: Partial<HealthConditionRaw> & { type?: string } = {}): HealthViewRaw {
   const conditions: HealthConditionRaw[] = conditionTypes.map((type) => ({
     type,

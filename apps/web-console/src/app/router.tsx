@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { Navigate, Outlet, createBrowserRouter, type RouteObject } from 'react-router';
 import { LoginRoute, useAuth } from '@features/auth';
+import { DecoysRoute } from '@features/decoys';
 import { DeviceRoute } from '@features/devices';
 import { AccountRoute } from '@features/account';
 import { EnvironmentRoute, EnvironmentsRoute } from '@features/environments';
@@ -95,6 +96,11 @@ export const routes: RouteObject[] = [
             { path: '/', element: <HomeRoute />, handle: { screen: SCREEN.home } },
             { path: '/environments', element: <EnvironmentsRoute />, handle: { screen: SCREEN.environments } },
             { path: '/environments/:environmentId', element: <EnvironmentRoute />, handle: { screen: SCREEN.environment } },
+            {
+              path: '/environments/:environmentId/decoys',
+              element: <DecoysRoute />,
+              handle: { screen: SCREEN.decoys },
+            },
             {
               path: '/environments/:environmentId/devices/:deviceId',
               element: <DeviceRoute />,

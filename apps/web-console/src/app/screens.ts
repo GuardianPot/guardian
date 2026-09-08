@@ -16,6 +16,7 @@ export const SCREEN = {
   environments: 'Environments',
   environment: 'Environment',
   device: 'Edge device',
+  decoys: 'Decoys',
   account: 'Account',
   notFound: 'Page not found',
 } as const;

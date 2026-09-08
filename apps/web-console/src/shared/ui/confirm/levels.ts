@@ -22,6 +22,11 @@ export type ConfirmableAction =
   | 'zone.rename'
   | 'zone.delete'
   | 'enrollment.revoke'
+  | 'decoy.enable'
+  | 'decoy.disable'
+  | 'decoy.update'
+  | 'decoy.deploy'
+  | 'decoy.remove'
   | 'device.revoke'
   | 'device.reenroll'
   | 'session.revoke'
@@ -52,6 +57,15 @@ export const ACTION_CONFIRMATION: Readonly<Record<ConfirmableAction, ActionConfi
   'device.enable': { level: 1, capability: 'device.disable', effect: 'confirm.effect.deviceEnable' },
   'zone.rename': { level: 1, capability: 'zone.update', effect: 'confirm.effect.zoneRename' },
 
+  // `WCX-11` section 9.5. Enable, disable, and reconfigure are all reversible
+  // and all report their result rather than assuming it: a successful write
+  // changes desired state, and whether the network followed is the observed
+  // record's answer, arriving later. Enable and disable share one capability —
+  // the same gate, inverted — as device enable and disable already do.
+  'decoy.enable': { level: 1, capability: 'decoy.enable', effect: 'confirm.effect.decoyEnable' },
+  'decoy.disable': { level: 1, capability: 'decoy.enable', effect: 'confirm.effect.decoyDisable' },
+  'decoy.update': { level: 1, capability: 'decoy.update', effect: 'confirm.effect.decoyUpdate' },
+
   // L2 — destructive but recoverable. Modal, effect-named confirm, object named.
   //
   // `WCX-09` moved disable up from L1. It is reversible by re-enable, but it
@@ -61,6 +75,16 @@ export const ACTION_CONFIRMATION: Readonly<Record<ConfirmableAction, ActionConfi
   'device.disable': { level: 2, capability: 'device.disable', effect: 'confirm.effect.deviceDisable' },
   'zone.delete': { level: 2, capability: 'zone.delete', effect: 'confirm.effect.zoneDelete' },
   'enrollment.revoke': { level: 2, capability: 'enrollment.revoke', effect: 'confirm.effect.enrollmentRevoke' },
+
+  // Deploying a decoy occupies a real address in a real zone. The
+  // confirmation names the zone and the address for that reason: an operator
+  // who mistyped an octet is placing a decoy somewhere they did not intend,
+  // and the network is a poor place to find that out.
+  'decoy.deploy': { level: 2, capability: 'decoy.create', effect: 'confirm.effect.decoyDeploy' },
+  // Removal retires a decoy from the active list. It is not a deletion of
+  // history — CS-06 forbids silent deletion — so the confirmation says the
+  // recorded evidence survives it.
+  'decoy.remove': { level: 2, capability: 'decoy.remove', effect: 'confirm.effect.decoyRemove' },
 
   // L3 — irreversible and security-relevant. Modal, typed object name, and
   // step-up reauthentication.

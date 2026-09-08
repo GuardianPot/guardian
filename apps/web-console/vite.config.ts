@@ -37,6 +37,16 @@ export default defineConfig({
             if (/\/node_modules\/(react|react-dom|scheduler)\//.test(path)) return 'vendor-react';
             if (path.includes('/node_modules/@tanstack/')) return 'vendor-query';
             if (path.includes('radix')) return 'vendor-ui';
+            /*
+             * The form stack loads with the shell (`WCX-11` section 9.11).
+             *
+             * It was given its own chunk first, and Rolldown folded it back
+             * into the entry chunk anyway, so the rule was removed rather than
+             * left in place doing nothing. The Product Owner's decision on
+             * 2026-09-08 migrates the sign-in form onto the same stack, so the
+             * bytes are ones the sign-in screen was going to load regardless;
+             * `check-bundle.mjs` carries the raised budget and the reason.
+             */
             // The router and everything else load with the shell.
             return undefined;
           }

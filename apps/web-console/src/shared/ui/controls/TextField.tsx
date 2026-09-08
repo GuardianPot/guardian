@@ -1,6 +1,21 @@
-import { useId, type ChangeEvent, type RefObject } from 'react';
+import { useId, type ChangeEvent, type FocusEvent, type RefObject } from 'react';
 import { Label } from 'radix-ui';
 import styles from '@shared/styles/app.module.css';
+
+/**
+ * What a form library needs to attach to this input (WCX-11 section 9.1.2).
+ *
+ * Declared structurally rather than imported from React Hook Form. `@shared/ui`
+ * has no business depending on whichever form library the features chose, and a
+ * structural type means swapping that library is a change in `@shared/forms`
+ * and nowhere else. It happens to be exactly `UseFormRegisterReturn`.
+ */
+export type FieldRegistration = {
+  name: string;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => unknown;
+  onBlur: (event: FocusEvent<HTMLInputElement>) => unknown;
+  ref: (instance: HTMLInputElement | null) => void;
+};
 
 /**
  * The single text input (WCX-04 section 9.5).
@@ -47,6 +62,12 @@ export type TextFieldProps = {
    * else may reach into the input through this.
    */
   inputRef?: RefObject<HTMLInputElement | null>;
+  /**
+   * Binds the control to the form stack. When present it supplies the name,
+   * the change and blur handlers, and the ref, so the field is driven by the
+   * validator rather than read out of FormData at submit time.
+   */
+  registration?: FieldRegistration;
 };
 
 export function TextField({
@@ -67,6 +88,7 @@ export function TextField({
   onChange,
   disabledReason,
   inputRef,
+  registration,
 }: TextFieldProps) {
   const fieldId = useId();
   const invalid = error !== undefined || invalidatedBy !== undefined;
@@ -79,6 +101,12 @@ export function TextField({
   return (
     <div className={styles.field}>
       <Label.Root htmlFor={fieldId}>{label}</Label.Root>
+      {/*
+        `registration` is spread last so the form stack owns name, ref, change,
+        and blur whenever it is driving this field. Everything above it is a
+        default the stack may replace; `id`, `aria-invalid`, and
+        `aria-describedby` are not in that set and cannot be overridden.
+      */}
       <input
         ref={inputRef}
         id={fieldId}
@@ -96,6 +124,7 @@ export function TextField({
         {...(defaultValue === undefined ? {} : { defaultValue })}
         {...(value === undefined ? {} : { value })}
         {...(onChange === undefined ? {} : { onChange: (event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value) })}
+        {...(registration ?? {})}
       />
       {description !== undefined && (
         <span className={styles.fieldDescription} id={`${fieldId}-description`}>{description}</span>

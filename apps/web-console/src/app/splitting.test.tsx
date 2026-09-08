@@ -72,6 +72,7 @@ describe('the route tree after the React Router 8 upgrade', () => {
       '/',
       '/environments',
       '/environments/:environmentId',
+      '/environments/:environmentId/decoys',
       '/environments/:environmentId/devices/:deviceId',
       '/account',
       '*',

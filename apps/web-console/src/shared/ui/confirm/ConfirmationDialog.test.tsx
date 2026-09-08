@@ -58,6 +58,13 @@ describe('the action-to-level table', () => {
     ['device.disable', 2],
     ['enrollment.revoke', 2],
     ['zone.delete', 2],
+    // WCX-11 section 9.5. Enable, disable and reconfigure are reversible;
+    // deploying occupies a real address and removal retires a decoy.
+    ['decoy.enable', 1],
+    ['decoy.disable', 1],
+    ['decoy.update', 1],
+    ['decoy.deploy', 2],
+    ['decoy.remove', 2],
     ['device.revoke', 3],
     ['device.reenroll', 3],
     ['session.revoke', 3],
@@ -68,9 +75,10 @@ describe('the action-to-level table', () => {
 
   it('covers every action in the table and no more', () => {
     expect(Object.keys(ACTION_CONFIRMATION).sort()).toEqual([
-      'account.password', 'device.disable', 'device.enable', 'device.reenroll',
-      'device.revoke', 'enrollment.revoke', 'session.revoke', 'zone.delete',
-      'zone.rename',
+      'account.password', 'decoy.deploy', 'decoy.disable', 'decoy.enable',
+      'decoy.remove', 'decoy.update', 'device.disable', 'device.enable',
+      'device.reenroll', 'device.revoke', 'enrollment.revoke', 'session.revoke',
+      'zone.delete', 'zone.rename',
     ]);
   });
 

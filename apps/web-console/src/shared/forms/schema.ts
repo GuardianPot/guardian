@@ -77,10 +77,13 @@ function fieldSchema(constraint: Constraint, required: boolean) {
  * update form omits nothing, but a screen that edits one field should not be
  * made to submit seven.
  */
-export function schemaFor<Name extends SchemaName>(
+export function schemaFor<
+  Name extends SchemaName,
+  Values extends Record<string, string> = Record<string, string>,
+>(
   name: Name,
   fields: readonly (keyof (typeof CONSTRAINTS)[Name]['fields'] & string)[],
-) {
+): v.GenericSchema<Values, Values> {
   const declaration = CONSTRAINTS[name];
   const required: readonly string[] = declaration.required;
   const source = declaration.fields as Record<string, Constraint>;
@@ -95,7 +98,18 @@ export function schemaFor<Name extends SchemaName>(
     }
     entries[field] = fieldSchema(constraint, required.includes(field));
   }
-  return v.object(entries);
+  /*
+   * The one cast in this module, and it is narrowing a runtime-built schema to
+   * the shape the caller says it expects.
+   *
+   * The schema is assembled from generated constraints, so its key set is not
+   * a literal the compiler can see. What keeps the two honest is not this line:
+   * it is that `fields` is key-checked against the generated declaration above,
+   * and that `generated:check` fails if the declaration drifts from the
+   * contract. A caller naming a `Values` shape the contract does not have would
+   * fail at the `fields` argument first.
+   */
+  return v.object(entries) as unknown as v.GenericSchema<Values, Values>;
 }
 
 /**

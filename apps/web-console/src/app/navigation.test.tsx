@@ -129,8 +129,10 @@ describe('redirect safety', () => {
     // not exist is a promise the console cannot keep.
     const entries = ['home.heading', 'environments.heading', 'account.heading'] as const;
     for (const key of entries) expect(CATALOGUE[key]).toBeTruthy();
-    // Nothing in the catalogue offers Phase 3 or Phase 2 surfaces yet.
+    // Nothing in the catalogue offers a surface that does not exist yet.
+    // `Decoys` left this list in `WCX-11`, when the screen behind it shipped;
+    // the rest stay until theirs do.
     const labels = Object.values(CATALOGUE).join('\n');
-    expect(labels).not.toMatch(/^(?:Incidents|Decoys|Notifications)$/m);
+    expect(labels).not.toMatch(/^(?:Incidents|Notifications)$/m);
   });
 });

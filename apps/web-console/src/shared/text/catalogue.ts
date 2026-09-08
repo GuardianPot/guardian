@@ -385,6 +385,11 @@ export const CATALOGUE = {
   'confirm.effect.enrollmentRevoke': 'Revoke enrollment token',
   'confirm.effect.sessionRevoke': 'Revoke session',
   'confirm.effect.accountPassword': 'Change password',
+  'confirm.effect.decoyEnable': 'Enable decoy',
+  'confirm.effect.decoyDisable': 'Disable decoy',
+  'confirm.effect.decoyUpdate': 'Save decoy configuration',
+  'confirm.effect.decoyDeploy': 'Deploy decoy',
+  'confirm.effect.decoyRemove': 'Remove decoy',
 
   // Step-up refusals. Four reasons, four sentences: an operator who cancelled
   // and an operator the Control Plane refused are in different situations and
@@ -458,6 +463,90 @@ export const CATALOGUE = {
   // console does not have is surfaced rather than dropped, because a dropped
   // rejection reason hides why a save failed.
   'errors.field.unattached': 'Guardian rejected a value this screen cannot show. Review the form and try again.',
+
+  // ─── decoys ────────────────────────────────────────────────────────────
+  // WCX-11. The wording here carries more of the product's claim than any
+  // other namespace: a deception console that overstates its own coverage is
+  // worse than one that admits what it does not know.
+  'decoys.title': 'Decoys',
+  'decoys.subtitle': 'What Guardian has been asked to place, and what has been observed.',
+  'decoys.caption': 'Decoys in this environment',
+  'decoys.emptyAction': 'Deploy the first decoy',
+  'decoys.deploy': 'Deploy decoy',
+  'decoys.count.one': '{count} decoy',
+  'decoys.count.other': '{count} decoys',
+
+  // Columns. Health and convergence are separate headings on purpose: a
+  // converged desired state is not a health claim (section 9.3.1).
+  'decoys.column.name': 'Decoy',
+  'decoys.column.kind': 'Type and persona',
+  'decoys.column.placement': 'Address and zone',
+  'decoys.column.observed': 'Observed',
+  'decoys.column.convergence': 'Configuration',
+  'decoys.column.version': 'Pack version',
+  'decoys.column.interaction': 'Last interaction',
+  'decoys.column.actions': 'Actions',
+
+  // Row actions name their row (WCX-09 section 9.6.5).
+  'decoys.action.enableNamed': 'Enable {decoy}',
+  'decoys.action.disableNamed': 'Disable {decoy}',
+  'decoys.action.removeNamed': 'Remove {decoy}',
+
+  // Convergence. "Overdue" says Guardian is still waiting, not that anything
+  // failed: section 9.5 forbids inventing a timeout, and no news is not bad
+  // news. The observed column says what an Edge actually reported.
+  'decoys.convergence.converged': 'Applied',
+  'decoys.convergence.pendingFor': 'Waiting {age} for revision {desired}',
+  'decoys.convergence.overdue':
+    'Still waiting after {age} for revision {desired}. Guardian has not been told anything failed.',
+  'decoys.convergence.unmanaged': 'Not applicable while Guardian cannot manage this decoy.',
+  'decoys.convergence.takesEffect':
+    'A saved change takes effect only once the Edge applies it. Guardian shows when that happened.',
+
+  // Observed state. Absence of an observation is never a healthy result.
+  'decoys.observed.neverObserved': 'Nothing has reported on this decoy yet.',
+  'decoys.observed.unmanaged':
+    'Guardian can no longer manage this decoy. Its device was disabled or revoked, so it may still be running its last configuration.',
+  'decoys.observed.interactionUnknown': 'Unknown',
+
+  // Detail sections.
+  'decoys.field.displayName': 'Display name',
+  'decoys.field.family': 'Type',
+  'decoys.field.persona': 'Persona',
+  'decoys.field.address': 'Address',
+  'decoys.field.zone': 'Zone',
+  'decoys.field.pack': 'Pack',
+  'decoys.field.packVersion': 'Pack version',
+
+  // AC-SMB-002 and section 8.9. Every persona is an emulation. The console
+  // must never state or imply that a real Windows, database, or application
+  // host exists, because an operator who believes one does will make decisions
+  // about a machine that is not there.
+  'decoys.persona.emulatedLabel': 'Emulated',
+  'decoys.persona.emulatedNote':
+    'Every persona is an emulation presented by Guardian. No real host of this kind is created.',
+
+  // Section 8.3, reviewed as security-critical wording. These fields are shown
+  // to whoever probes the decoy, which is the point of them; the warning is
+  // that they must therefore never carry anything real.
+  'decoys.attackerVisible.warning':
+    'Attackers can see this value. Never enter a real credential, a real hostname, or anything that identifies a real system.',
+
+  // Lifecycle results. A successful write changed what was asked for, and
+  // says nothing about what the network is doing (section 9.6.1).
+  'decoys.result.deployed': 'Decoy saved. The Edge has not confirmed it yet.',
+  'decoys.result.enabled': 'Enable requested. Guardian will report when the Edge applies it.',
+  'decoys.result.disabled': 'Disable requested. Guardian will report when the Edge applies it.',
+  'decoys.result.removed': 'Decoy removed from the active list.',
+  // Section 9.9.5: a failed transition leaves the displayed state alone and
+  // says so, rather than showing the state the operator asked for.
+  'decoys.result.enableFailed': 'The enable request failed. Nothing changed.',
+  'decoys.result.disableFailed': 'The disable request failed. Nothing changed.',
+  'decoys.result.removeFailed': 'The removal failed. The decoy is unchanged.',
+  'decoys.result.conflict':
+    'Another change was recorded first, so nothing was written. Reload to see the current configuration.',
+  'decoys.result.reload': 'Reload current configuration',
+  'decoys.reauthenticate': 'Re-authenticate before changing decoys.',
 
   // ─── forms ─────────────────────────────────────────────────────────────
   // Client-side validation messages (WCX-11 section 9.1). Deliberately

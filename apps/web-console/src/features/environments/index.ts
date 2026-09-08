@@ -6,7 +6,7 @@ import { lazy } from 'react';
  * `WCX-10` section 9.9: one `queryOptions` helper, so however many consumers
  * ask, the list is fetched once per freshness interval.
  */
-export { environmentKeys, environmentQuery, environmentsQuery } from './api';
+export { environmentKeys, environmentQuery, environmentsQuery, zonesQuery } from './api';
 
 /** Route components as their own chunk. See `@features/auth` for why. */
 export const EnvironmentsRoute = lazy(() =>
