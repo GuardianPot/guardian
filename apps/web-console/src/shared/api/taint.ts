@@ -1,5 +1,9 @@
 import { untrusted } from './untrusted';
 import type {
+  DecoyCondition,
+  DecoyConditionRaw,
+  DecoyView,
+  DecoyViewRaw,
   Device,
   DeviceRaw,
   EnrollmentSecret,
@@ -66,6 +70,28 @@ function taintCondition(raw: HealthConditionRaw): HealthCondition {
     reason: untrusted(reason),
     message: untrusted(message),
     ...(sourceDeviceID === undefined ? {} : { source_device_id: untrusted(sourceDeviceID) }),
+  };
+}
+
+/**
+ * The decoy trust boundary.
+ *
+ * A decoy carries the product's most attacker-adjacent free text: the display
+ * name an operator typed, and a condition message an Edge wrote while sitting
+ * on the same network as whoever is probing it. Both are marked here, once, so
+ * no decoy screen can render either directly.
+ */
+function taintDecoyCondition(raw: DecoyConditionRaw): DecoyCondition {
+  const { reason, message, ...rest } = raw;
+  return { ...rest, reason: untrusted(reason), message: untrusted(message) };
+}
+
+export function taintDecoyView(raw: DecoyViewRaw): DecoyView {
+  const { display_name: displayName, ...decoyRest } = raw.decoy;
+  const { conditions, ...observedRest } = raw.observed;
+  return {
+    decoy: { ...decoyRest, display_name: untrusted(displayName) },
+    observed: { ...observedRest, conditions: conditions.map(taintDecoyCondition) },
   };
 }
 

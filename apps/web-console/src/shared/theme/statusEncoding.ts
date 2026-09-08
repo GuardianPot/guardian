@@ -64,6 +64,41 @@ const CONFIG: Readonly<Record<ConfigState, StatusEncoding>> = {
 };
 
 /**
+ * Decoy observed state (P2-W15, WCX-11 sections 8.7 and 8.8).
+ *
+ * `unknown` is the honest default and the one this table exists to protect: a
+ * decoy nothing has reported on is unknown, never deployed and never absent.
+ * `absent` is a positive claim — an Edge looked and did not find it — and is
+ * not the same as having no report at all.
+ *
+ * `unmanaged` is a Control Plane projection, never an Edge's self-report. It
+ * says Guardian can no longer manage this decoy, which is not a health claim
+ * either way: the decoy may well still be running last-known-good
+ * configuration, and hiding it would misrepresent what the product controls.
+ */
+export type DecoyObservedState = 'unknown' | 'deployed' | 'degraded' | 'absent' | 'unmanaged';
+export type DecoyDesiredState = 'deployed' | 'disabled' | 'removed';
+
+const DECOY_OBSERVED: Readonly<Record<DecoyObservedState, StatusEncoding>> = {
+  unknown: { glyph: 'diamond', label: 'Unknown', tone: 'healthUnknown' },
+  deployed: { glyph: 'circle', label: 'Deployed', tone: 'healthTrue' },
+  degraded: { glyph: 'square', label: 'Degraded', tone: 'healthFalse' },
+  absent: { glyph: 'cross', label: 'Absent', tone: 'healthFalse' },
+  unmanaged: { glyph: 'slash', label: 'Unmanaged', tone: 'deviceRevoked' },
+};
+
+/**
+ * Desired state is what an operator asked for. It is never rendered with the
+ * health palette, because "deployed was requested" is not a health claim and a
+ * shared colour would invite reading it as one.
+ */
+const DECOY_DESIRED: Readonly<Record<DecoyDesiredState, StatusEncoding>> = {
+  deployed: { glyph: 'circle', label: 'Deploy requested', tone: 'configComplete' },
+  disabled: { glyph: 'ring', label: 'Disabled', tone: 'configPending' },
+  removed: { glyph: 'slash', label: 'Removed', tone: 'configPending' },
+};
+
+/**
  * The single fallback. An unrecognised value is unknown, never healthy.
  */
 export const UNKNOWN_ENCODING: StatusEncoding = HEALTH.Unknown;
@@ -80,6 +115,8 @@ export const healthEncoding = (value: string): StatusEncoding => resolve(HEALTH,
 export const severityEncoding = (value: string): StatusEncoding => resolve(SEVERITY, value);
 export const deviceEncoding = (value: string): StatusEncoding => resolve(DEVICE, value);
 export const configEncoding = (value: string): StatusEncoding => resolve(CONFIG, value);
+export const decoyObservedEncoding = (value: string): StatusEncoding => resolve(DECOY_OBSERVED, value);
+export const decoyDesiredEncoding = (value: string): StatusEncoding => resolve(DECOY_DESIRED, value);
 
 /** Severity in ascending order, so a caller never invents an ordering. */
 export const SEVERITY_ORDER: readonly Severity[] = [
@@ -105,4 +142,4 @@ export function confidenceEncoding(value: string): ConfidenceEncoding {
 }
 
 /** Every table, for exhaustiveness tests. */
-export const ENCODING_TABLES = { HEALTH, SEVERITY, DEVICE, CONFIG } as const;
+export const ENCODING_TABLES = { HEALTH, SEVERITY, DEVICE, CONFIG, DECOY_OBSERVED, DECOY_DESIRED } as const;
