@@ -15,10 +15,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# The boundary greps below are the evidence, not a formality. `if rg ...` treats
-# a missing rg as "no match", which would pass every one of them silently, so
-# the tool is required up front rather than discovered by its absence.
-for tool in docker rg go; do
+# The boundary greps below are the evidence, not a formality, and `if <tool> ...`
+# reads a missing tool's 127 as "no match" — which would pass every one of them
+# silently. They use `git grep`, which is present wherever this repository is,
+# and the tools they do need are required up front.
+for tool in docker git go; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "required tool not found: $tool" >&2
     exit 1
@@ -71,39 +72,39 @@ fi
 # describing the seam P2-W3 will fill is exactly what that comment is for, and
 # a package is not reaching for an authority by explaining which one it lacks.
 # The check is about imports and calls.
-if rg -n \
+if git -C "$repo_root" grep -n -E \
   'internal/identity|internal/devicepki|internal/privileged|internal/privclient|os/exec|containerd' \
-  "$repo_root/apps/edge-agent/internal/decoy" \
-  --glob '!*_test.go' | rg -v ':[0-9]+:[[:space:]]*//'; then
+  -- 'apps/edge-agent/internal/decoy' ':(exclude)*_test.go' \
+  | grep -vE ':[0-9]+:[[:space:]]*//'; then
   echo "P2-W15 Edge decoy package reached identity, PKI, privileged, or runtime authority" >&2
   exit 1
 fi
 
 # No decoy save path may scan, probe, route, or mutate a firewall. Placement is
 # a Control Plane decision about configuration, not a network action.
-if rg -n \
+if git -C "$repo_root" grep -n -E \
   'net\.Dial|DialContext|ListenPacket|exec\.Command|os/exec|nmap|masscan|iptables|nftables|firewall|ip[[:space:]]+route|netlink|RawConn' \
-  "$repo_root/apps/control-plane/internal/deception" \
-  "$repo_root/apps/control-plane/internal/storage/decoy.go" \
-  "$repo_root/apps/control-plane/internal/api/decoy.go"; then
+  -- 'apps/control-plane/internal/deception' \
+  'apps/control-plane/internal/storage/decoy.go' \
+  'apps/control-plane/internal/api/decoy.go'; then
   echo "P2-W15 decoy save path contains a prohibited scan, probe, route, or firewall primitive" >&2
   exit 1
 fi
 
 # The API surface must offer no field that could carry a runtime artifact.
-if rg -n \
+if git -C "$repo_root" grep -n -E \
   '"image"|"command"|"args"|"entrypoint"|"mount"|"volume"|"capabilit|"privileged"|"port"' \
-  "$repo_root/apps/control-plane/internal/api/decoy.go"; then
+  -- 'apps/control-plane/internal/api/decoy.go'; then
   echo "P2-W15 decoy API exposed a runtime artifact field" >&2
   exit 1
 fi
 
-if rg -n --hidden \
+if git -C "$repo_root" grep -n -E \
   'BEGIN (EC |RSA |)PRIVATE KEY|bootstrap_token=[A-Za-z0-9_-]{43}|"session_token"[[:space:]]*:|"csrf_token"[[:space:]]*:[[:space:]]*"[A-Za-z0-9_-]{43}"' \
-  "$repo_root/apps/control-plane/internal/deception" \
-  "$repo_root/apps/edge-agent/internal/decoy" \
-  "$repo_root/docs/runbooks/decoy" \
-  "$repo_root/security/p2-w15-decoy-domain-review.md"; then
+  -- 'apps/control-plane/internal/deception' \
+  'apps/edge-agent/internal/decoy' \
+  'docs/runbooks/decoy' \
+  'security/p2-w15-decoy-domain-review.md'; then
   echo "P2-W15 source/evidence scan found committed secret-shaped material" >&2
   exit 1
 fi
