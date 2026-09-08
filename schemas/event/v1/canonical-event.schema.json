@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://guardianpot.dev/schemas/event/v1/canonical-event.schema.json",
+  "title": "Guardian canonical event v1",
+  "description": "One thing that happened at a decoy, in the shape every later stage reads. EV-02 fixes the field set; this is that list made checkable. The envelope carries metadata and a reference to raw evidence, never the raw evidence itself: EV-03 bounds what is retained and where, and an envelope that could hold a transcript would put an attacker's bytes in every index that touches it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "event_id",
+    "event_time",
+    "observed_time",
+    "environment_id",
+    "edge_id",
+    "decoy_id",
+    "protocol",
+    "action",
+    "sensitivity",
+    "provenance"
+  ],
+  "properties": {
+    "schema": {
+      "description": "The contract version. A mismatch is explicit and fatal at ingest; an event written to another contract is never partially read.",
+      "const": "guardian.event.v1"
+    },
+    "event_id": {
+      "description": "AC-EV-001. Stable across retries and replay: the Edge assigns it once, at capture, and a redelivery carries the same value so ingest can refuse the duplicate. It is never regenerated on send, because an identifier minted per attempt makes at-least-once delivery indistinguishable from repeated attacks.",
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "event_time": {
+      "description": "AC-EV-003. When the interaction happened, as the decoy's clock saw it.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "observed_time": {
+      "description": "AC-EV-003. When the Edge's adapter saw it. Distinct from event_time because a log adapter reads a file some time after the line was written, and collapsing the two would hide that delay.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "ingested_time": {
+      "description": "AC-EV-003. When the Control Plane accepted it. Set by the Control Plane and by nothing else: an Edge that could assert its own ingest time could backdate an event past a retention boundary. Absent on the wire from the Edge, present once stored.",
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "environment_id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "edge_id": {
+      "description": "Which Edge reported. Taken from the authenticated device identity at ingest and never from a field the Edge fills, so one Edge cannot attribute an event to another.",
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "decoy_id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "source_ip": {
+      "description": "Who connected. Observed from the connection, not parsed from attacker-supplied text where the path allows it; a log adapter that reads it from a line must treat it as untrusted and this field's bounds are what keeps a malformed line from becoming an unbounded string.",
+      "type": ["string", "null"],
+      "maxLength": 45,
+      "pattern": "^[0-9a-fA-F:.]{3,45}$"
+    },
+    "source_port": { "type": ["integer", "null"], "minimum": 1, "maximum": 65535 },
+    "destination_ip": {
+      "description": "The decoy's own address, which is Guardian's and therefore trustworthy.",
+      "type": ["string", "null"],
+      "maxLength": 45,
+      "pattern": "^[0-9a-fA-F:.]{3,45}$"
+    },
+    "destination_port": { "type": ["integer", "null"], "minimum": 1, "maximum": 65535 },
+    "protocol": {
+      "description": "The closed DC-01 family set, plus the transport for events that are not application-level.",
+      "enum": ["ssh", "http", "postgres", "smb", "tcp"]
+    },
+    "action": {
+      "description": "What the interaction was. A closed vocabulary rather than free text, because a console renders it as a category and an adapter that could invent one would be putting attacker-influenced strings into a category field.",
+      "enum": [
+        "connection_opened",
+        "connection_closed",
+        "auth_attempt",
+        "auth_succeeded",
+        "auth_failed",
+        "command_executed",
+        "request_received",
+        "file_accessed",
+        "query_executed",
+        "session_transcript"
+      ]
+    },
+    "session_id": {
+      "description": "Groups events from one attacker session. Adapter-assigned and bounded; it is not a Guardian identity and nothing may resolve it to one.",
+      "type": ["string", "null"],
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "auth": {
+      "description": "Who the attacker claimed to be and whether the decoy accepted it. There is deliberately no field for the secret they supplied: EV-03 requires credential material to be protected or redacted, and an envelope with nowhere to put a password cannot leak one into an index, a log line, or a console.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["result"],
+      "properties": {
+        "identity": {
+          "description": "The username or account the attacker offered. Attacker-controlled, bounded, and untrusted to any renderer.",
+          "type": ["string", "null"],
+          "maxLength": 256
+        },
+        "result": { "enum": ["succeeded", "failed", "unknown"] },
+        "synthetic_credential_id": {
+          "description": "Set when the offered credential matched one Guardian planted (P2-W9). It names the planted credential, never the secret, so a match is provable without storing what was typed.",
+          "type": ["string", "null"],
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      }
+    },
+    "raw_ref": {
+      "description": "Where the bounded raw evidence lives, if any was kept. A reference and never the bytes: EV-03 keeps HTTP bodies and SSH transcripts bounded and stored separately, and P2-W13 owns the blob and quarantine paths. An event with no retained evidence has no reference, which is different from having an empty one.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["blob_id", "media_type", "byte_length", "truncated"],
+      "properties": {
+        "blob_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "media_type": {
+          "enum": ["text/plain", "application/octet-stream", "application/json"]
+        },
+        "byte_length": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+        "truncated": {
+          "description": "Whether EV-03's bound cut the evidence short. Recorded rather than inferred, so a reader never mistakes a truncated transcript for a complete one.",
+          "type": "boolean"
+        },
+        "quarantined": {
+          "description": "Whether the raw material was quarantined instead of stored for normal retrieval. EV-03 quarantines binary uploads where supported.",
+          "type": "boolean"
+        }
+      }
+    },
+    "sensitivity": {
+      "description": "What the referenced evidence holds, which is what access and retention are decided from. Ordered: routine carries metadata only; sensitive carries bounded captured content; restricted means credential material was involved, and the event records the identity and result while the secret itself was never stored.",
+      "enum": ["routine", "sensitive", "restricted"]
+    },
+    "provenance": {
+      "description": "AC-EV-002: from an evidence item, the edge, decoy, runtime, schema, and raw reference must be visible. The first two and the schema are top-level fields; this carries the rest, plus which of P2-W11's two paths produced the event — a native typed path and a third-party log parser do not warrant the same confidence, and a reader is entitled to know which one this came through.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_path", "adapter", "pack", "pack_version"],
+      "properties": {
+        "source_path": { "enum": ["native_uds", "log_adapter"] },
+        "adapter": { "enum": ["cowrie-json", "http-access", "postgres-wire", "smb-audit"] },
+        "adapter_version": {
+          "type": ["string", "null"],
+          "maxLength": 32,
+          "pattern": "^[0-9]{1,6}\\.[0-9]{1,6}\\.[0-9]{1,6}$"
+        },
+        "pack": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z][a-z0-9-]{0,63}$" },
+        "pack_version": { "type": "string", "minLength": 5, "maxLength": 32, "pattern": "^[0-9]{1,6}\\.[0-9]{1,6}\\.[0-9]{1,6}$" },
+        "runtime_version": { "type": ["string", "null"], "maxLength": 64 }
+      }
+    }
+  }
+}

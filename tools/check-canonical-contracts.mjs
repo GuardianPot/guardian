@@ -6,6 +6,7 @@ const requiredFiles = [
   'schemas/device/v1/device-identity.schema.json',
   'schemas/telemetry/v1/telemetry-envelope.schema.json',
   'schemas/decoy/v1/decoy-manifest.schema.json',
+  'schemas/event/v1/canonical-event.schema.json',
   'openapi/guardian.yaml',
   'docs/contracts/README.md',
 ];
@@ -19,6 +20,7 @@ if (missing.length > 0) {
 const deviceSchema = JSON.parse(readFileSync('schemas/device/v1/device-identity.schema.json', 'utf8'));
 const telemetrySchema = JSON.parse(readFileSync('schemas/telemetry/v1/telemetry-envelope.schema.json', 'utf8'));
 const manifestSchema = JSON.parse(readFileSync('schemas/decoy/v1/decoy-manifest.schema.json', 'utf8'));
+const eventSchema = JSON.parse(readFileSync('schemas/event/v1/canonical-event.schema.json', 'utf8'));
 const checks = [
   [deviceSchema.$id === 'https://schemas.guardianpot.internal/device/v1/device-identity.schema.json', 'device schema ID'],
   [telemetrySchema.$id === 'https://schemas.guardianpot.internal/telemetry/v1/telemetry-envelope.schema.json', 'telemetry schema ID'],
@@ -44,6 +46,23 @@ const checks = [
     'decoy manifest grants only NET_BIND_SERVICE',
   ],
   [manifestSchema.properties?.egress?.properties?.policy?.const === 'deny', 'decoy egress is deny-by-default'],
+  // P2-W10. EV-02 fixes the field set and EV-03 keeps credential material out
+  // of it; both are contract properties, so both are checked here.
+  [eventSchema.$id === 'https://guardianpot.dev/schemas/event/v1/canonical-event.schema.json', 'canonical event schema ID'],
+  [eventSchema.properties?.schema?.const === 'guardian.event.v1', 'canonical event contract version'],
+  [eventSchema.additionalProperties === false, 'canonical event rejects unknown properties'],
+  // AC-EV-003: all three timestamps exist as fields.
+  [
+    ['event_time', 'observed_time', 'ingested_time'].every((field) => eventSchema.properties?.[field] !== undefined),
+    'canonical event carries all three timestamps',
+  ],
+  // EV-03: the envelope must have nowhere to put a secret. Checked on the
+  // contract as well as in Go, because a field added here would be the way one
+  // arrives.
+  [
+    !JSON.stringify(eventSchema.properties).match(/"(password|passphrase|secret|token|credential)[a-z_]*":/i),
+    'canonical event has no field that could hold a credential',
+  ],
 ];
 
 const failed = checks.filter(([passed]) => !passed).map(([, name]) => name);
