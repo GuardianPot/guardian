@@ -1442,6 +1442,121 @@ moment earlier is dead. It does **not** say how many sessions ended, because
 the response does not say: it points at the session list instead. If you are
 tempted to add a count here, the response still will not contain one.
 
+## Forms and validation
+
+`WCX-11` gave the console one form stack. Every form uses it; no screen reaches
+for React Hook Form directly, because the rules below hold by construction only
+if there is one place they are written.
+
+Compose from `@shared/forms`:
+
+```tsx
+const schema = schemaFor<'ZoneWriteRequest', { display_name: string; cidr: string }>(
+  'ZoneWriteRequest',
+  ['display_name', 'cidr'],
+);
+
+const form = useConsoleForm({ schema, defaultValues, onSubmit });
+```
+
+### Never write a constraint by hand
+
+This is the rule with the sharpest edge, from section 8.2. A length, a range,
+or a pattern typed next to a control is a second copy of the contract. It is
+correct on the day it is written and drifts silently afterwards, and a drifted
+copy accepts input the Control Plane refuses — the operator then sees a save
+fail for a reason the form told them was fine.
+
+So the numbers are generated. `openapi-typescript` cannot help: `maxLength: 128`
+is not a type and does not survive into `openapi.ts`. Instead
+`scripts/generate-constraints.mjs` bundles the contract to JSON with Redocly and
+writes `src/generated/constraints.ts`. `schemaFor`, `maxLengthOf`, and
+`choicesOf` read it, and `generated:check` fails when it is stale.
+
+To add a form for a new contract schema, add its name to `SCHEMAS` in that
+script, regenerate, and commit the result:
+
+```
+npm run generate:constraints -w @guardianpot/web-console
+```
+
+If a form field maps to more than one contract field — sign-in's single `proof`
+control satisfies either `totp_code` or `recovery_code` — pass `alternatives`
+rather than writing the pattern out:
+
+```tsx
+schemaFor('AuthLoginRequest', ['username', 'password'], {
+  proof: ['totp_code', 'recovery_code'],
+});
+```
+
+If a constraint genuinely cannot be derived, reuse the closest contract field
+and record why in a comment at the call site. The enrollment device name does
+this: its request body is declared inline on the operation rather than as a
+named component, so there is nothing for the generator to read.
+
+### What the stack guarantees
+
+- **Submission is pessimistic.** Nothing on screen changes until the Control
+  Plane confirms it. No form applies an optimistic update.
+- **One submission at a time.** The guard is a ref read at click time, not the
+  disabled attribute, so two clicks in one tick still send one write.
+- **Client validation never suppresses a backend rejection** (section 8.1). The
+  resolver is a convenience that catches a typo before a round trip. When you
+  write a test for a rejection, submit a value the *client accepts* and the
+  server refuses — a zone CIDR that overlaps, an address outside its zone —
+  because a malformed value never leaves the browser and proves nothing.
+- **Field errors land on their control.** Change proposal 0004 has the backend
+  name the field; `useConsoleForm` attaches the message to it. A field the form
+  does not render becomes a form-level message through `FormMessage`, never a
+  dropped rejection.
+- **Nothing is persisted.** `UnsavedChangesGuard` warns on navigation and saves
+  nothing. Section 8.6 forbids autosaving form state, and a half-typed decoy
+  persona is attacker-visible content that has no business outliving the tab.
+
+`TextField` takes a `registration` prop, typed structurally so `@shared/ui`
+never imports the form library. It composes the library's ref with the screen's
+`inputRef` rather than replacing it — replacing it silently broke the empty
+state that sends focus to the first field.
+
+## Decoy management
+
+`/environments/:environmentId/decoys` and its detail screen. The rules here are
+the product's claim about itself, so they are worth stating plainly.
+
+**Observed and configuration are two columns, always.** "The Edge applied
+revision 4" and "the decoy is answering on the network" are different claims.
+An operator would rather have one number; this product cannot honestly give
+them one, and a console that merges them is how a deception product ends up
+overstating its own coverage.
+
+**Absence is never favourable.** A decoy nothing has reported on is `unknown` —
+not `deployed` because someone asked for it, and not `absent`, because absence
+is a positive claim an Edge has to make. A missing interaction renders
+`Unknown`, never `Never`: `Never` asserts nothing has touched the decoy, and
+nobody established that.
+
+**Convergence past the window is a wait, not a failure.** `convergenceOf`
+returns `overdue` after sixty seconds (`DC-12`). That reports how long Guardian
+has been waiting. It does not say the decoy failed, because Guardian has not
+been told it did — section 9.5 forbids inventing a timeout. If a decoy really
+is degraded, the observed column says so with the reason the Edge reported.
+
+**`unmanaged` is asked no convergence question.** Per `SEC-06` the decoy stays
+visible with its last-known conditions; asking whether it converged would imply
+the Control Plane still drives something it has lost.
+
+**Every persona is labelled as an emulation.** `AC-SMB-002` turns on an
+operator not concluding that a real Windows host exists. Rendering the persona
+as a bare category invites exactly that, so the label travels with it.
+
+**The attacker-visibility warning is associated, not adjacent.** The display
+name and the address are shown to whoever probes the decoy — that is their
+purpose. The warning is wired through `aria-describedby` so it reaches a screen
+reader with the control, and it says never to enter a real credential or a real
+hostname. It is security-critical wording: change it through `security/` review,
+not as a copy edit.
+
 ## Continuous integration
 
 Two workflows, one job each, no conditions.
