@@ -1,0 +1,19 @@
+{
+  "schema": "guardian.decoy.manifest.v1",
+  "pack": "ssh-cowrie",
+  "version": "0.1.0",
+  "family": "ssh",
+  "interaction_level": "medium",
+  "ports": [{ "port": 22, "protocol": "tcp" }],
+  "network": { "mode": "routed_secondary_ip" },
+  "privileges": { "capabilities": ["NET_BIND_SERVICE"] },
+  "telemetry": { "adapter": "cowrie-json" },
+  "health_probe": { "type": "tcp_connect", "port": 22, "timeout_seconds": 5 },
+  "resources": { "cpu_millicores": 500, "memory_mib": 256, "pids": 128 },
+  "egress": { "policy": "deny", "allow": [] },
+  "persona": {
+    "personas": ["linux_admin_server"],
+    "hostname_pattern": "srv-{seq}",
+    "banner": "SSH-2.0-OpenSSH_8.4p1 Debian-5"
+  }
+}

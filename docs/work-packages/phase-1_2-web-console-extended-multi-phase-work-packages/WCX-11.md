@@ -3,7 +3,7 @@ id: WCX-11
 phase: 2
 wave: capability
 title: Form and validation stack with decoy management UI
-status: delivered
+status: approved-for-implementation
 risk: high
 components:
   - web-console
@@ -375,7 +375,11 @@ Stop and request owner review if any of the following occurs:
 
 ## 13. Delivery notes
 
-Delivered 2026-09-08. Two things the package assumed did not hold, and both
+Implementation landed on `main` on 2026-09-08. The `status` field above is the
+Product Owner's to set and has been left alone; this section records what was
+built so that decision can be made against facts.
+
+Two things the package assumed did not hold, and both
 were Product Owner decisions rather than judgement calls made here.
 
 **The performance budget.** `WC-D21` requires React Hook Form, which is 29 KB

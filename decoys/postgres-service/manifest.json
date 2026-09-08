@@ -1,0 +1,19 @@
+{
+  "schema": "guardian.decoy.manifest.v1",
+  "pack": "postgres-service",
+  "version": "0.1.0",
+  "family": "postgres",
+  "interaction_level": "low",
+  "ports": [{ "port": 5432, "protocol": "tcp" }],
+  "network": { "mode": "routed_secondary_ip" },
+  "privileges": { "capabilities": [] },
+  "telemetry": { "adapter": "postgres-wire" },
+  "health_probe": { "type": "tcp_connect", "port": 5432, "timeout_seconds": 5 },
+  "resources": { "cpu_millicores": 250, "memory_mib": 128, "pids": 64 },
+  "egress": { "policy": "deny", "allow": [] },
+  "persona": {
+    "personas": ["database_server"],
+    "hostname_pattern": "db-{seq}",
+    "banner": "PostgreSQL"
+  }
+}

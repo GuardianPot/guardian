@@ -14,8 +14,14 @@ advance.
 | Package | Status |
 |---|---|
 | `P2-W15` — Decoy domain, lifecycle contract, and management surface | delivered 2026-09-08 |
+| `P2-W4` — Decoy manifest schema | draft, implemented on `main` 2026-09-08 |
 
 Every other roadmap workstream is unwritten.
+
+`P2-W4` was written and implemented in the same pass, in the order the Product
+Owner set. Its `status` stays `draft` because promoting it is the owner's
+call, not an agent's; the code, the schema, the manifests, and the security
+review are on `main` for that decision to be made against.
 
 `WCX-11` is unblocked: every `UX-06` field now exists in the contract, and
 `openapi/guardian.yaml` carries the decoy paths the console reads. What it will

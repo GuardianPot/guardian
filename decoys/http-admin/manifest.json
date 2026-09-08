@@ -1,0 +1,19 @@
+{
+  "schema": "guardian.decoy.manifest.v1",
+  "pack": "http-admin",
+  "version": "0.1.0",
+  "family": "http",
+  "interaction_level": "low",
+  "ports": [{ "port": 80, "protocol": "tcp" }],
+  "network": { "mode": "routed_secondary_ip" },
+  "privileges": { "capabilities": ["NET_BIND_SERVICE"] },
+  "telemetry": { "adapter": "http-access" },
+  "health_probe": { "type": "tcp_connect", "port": 80, "timeout_seconds": 5 },
+  "resources": { "cpu_millicores": 250, "memory_mib": 128, "pids": 64 },
+  "egress": { "policy": "deny", "allow": [] },
+  "persona": {
+    "personas": ["internal_admin_web_app"],
+    "hostname_pattern": "admin-{seq}",
+    "banner": "Internal Operations Console"
+  }
+}

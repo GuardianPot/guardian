@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://guardianpot.dev/schemas/decoy/v1/decoy-manifest.schema.json",
+  "title": "Guardian decoy pack manifest v1",
+  "description": "What a decoy pack is, declared. P2-W15 gave the decoy record nowhere to put a runtime detail — no image, command, mount, capability, or port field exists in the API, on the wire, or in the database — so this file is the only place one can enter, and it is committed rather than supplied by an operator. A manifest is a checked declaration, not a verified artefact: signature enforcement is the Phase 5 gate AC-SEC-004.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "pack",
+    "version",
+    "family",
+    "interaction_level",
+    "ports",
+    "network",
+    "privileges",
+    "telemetry",
+    "health_probe",
+    "resources",
+    "egress",
+    "persona"
+  ],
+  "properties": {
+    "schema": {
+      "description": "The manifest contract version. A mismatch is explicit and fatal: a manifest this build does not implement is refused, never coerced and never partially read.",
+      "const": "guardian.decoy.manifest.v1"
+    },
+    "pack": {
+      "description": "Pack identity, matching decoys/index.json.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9-]{0,63}$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 32,
+      "pattern": "^[0-9]{1,6}\\.[0-9]{1,6}\\.[0-9]{1,6}$"
+    },
+    "family": {
+      "description": "The closed DC-01 family set.",
+      "enum": ["ssh", "http", "postgres", "smb"]
+    },
+    "interaction_level": {
+      "description": "INT-01. SSH is medium, HTTP and SMB are low, a database surface may be either. High interaction is outside the MVP and has no value here.",
+      "enum": ["low", "medium"]
+    },
+    "ports": {
+      "description": "The ports the decoy answers on. A decoy presents a service; it does not choose its own address, which is P2-W1's business.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["port", "protocol"],
+        "properties": {
+          "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+          "protocol": { "enum": ["tcp", "udp"] }
+        }
+      }
+    },
+    "network": {
+      "description": "How the decoy is placed on the network. The mode is a closed set because each value is a capability the Edge must already implement; a manifest cannot invent a placement strategy.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "description": "routed_secondary_ip is the P2-W1 MVP placement: a secondary address on a routed interface, reachable without touching production addressing. host_network is deliberately absent and is not a value this schema can express.",
+          "enum": ["routed_secondary_ip"]
+        }
+      }
+    },
+    "privileges": {
+      "description": "What the decoy needs beyond nothing. The default and the expectation is nothing: ADR 0009 and the P0-W6 review established a baseline of dropped capabilities, read-only root, no bind mounts, no runtime sockets, and no-new-privileges, and this object cannot express a departure from any of those. A request outside the closed capability set is rejected at load rather than filtered, so a pack author never believes they were granted something they were not.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilities"],
+      "properties": {
+        "capabilities": {
+          "description": "Linux capabilities to add to an otherwise empty set. NET_BIND_SERVICE is the only one Guardian grants, and only because a decoy presenting SSH on 22 or HTTP on 80 has no other way to bind it. Nothing here can request CAP_SYS_ADMIN, CAP_NET_ADMIN, CAP_NET_RAW, or privileged mode; there is no value for them.",
+          "type": "array",
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["NET_BIND_SERVICE"] }
+        }
+      }
+    },
+    "telemetry": {
+      "description": "How the pack's events reach the canonical envelope. The adapter is named from a closed set because each value is code that must exist; P2-W10 and P2-W11 own the normalisation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter"],
+      "properties": {
+        "adapter": { "enum": ["cowrie-json", "http-access", "postgres-wire", "smb-audit"] }
+      }
+    },
+    "health_probe": {
+      "description": "How P2-W14 decides whether this decoy is functionally alive. A probe is a connection attempt against a declared port and nothing more: it must not be able to run a command, because a health check that executes something is a second execution path into the decoy.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "port", "timeout_seconds"],
+      "properties": {
+        "type": { "enum": ["tcp_connect"] },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "timeout_seconds": { "type": "integer", "minimum": 1, "maximum": 30 }
+      }
+    },
+    "resources": {
+      "description": "Bounds the runtime applies. Required, not optional: an unbounded decoy is a denial-of-service surface on the host that is supposed to be protecting the network.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_millicores", "memory_mib", "pids"],
+      "properties": {
+        "cpu_millicores": { "type": "integer", "minimum": 10, "maximum": 2000 },
+        "memory_mib": { "type": "integer", "minimum": 16, "maximum": 1024 },
+        "pids": { "type": "integer", "minimum": 8, "maximum": 512 }
+      }
+    },
+    "egress": {
+      "description": "AC-SEC-003. The default policy denies outbound traffic to a forbidden external destination, and a manifest declares only what it needs on top of that. There is no 'allow all' value and no wildcard destination: the absence of a declaration means nothing is permitted, never everything. Cowrie is medium-interaction software and this is the field that keeps it from reaching the internet.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy", "allow"],
+      "properties": {
+        "policy": {
+          "description": "deny is the only policy. It is written out rather than assumed so that a reader of the manifest sees it, and so that adding a second value is a schema change with a review attached.",
+          "const": "deny"
+        },
+        "allow": {
+          "description": "Exceptions to the deny. Empty for every MVP pack: a decoy that needs to reach something is a decoy that can be used to reach something.",
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["destination", "port", "protocol", "reason"],
+            "properties": {
+              "destination": {
+                "description": "One RFC1918 host address. A public destination cannot be expressed.",
+                "type": "string",
+                "pattern": "^(10|172|192)\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$"
+              },
+              "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+              "protocol": { "enum": ["tcp", "udp"] },
+              "reason": { "type": "string", "minLength": 1, "maxLength": 256 }
+            }
+          }
+        }
+      }
+    },
+    "persona": {
+      "description": "DC-11 content metadata: what the pack presents to whoever probes it. Bounded text only. It cannot name a file, a path, a template, or a command, because content that can name an artefact is a second way to get one into the decoy.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["personas", "hostname_pattern", "banner"],
+      "properties": {
+        "personas": {
+          "description": "The curated DC-11 personas this pack can present. A decoy's persona must be one of these, and the set is closed: there is no generative persona builder, and AIM-06 places one outside the MVP.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "linux_admin_server",
+              "internal_admin_web_app",
+              "database_server",
+              "windows_file_service_host"
+            ]
+          }
+        },
+        "hostname_pattern": {
+          "description": "The shape of the hostname the decoy presents. Attacker-visible by design, so it must never resemble a real host: it is a pattern for generating a plausible name, not a name copied from the network.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9-]+(\\{[a-z_]+\\}[a-z0-9-]*)*$"
+        },
+        "banner": {
+          "description": "Bounded text the service presents on connection. Attacker-visible by design and therefore never a real version string, a real hostname, or anything identifying a real system.",
+          "type": "string",
+          "maxLength": 512
+        }
+      }
+    }
+  }
+}
