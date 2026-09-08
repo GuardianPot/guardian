@@ -517,6 +517,41 @@ export const CATALOGUE = {
   'decoys.field.zone': 'Zone',
   'decoys.field.pack': 'Pack',
   'decoys.field.packVersion': 'Pack version',
+  'decoys.field.packDigest': 'Pack digest',
+  'decoys.field.packDigestUnknown': 'No digest has been recorded for this pack yet.',
+  'decoys.field.interactionLevel': 'Interaction level',
+  'decoys.field.revision': 'Revision',
+
+  // Detail sections (section 9.4).
+  'decoys.section.identity': 'Identity and persona',
+  'decoys.section.placement': 'Placement',
+  'decoys.section.runtime': 'Runtime state',
+  'decoys.section.version': 'Version',
+  'decoys.section.interaction': 'Recent interaction',
+  'decoys.section.configure': 'Configuration',
+  'decoys.detail.back': 'All decoys',
+  'decoys.detail.edit': 'Edit configuration',
+  'decoys.detail.save': 'Save configuration',
+
+  // Observed detail. Every one of these says who reported and when, because a
+  // claim about the network is only as good as its provenance (SRC-07).
+  'decoys.observed.reported': 'Reported {age} ago',
+  'decoys.observed.stale': 'This observation is {age} old, so it may no longer be true.',
+  'decoys.observed.conditionsLabel': 'Observed dimensions',
+  'decoys.observed.reasonLabel': 'Reported reason',
+  'decoys.observed.messageLabel': 'Reported detail',
+  'decoys.observed.nextAction': 'Check the reporting Edge, then re-apply the configuration.',
+  'decoys.observed.noConditions': 'No dimension has been reported for this decoy.',
+  'decoys.condition.runtime_healthy': 'Runtime',
+  'decoys.condition.address_applied': 'Address applied',
+  'decoys.condition.port_responding': 'Port responding',
+  'decoys.condition.telemetry_reporting': 'Telemetry',
+  'decoys.condition.policy_applied': 'Policy applied',
+  'decoys.condition.version_matches_desired': 'Version matches desired',
+  'decoys.convergence.pending': 'Waiting for the Edge to apply revision {desired}',
+  'decoys.convergence.lastApplied': 'Last applied revision {observed}',
+  'decoys.convergence.neverApplied': 'No revision has been confirmed applied yet.',
+  'decoys.result.updated': 'Configuration saved. The Edge has not applied it yet.',
 
   // AC-SMB-002 and section 8.9. Every persona is an emulation. The console
   // must never state or imply that a real Windows, database, or application

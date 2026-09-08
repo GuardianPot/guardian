@@ -14,3 +14,6 @@ export { convergenceOf, hasBeenObserved, observationAgeMs, CONVERGENCE_WINDOW_MS
 export const DecoysRoute = lazy(() =>
   import('./DecoysPage').then((module) => ({ default: module.DecoysPage })),
 );
+export const DecoyRoute = lazy(() =>
+  import('./DecoyDetailPage').then((module) => ({ default: module.DecoyDetailPage })),
+);

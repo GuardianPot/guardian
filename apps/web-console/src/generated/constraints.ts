@@ -95,5 +95,33 @@ export const CONSTRAINTS = {
         "pattern": "^[0-9]{1,6}\\.[0-9]{1,6}\\.[0-9]{1,6}$"
       }
     }
+  },
+  "AuthLoginRequest": {
+    "required": [
+      "username",
+      "password"
+    ],
+    "fields": {
+      "username": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 64
+      },
+      "password": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1024
+      },
+      "totp_code": {
+        "type": "string",
+        "pattern": "^[0-9]{6}$"
+      },
+      "recovery_code": {
+        "type": "string",
+        "minLength": 22,
+        "maxLength": 22,
+        "pattern": "^[A-Za-z0-9_-]{22}$"
+      }
+    }
   }
 } as const;

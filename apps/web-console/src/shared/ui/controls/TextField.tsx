@@ -92,6 +92,19 @@ export function TextField({
 }: TextFieldProps) {
   const fieldId = useId();
   const invalid = error !== undefined || invalidatedBy !== undefined;
+  /*
+   * Both refs, not whichever was spread last.
+   *
+   * The form stack needs its callback ref to read and reset the control, and a
+   * screen needs `inputRef` to send focus — the empty state that points at the
+   * field creating the first item depends on it. Letting the registration
+   * overwrite `inputRef` silently broke that: the control still worked and the
+   * focus affordance stopped moving anywhere.
+   */
+  const attachRef = (instance: HTMLInputElement | null) => {
+    registration?.ref(instance);
+    if (inputRef) inputRef.current = instance;
+  };
   const describedBy = [
     description === undefined ? '' : `${fieldId}-description`,
     error === undefined ? '' : `${fieldId}-error`,
@@ -102,13 +115,13 @@ export function TextField({
     <div className={styles.field}>
       <Label.Root htmlFor={fieldId}>{label}</Label.Root>
       {/*
-        `registration` is spread last so the form stack owns name, ref, change,
-        and blur whenever it is driving this field. Everything above it is a
-        default the stack may replace; `id`, `aria-invalid`, and
-        `aria-describedby` are not in that set and cannot be overridden.
+        `registration` is spread last so the form stack owns name, change, and
+        blur whenever it is driving this field. The ref is composed rather than
+        replaced, above, because a screen may also need it for focus. `id`,
+        `aria-invalid`, and `aria-describedby` are never overridable.
       */}
       <input
-        ref={inputRef}
+        ref={attachRef}
         id={fieldId}
         name={name}
         type={type}
@@ -124,7 +137,7 @@ export function TextField({
         {...(defaultValue === undefined ? {} : { defaultValue })}
         {...(value === undefined ? {} : { value })}
         {...(onChange === undefined ? {} : { onChange: (event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value) })}
-        {...(registration ?? {})}
+        {...(registration === undefined ? {} : { name: registration.name, onChange: registration.onChange, onBlur: registration.onBlur })}
       />
       {description !== undefined && (
         <span className={styles.fieldDescription} id={`${fieldId}-description`}>{description}</span>

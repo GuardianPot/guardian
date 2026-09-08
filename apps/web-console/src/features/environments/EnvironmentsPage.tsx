@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState, type FormEvent } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { createEnvironment as createEnvironmentRequest, environmentInvalidation, environmentsQuery } from './api';
 import { useAuth, useCapability } from '@features/auth';
-import { textField } from '@shared/forms/textField';
+import { FormMessage, maxLengthOf, schemaFor, useConsoleForm } from '@shared/forms';
 import { configEncoding } from '@shared/theme/statusEncoding';
 import {
   Button,
@@ -19,6 +19,12 @@ import {
 import styles from '@shared/styles/app.module.css';
 import { plural, t } from '@shared/text';
 
+const createSchema = schemaFor<'EnvironmentWriteRequest', { display_name: string }>(
+  'EnvironmentWriteRequest',
+  ['display_name'],
+);
+const NAME_LIMIT = maxLengthOf('EnvironmentWriteRequest', 'display_name') ?? 512;
+
 export function EnvironmentsPage() {
   const auth = useAuth();
   const queryClient = useQueryClient();
@@ -32,21 +38,34 @@ export function EnvironmentsPage() {
     onSuccess: () => environmentInvalidation.afterEnvironmentWrite(queryClient),
   });
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError('');
-    if (!auth.csrf) return setError(t('environments.reauthenticateToCreate'));
-    const form = event.currentTarget;
-    try {
-      await create.mutateAsync(textField(new FormData(form), 'display_name'));
-      form.reset();
-      // A completed action gets a toast; the failure below gets an inline
-      // message, never a toast alone (WCX-04 section 9.4).
-      toasts.show(t('environments.created'));
-    } catch {
-      setError(t('environments.createFailed'));
-    }
-  }
+  /**
+   * `WCX-11` moved this onto the form stack. Behaviour is unchanged: the same
+   * request, the same toast on success, the same inline message on failure.
+   * What changed is where the bound comes from — `maxLength` was hand-copied
+   * here and is now derived from the contract, which section 8.2 requires
+   * because a copy drifts and a drifted copy accepts what the Control Plane
+   * will refuse.
+   */
+  const form = useConsoleForm<{ display_name: string }>({
+    schema: createSchema,
+    defaultValues: { display_name: '' },
+    onSubmit: async (values) => {
+      setError('');
+      if (!auth.csrf) {
+        setError(t('environments.reauthenticateToCreate'));
+        return;
+      }
+      try {
+        await create.mutateAsync(values.display_name);
+        form.form.reset({ display_name: '' });
+        // A completed action gets a toast; the failure below gets an inline
+        // message, never a toast alone (WCX-04 section 9.4).
+        toasts.show(t('environments.created'));
+      } catch {
+        setError(t('environments.createFailed'));
+      }
+    },
+  });
 
   const reason = createEnvironment.allowed ? undefined : t('environments.reauthenticateToCreate');
 
@@ -95,20 +114,25 @@ export function EnvironmentsPage() {
         </Panel>
         <Panel heading={t('environments.createHeading')} headingLevel={2} eyebrow={t('environments.createEyebrow')}>
           <p>{t('environments.createIntro')}</p>
-          <form className={styles.form} onSubmit={(event) => { void submit(event); }}>
+          <form className={styles.form} onSubmit={(event) => { void form.submit(event); }}>
+            <FormMessage error={form.formError} unattached={form.unattached} id={form.formErrorId} />
             <TextField
               name="display_name"
               label={t('environments.displayName')}
               required
-              maxLength={128}
+              maxLength={NAME_LIMIT}
               inputRef={nameField}
+              registration={form.form.register('display_name')}
+              {...(form.form.formState.errors.display_name?.message === undefined
+                ? {}
+                : { error: String(form.form.formState.errors.display_name.message) })}
               {...(reason === undefined ? {} : { disabledReason: reason })}
             />
             {error && <InlineMessage tone="error">{error}</InlineMessage>}
             <Button
               variant="primary"
               type="submit"
-              pending={create.isPending}
+              pending={create.isPending || form.submitting}
               {...(reason === undefined ? {} : { disabledReason: reason })}
             >
               {t('environments.create')}

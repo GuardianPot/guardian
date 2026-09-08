@@ -71,6 +71,20 @@ function fieldSchema(constraint: Constraint, required: boolean) {
 }
 
 /**
+ * A form field that may satisfy any one of several contract fields.
+ *
+ * Sign-in has exactly one: a single `proof` control carries either a TOTP code
+ * or a recovery code, because the operator picks the method and the contract's
+ * `oneOf` says the request carries one or the other. Validating it against both
+ * shapes keeps the bound derived from the contract rather than retyped, which
+ * is the whole point of section 8.2 — the alternative was a hand-written
+ * `[0-9]{6}` in a component, drifting the moment the contract changed.
+ */
+export type Alternatives<Name extends SchemaName> = Readonly<
+  Record<string, readonly (keyof (typeof CONSTRAINTS)[Name]['fields'] & string)[]>
+>;
+
+/**
  * Builds the validator for one contract write request.
  *
  * `fields` narrows to the subset a given form actually renders — the decoy
@@ -83,6 +97,7 @@ export function schemaFor<
 >(
   name: Name,
   fields: readonly (keyof (typeof CONSTRAINTS)[Name]['fields'] & string)[],
+  alternatives: Alternatives<Name> = {},
 ): v.GenericSchema<Values, Values> {
   const declaration = CONSTRAINTS[name];
   const required: readonly string[] = declaration.required;
@@ -97,6 +112,18 @@ export function schemaFor<
       throw new Error(`contract schema ${name} has no field ${field}`);
     }
     entries[field] = fieldSchema(constraint, required.includes(field));
+  }
+  for (const [formField, contractFields] of Object.entries(alternatives)) {
+    const options = contractFields.map((contractField) => {
+      const constraint = source[contractField];
+      if (constraint === undefined) {
+        throw new Error(`contract schema ${name} has no field ${contractField}`);
+      }
+      // Required against every alternative: the control itself is required, and
+      // which contract field it satisfies is the operator's method choice.
+      return fieldSchema(constraint, true);
+    });
+    entries[formField] = v.union(options, t(MESSAGE.pattern));
   }
   /*
    * The one cast in this module, and it is narrowing a runtime-built schema to

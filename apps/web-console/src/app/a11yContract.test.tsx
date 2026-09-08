@@ -103,13 +103,15 @@ describe('forms', () => {
     await screen.findByRole('heading', { name: 'Lab', level: 1 });
 
     await userEvent.type(screen.getByLabelText('Zone name'), 'Overlapping');
-    await userEvent.type(screen.getByLabelText('Private CIDR'), '10.20.0.0/33');
+    // Well-formed, so the client validator passes it and the Control Plane is
+    // what refuses it. A malformed value would never leave the browser.
+    await userEvent.type(screen.getByLabelText('Private CIDR'), '10.30.0.0/24');
     await userEvent.click(screen.getByRole('button', { name: 'Add zone' }));
 
     const alert = await screen.findByRole('alert');
     // Section 9.6.5: the message names the correction, not just the failure.
     expect(alert).toHaveTextContent('Use a canonical, non-overlapping RFC1918 CIDR.');
-    expect(alert).not.toHaveTextContent('10.20.0.0/33');
+    expect(alert).not.toHaveTextContent('10.30.0.0/24');
   });
 });
 

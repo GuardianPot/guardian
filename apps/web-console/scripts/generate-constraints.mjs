@@ -22,7 +22,12 @@ import process from 'node:process';
  * Only the write requests are emitted. A response schema has no validator, and
  * emitting the whole contract would ship bytes no form reads.
  */
-const SCHEMAS = ['EnvironmentWriteRequest', 'ZoneWriteRequest', 'DecoyWriteRequest'];
+const SCHEMAS = [
+  'EnvironmentWriteRequest',
+  'ZoneWriteRequest',
+  'DecoyWriteRequest',
+  'AuthLoginRequest',
+];
 
 /** The constraint keywords a validator can act on. Everything else is prose. */
 const KEYWORDS = ['type', 'minLength', 'maxLength', 'pattern', 'enum', 'format'];

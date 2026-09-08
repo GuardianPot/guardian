@@ -48,6 +48,18 @@ describe('EnvironmentPage', () => {
     expect(stub.calls.filter((call) => !call.key.startsWith('GET '))).toEqual([]);
   });
 
+  /*
+   * The submitted CIDR is well-formed, so the client validator passes it, and
+   * the Control Plane refuses it anyway because only the Control Plane knows
+   * what the environment already holds.
+   *
+   * `WCX-11` changed the value under test from `10.20.0.0/33`. That was
+   * malformed, and once the form stack derived its pattern from the contract
+   * the console caught it before the request went out — which is the right
+   * behaviour and the wrong test, because it stopped exercising what this test
+   * is about: section 8.1's rule that client validation never suppresses a
+   * truthful backend rejection.
+   */
   it('reports a rejected zone without claiming success or leaking the submitted values', async () => {
     const stub = mockApi(readHandlers({
       [`POST /v1/environments/${environmentID}/zones`]: () => json({ error: 'invalid_cidr' }, 422),
@@ -55,12 +67,12 @@ describe('EnvironmentPage', () => {
     renderRoute(<EnvironmentPage />, { path: routePath, entry });
 
     await userEvent.type(await screen.findByLabelText('Zone name'), 'Overlapping');
-    await userEvent.type(screen.getByLabelText('Private CIDR'), '10.20.0.0/33');
+    await userEvent.type(screen.getByLabelText('Private CIDR'), '10.30.0.0/24');
     await userEvent.click(screen.getByRole('button', { name: 'Add zone' }));
 
     const notice = await screen.findByText(/Zone creation failed/);
     expect(notice).toHaveTextContent('Use a canonical, non-overlapping RFC1918 CIDR.');
-    expect(notice).not.toHaveTextContent('10.20.0.0/33');
+    expect(notice).not.toHaveTextContent('10.30.0.0/24');
     // An error is never toast-only: this is a banner, so it persists until the
     // condition clears rather than expiring unseen (section 8.5).
     expect(notice).toHaveAttribute('role', 'alert');
