@@ -204,6 +204,17 @@ tasks:
           {{.EDGE_RACE_IMAGE}} \
           sh -ec 'mkdir -p /tmp/go-build /tmp/go-tmp /tmp/home && exec go test -mod=readonly -count=1 -run ^TestRootPeerAndSocketSecurity$ ./internal/privileged'
 
+  presence:probe:
+    desc: Verify the P2-W1 conflict pre-check against a live segment, unprivileged
+    cmds:
+      # AC-ON-004 needs an answer to "does another host already hold this
+      # address". The obvious implementation is an ARP probe, which needs root
+      # and a new privileged operation; this asserts the unprivileged one works
+      # on a real segment, as uid 1000, against a live gateway and a free
+      # address in the same subnet.
+      - |
+        docker run --rm           --network bridge           --user 1000:1000           --cap-drop=ALL           --security-opt=no-new-privileges           --pids-limit=256           --env GOWORK=off           --env GUARDIAN_LIVE_PROBE=1           --env GOCACHE=/tmp/go-build           --env GOMODCACHE=/go/pkg/mod           --env HOME=/tmp/home           --mount "type=bind,src={{.ROOT_DIR}}/apps/edge-agent,dst=/src,readonly"           --mount "type=bind,src=$(go env GOMODCACHE),dst=/go/pkg/mod,readonly"           --workdir /src           {{.EDGE_RACE_IMAGE}}           sh -ec 'mkdir -p /tmp/go-build /tmp/home && exec go test -mod=readonly -count=1 -run TestLiveProbe -v ./internal/presence'
+
   edge:race:
     desc: Run Edge Agent race tests in the pinned isolated Go builder
     deps: [edge:tools, privileged:generated]
