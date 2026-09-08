@@ -291,6 +291,18 @@ tasks:
       - npm run openapi:check
       - npm run canonical-contracts:check
 
+  event:contracts:
+    desc: Verify canonical event parity across the schema, Control Plane, and Edge
+    env:
+      GOWORK: 'off'
+    cmds:
+      - node tests/integration/event/check-contracts.mjs
+      - go -C apps/control-plane test ./internal/event
+      - cmd: go -C apps/edge-agent test ./internal/normalize
+        platforms: [linux]
+      - cmd: GOOS=linux go -C apps/edge-agent vet ./internal/normalize
+        platforms: [windows, darwin]
+
   health:contracts:
     desc: Verify P1-W9 canonical health contract parity and domain behavior
     env:
