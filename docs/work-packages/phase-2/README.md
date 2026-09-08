@@ -15,6 +15,7 @@ advance.
 |---|---|
 | `P2-W15` — Decoy domain, lifecycle contract, and management surface | delivered 2026-09-08 |
 | `P2-W4` — Decoy manifest schema | draft, implemented on `main` 2026-09-08 |
+| `P2-W1` — Routed presence driver | draft, driver on `main` 2026-09-08; privileged half blocked |
 
 Every other roadmap workstream is unwritten.
 
