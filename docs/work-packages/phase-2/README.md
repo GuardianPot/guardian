@@ -18,6 +18,7 @@ advance.
 | `P2-W1` — Routed presence driver | draft, driver and conflict probe on `main` 2026-09-08; netlink adapter blocked |
 | `P2-W10` — Canonical event and evidence envelope | draft, implemented on `main` 2026-09-08 |
 | `P2-W11` — Edge normalization adapters | draft, implemented on `main` 2026-09-08 |
+| `P2-W9` — Synthetic credential domain | draft, domain on `main` 2026-09-10; decoy delivery blocked |
 
 Every other roadmap workstream is unwritten.
 
