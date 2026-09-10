@@ -62,6 +62,7 @@ tasks:
       - task: privileged:generated
       - task: edge:integration
       - task: privileged:security
+      - task: presence:netlink
       - go -C apps/control-plane vet ./...
       - go -C apps/edge-agent vet ./...
       - go -C apps/control-plane test ./...
@@ -214,6 +215,36 @@ tasks:
       # address in the same subnet.
       - |
         docker run --rm           --network bridge           --user 1000:1000           --cap-drop=ALL           --security-opt=no-new-privileges           --pids-limit=256           --env GOWORK=off           --env GUARDIAN_LIVE_PROBE=1           --env GOCACHE=/tmp/go-build           --env GOMODCACHE=/go/pkg/mod           --env HOME=/tmp/home           --mount "type=bind,src={{.ROOT_DIR}}/apps/edge-agent,dst=/src,readonly"           --mount "type=bind,src=$(go env GOMODCACHE),dst=/go/pkg/mod,readonly"           --workdir /src           {{.EDGE_RACE_IMAGE}}           sh -ec 'mkdir -p /tmp/go-build /tmp/home && exec go test -mod=readonly -count=1 -run TestLiveProbe -v ./internal/presence'
+
+  presence:netlink:
+    desc: Exercise the P2-W1 netlink address adapter against a live kernel in a throwaway namespace
+    deps: [edge:tools, privileged:generated]
+    cmds:
+      # The adapter adds and removes real addresses, so it is exercised against
+      # a real kernel rather than a fake. The container has its own network
+      # namespace and its own eth0, both discarded when it exits, so a bug in
+      # the code under test cannot reach anything outside it.
+      #
+      # The capability set is exactly the one the systemd unit grants:
+      # CAP_NET_ADMIN and nothing else. If the adapter ever needed more, this
+      # would fail here rather than in a customer's network.
+      - |
+        docker run --rm \
+          --network bridge \
+          --cap-drop=ALL \
+          --cap-add=NET_ADMIN \
+          --security-opt=no-new-privileges \
+          --pids-limit=256 \
+          --env GOWORK=off \
+          --env GUARDIAN_NETLINK_LAB=1 \
+          --env GOCACHE=/tmp/go-build \
+          --env GOMODCACHE=/go/pkg/mod \
+          --env HOME=/tmp/home \
+          --mount "type=bind,src={{.ROOT_DIR}}/apps/edge-agent,dst=/src,readonly" \
+          --mount "type=bind,src=$(go env GOMODCACHE),dst=/go/pkg/mod,readonly" \
+          --workdir /src \
+          {{.EDGE_RACE_IMAGE}} \
+          sh -ec 'mkdir -p /tmp/go-build /tmp/home && exec go test -mod=readonly -count=1 -run ^TestNetlinkAddressAdapterAgainstALiveKernel$ -v ./internal/privileged'
 
   edge:race:
     desc: Run Edge Agent race tests in the pinned isolated Go builder

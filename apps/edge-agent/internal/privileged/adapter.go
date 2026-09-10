@@ -34,27 +34,47 @@ type AdapterResult struct {
 	ReasonCode string
 }
 
+// AdapterCapability is what an adapter can do for one operation, and why.
+//
+// The reason travels with the state because "unsupported" has more than one
+// cause and they are not interchangeable to whoever is reading the status: a
+// capability nobody has written yet, a helper running without CAP_NET_ADMIN,
+// and a service profile that forbids netlink are three different problems with
+// three different fixes.
+type AdapterCapability struct {
+	State      privilegedv1.CapabilityState
+	ReasonCode string
+}
+
 // Adapter is the only boundary through which typed privileged operations can
 // reach Linux/runtime implementations. It deliberately exposes no command,
 // executable, filesystem path, runtime socket, or raw ruleset argument.
 type Adapter interface {
-	Capabilities() map[privilegedv1.PrivilegedOperation]privilegedv1.CapabilityState
+	Capabilities() map[privilegedv1.PrivilegedOperation]AdapterCapability
 	EnsureAddress(context.Context, AddressOperation) (AdapterResult, error)
 	ApplyNftablesPolicy(context.Context, NftablesOperation) (AdapterResult, error)
 	ReconcileContainer(context.Context, ContainerOperation) (AdapterResult, error)
 	EnsureNetworkNamespace(context.Context, NamespaceOperation) (AdapterResult, error)
 }
 
-// UnsupportedAdapter is the honest Phase 1 production implementation. Phase 2
-// replaces individual typed operations without widening this interface.
+// UnsupportedAdapter is the honest implementation for a host Guardian cannot
+// change: it does nothing and says so. Phase 2 replaces individual typed
+// operations without widening this interface.
 type UnsupportedAdapter struct{}
 
-func (UnsupportedAdapter) Capabilities() map[privilegedv1.PrivilegedOperation]privilegedv1.CapabilityState {
-	return map[privilegedv1.PrivilegedOperation]privilegedv1.CapabilityState{
-		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_ADDRESS:             privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED,
-		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NFTABLES_POLICY:     privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED,
-		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_CONTAINER_LIFECYCLE: privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED,
-		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NETWORK_NAMESPACE:   privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED,
+func (UnsupportedAdapter) Capabilities() map[privilegedv1.PrivilegedOperation]AdapterCapability {
+	return map[privilegedv1.PrivilegedOperation]AdapterCapability{
+		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_ADDRESS:             notImplemented(),
+		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NFTABLES_POLICY:     notImplemented(),
+		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_CONTAINER_LIFECYCLE: notImplemented(),
+		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NETWORK_NAMESPACE:   notImplemented(),
+	}
+}
+
+func notImplemented() AdapterCapability {
+	return AdapterCapability{
+		State:      privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED,
+		ReasonCode: unsupportedReason,
 	}
 }
 

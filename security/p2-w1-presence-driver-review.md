@@ -1,12 +1,16 @@
 # P2-W1 routed presence driver security review
 
-- Review date: 2026-09-08
+- Review date: 2026-09-08, extended 2026-09-11 for the netlink adapter
 - Work package: P2-W1
 - Decisions: DC-12, SP-01, SP-02, ADR 0009
 - Acceptance: AC-ON-004, plus P2-W1's reboot-reconcile and no-orphan-IP criteria
-- Scope: `apps/edge-agent/internal/presence` — the reconciler and the
-  unprivileged conflict probe. The netlink adapter is **not** in scope: it is
-  not written, and section 5 says why.
+- Scope: `apps/edge-agent/internal/presence` (reconciler, conflict probe, helper
+  driver), `apps/edge-agent/internal/privileged` (netlink address adapter), and
+  `deploy/edge-agent/guardian-edge-privd.service`
+
+The second review date is the important one. The first pass covered code that
+held no privilege at all; this one covers root code that changes a customer's
+network, and a service profile that had to be widened to let it.
 
 ## The risk this package carries
 
@@ -94,32 +98,144 @@ Removals run before applies, because the Control Plane permits an address to
 move between decoys and applying the new holder first would put a duplicate on
 the wire.
 
+## The netlink adapter: what the privilege actually grew by
+
+This is the part of the package that carries real risk, and the honest summary
+is that the service profile changed more than the code did.
+
+### The profile was not merely restrictive, it was prohibitive
+
+The shipped helper ran as root with an **empty capability bounding set**,
+`PrivateNetwork=yes`, and `RestrictAddressFamilies=AF_UNIX`. Each of those
+independently makes a netlink address change impossible: no `CAP_NET_ADMIN`, no
+view of the host's interfaces, and no `AF_NETLINK` socket. Filling in the
+adapter without touching the unit would have shipped dead code that reported
+`netlink-unavailable` forever.
+
+The widening is exactly three directives:
+
+| Was | Is | Why |
+|---|---|---|
+| `CapabilityBoundingSet=` | `CapabilityBoundingSet=CAP_NET_ADMIN` | The only capability an address change needs |
+| `PrivateNetwork=yes` | `PrivateNetwork=no` | The host's interfaces are the thing being changed |
+| `RestrictAddressFamilies=AF_UNIX` | `… AF_UNIX AF_NETLINK` | The transport |
+
+`systemd-analyze security --offline=yes` moves from **1.3 to 1.8**, measured
+rather than estimated, and `PrivateMounts=yes` was added to keep headroom under
+the gate's ceiling of 2.0. Every one of the three lines is asserted verbatim by
+`tests/security/privileged-helper/run.sh`, which now also rejects a *second*
+occurrence of any of them — a duplicate directive unions with the first, so an
+exact match on one line is only a real bound if there is exactly one line.
+
+`PrivateNetwork=no` is the largest single concession and deserves naming: the
+helper can now see the host's network. What stops it using that is
+`IPAddressDeny=any`, a newly added `SocketBindDeny=any`, and the address-family
+restriction, which together leave it able to change addressing while unable to
+send a packet. `AF_INET`, `AF_INET6`, and `AF_PACKET` remain forbidden, and the
+gate fails if any of them appears.
+
+### No process execution, at the cost of encoding netlink by hand
+
+The obvious implementation is `ip addr add`. It was rejected: an `exec` path
+inside a process holding `CAP_NET_ADMIN` is one unchecked string away from being
+an arbitrary-command path, and the boundary test greps production code for that
+primitive. The adapter therefore encodes `RTM_NEWADDR` and `RTM_DELADDR`
+directly.
+
+The message parser is written in this repository rather than taken from
+`syscall`, because that one reinterprets the receive buffer through unsafe
+pointer casts. This one checks every kernel-supplied length against what
+actually arrived before using it as a bound, and refuses the datagram otherwise.
+A truncated read, an oversized declared length, and a zero-length attribute are
+each asserted.
+
+Replies are filtered on three things: the sending port must be 0 (the kernel),
+and the sequence number and port ID must be the ones asked about. The socket
+carries a receive timeout, so a kernel that never answers stops a root process
+rather than parking it.
+
+### The refusal that matters: Guardian never removes an address it did not add
+
+Every address the adapter places carries the IPv4 label `<interface>:gdn`. The
+label is the kernel's own ownership marker, visible in `ip -4 addr show`, and it
+is checked in both directions: an address on the interface without it is the
+host's, and both placing over it and removing it are refused with
+`address-held-by-host`.
+
+This is what stands between a misconfigured `--allow-address-range` and a
+customer outage. The allowlist is the primary control and it is unchanged; the
+label is the second one, and it is enforced by the kernel's own record rather
+than by any state this helper keeps — which matters, because the helper is
+deliberately stateless across restarts.
+
+The trade is a length limit. A label is capped at 15 characters and convention
+requires it to start with the interface name, so an interface name longer than
+11 characters cannot carry one. Rather than place an unlabelled address, the
+adapter refuses with `interface-name-too-long-to-label`. A loud refusal on an
+unusual interface name is better than an address Guardian could not later prove
+was its own; every conventional name (`eth0`, `ens192`, `enp0s31f6`, `br-decoy`)
+fits.
+
+IPv6 is refused for the same reason: labels are an IPv4 mechanism, so an IPv6
+decoy address would be unmarked. `presence.Address` already accepted only
+private IPv4, so this narrows nothing in practice.
+
+### One residual risk, and it is the operator's to avoid
+
+Deleting the *primary* address of an IPv4 subnet makes the kernel remove the
+secondaries in that subnet with it. Guardian's addresses are added after the
+host's and are therefore secondaries, so removing one cascades to nothing. The
+exception is a host address added to an interface *after* Guardian's, in a
+subnet the operator also allowlisted as a decoy range — a configuration that
+already requires putting production addressing inside a decoy range. The host
+mitigation is `net.ipv4.conf.<if>.promote_secondaries=1`. It is recorded here
+rather than coded around, because no check inside the helper can distinguish
+that case from a legitimate one.
+
+### Evidence
+
+`task presence:netlink` runs the adapter against a real kernel in a container
+holding `CAP_NET_ADMIN` and nothing else, in a throwaway network namespace: an
+address is added and observed carrying Guardian's label, adding it again reports
+no change, it is removed, removing it again reports no change, and an address
+staged with a foreign label is refused in both directions and survives intact.
+The interface's pre-existing addresses are compared before and after, and the
+placement is confirmed a second time through `net.Interface.Addrs`, which
+reaches the kernel by a netlink implementation this repository did not write.
+
 ## What is not covered
 
-**The netlink adapter is not written.** `EnsureAddress` in the privileged helper
-is validated, allowlisted, audited, and idempotent, and its adapter is
-`UnsupportedAdapter` — `P1-W8` built the boundary and left the implementation
-out deliberately. Filling it is new root code that mutates host networking, and
-`AGENTS.md` names that a stop-and-ask. No contract change is involved; the RPC
-already exists.
+**The probe is a point-in-time answer.** A host switched on between the probe
+and the apply would collide. The kernel's own duplicate address detection would
+narrow the window; the adapter does not use it, and this stays a known
+limitation rather than a solved problem.
 
-Until it lands, this package decides correctly and applies nothing. The driver
-reports `unsupported` in that state and never `present`, so nothing downstream
-can mistake a decided address for a placed one.
+**Nothing calls the reconciler yet.** `NewHelperDriver` joins the two halves and
+is asserted to satisfy the real client's signature, but the Edge has no source
+of desired decoy addresses. The chain is complete and idle. Nothing places an
+address today without a caller that does not yet exist, which is worth knowing
+when reading the risk above.
 
-**The probe is a point-in-time answer.** A host that is switched on after the
-probe and before the apply would collide. Narrowing that window further needs
-the kernel's own duplicate address detection, which is the adapter's business
-when it exists — a note for `P2-W1`'s second half rather than a gap in this one.
+**Routing.** The adapter attaches the broadcast address iproute2 would and
+nothing else. Decoy reachability beyond the local subnet is not this package's.
 
-**Routing and interface binding.** The roadmap lists them; they are the
-adapter's, not the driver's, and the driver's `Address` already carries the
-interface the adapter will bind to.
+**The other three operations.** `ApplyNftablesPolicy`, `ReconcileContainer`, and
+`EnsureNetworkNamespace` still report `phase-2-adapter-not-implemented`. Each is
+a separate privileged surface with its own review, and the capability report is
+per-operation precisely so that filling one does not imply the others.
 
 ## Conclusion
 
-No new privilege. The package's one externally visible behaviour is a single
-datagram to an operator-chosen address, and it exists to avoid the far larger
-harm of taking that address blind. The privileged surface is unchanged, and the
-capability that looked like it would have to grow — a raw socket in the root
-helper — turned out not to be needed at all.
+The unprivileged half of this package is unchanged and still needs no privilege.
+The privileged half grants exactly one capability, and the profile that carries
+it has been measured, tightened where it could be, and pinned line by line.
+
+The failure this package exists to prevent — Guardian taking an address a
+production host was using — now has two independent controls: the operator's
+allowlist, and the kernel's own record of which addresses Guardian labelled. The
+second one is new, and it is the reason the adapter is safer than the RPC
+boundary alone made it.
+
+The profile has roughly 0.2 of headroom under the security gate's ceiling. That
+is deliberate: `P2-W2` and `P2-W3` each want another capability, and neither
+will slip through without a decision.

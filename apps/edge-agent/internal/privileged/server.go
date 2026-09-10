@@ -108,17 +108,23 @@ func (s *Server) GetStatus(ctx context.Context, request *privilegedv1.GetStatusR
 	}
 	capabilities := make([]*privilegedv1.Capability, 0, len(operations))
 	for _, operation := range operations {
-		state := capabilityStates[operation]
-		reason := "adapter-available"
-		if state == privilegedv1.CapabilityState_CAPABILITY_STATE_UNSPECIFIED {
-			state = privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED
+		capability := capabilityStates[operation]
+		// An operation the adapter did not mention at all is unsupported. A
+		// missing entry is not a claim, and the status must not turn one into
+		// an available capability.
+		if capability.State == privilegedv1.CapabilityState_CAPABILITY_STATE_UNSPECIFIED {
+			capability = notImplemented()
 		}
-		if state == privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED {
-			reason = unsupportedReason
+		reason := capability.ReasonCode
+		if !reasonCodePattern.MatchString(reason) {
+			reason = "adapter-available"
+			if capability.State != privilegedv1.CapabilityState_CAPABILITY_STATE_AVAILABLE {
+				reason = unsupportedReason
+			}
 		}
 		capabilities = append(capabilities, &privilegedv1.Capability{
 			Operation:  operation,
-			State:      state,
+			State:      capability.State,
 			ReasonCode: reason,
 		})
 	}

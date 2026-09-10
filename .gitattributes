@@ -2,3 +2,7 @@
 *.go text eol=lf
 go.mod text eol=lf
 go.sum text eol=lf
+# systemd parses these on Linux and the security gate matches whole lines in
+# them. A CRLF working copy on Windows makes every one of those matches fail
+# locally while passing in CI, which is the worst way for a check to be wrong.
+*.service text eol=lf

@@ -47,12 +47,15 @@ func (function runtimeProberFunc) ProbeRuntime(ctx context.Context) (bool, strin
 	return function(ctx)
 }
 
-func (*testAdapter) Capabilities() map[privilegedv1.PrivilegedOperation]privilegedv1.CapabilityState {
-	return map[privilegedv1.PrivilegedOperation]privilegedv1.CapabilityState{
-		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_ADDRESS:             privilegedv1.CapabilityState_CAPABILITY_STATE_AVAILABLE,
-		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NFTABLES_POLICY:     privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED,
-		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_CONTAINER_LIFECYCLE: privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED,
-		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NETWORK_NAMESPACE:   privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED,
+func (*testAdapter) Capabilities() map[privilegedv1.PrivilegedOperation]AdapterCapability {
+	return map[privilegedv1.PrivilegedOperation]AdapterCapability{
+		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_ADDRESS: {
+			State:      privilegedv1.CapabilityState_CAPABILITY_STATE_AVAILABLE,
+			ReasonCode: "netlink-address-adapter",
+		},
+		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NFTABLES_POLICY:     notImplemented(),
+		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_CONTAINER_LIFECYCLE: notImplemented(),
+		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NETWORK_NAMESPACE:   notImplemented(),
 	}
 }
 

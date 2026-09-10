@@ -102,8 +102,13 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 			Verifier:   privileged.ProcProcessVerifier{},
 		},
 		Allowlist: allowlist,
-		Adapter:   privileged.UnsupportedAdapter{},
-		Audit:     recorder,
+		// The host adapter can only reach an interface, an address range, a
+		// namespace, or a workload the operator named on the command line.
+		// With no --allow-* arguments every typed operation is refused before
+		// the adapter is consulted, so installing the helper changes nothing on
+		// its own.
+		Adapter: privileged.NewHostAdapter(),
+		Audit:   recorder,
 	})
 	if err != nil {
 		return err

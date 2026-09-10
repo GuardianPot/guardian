@@ -23,13 +23,24 @@ RuntimeDirectory=guardian-edge-privd
 RuntimeDirectoryMode=0750
 
 NoNewPrivileges=yes
-CapabilityBoundingSet=
+# P2-W1: the address adapter changes a host interface through NETLINK_ROUTE, and
+# CAP_NET_ADMIN is the whole of what that needs. This line is the capability
+# grant in its entirety — the helper runs as root, so the bounding set is what
+# actually decides its powers, and everything outside it stays unreachable.
+CapabilityBoundingSet=CAP_NET_ADMIN
 AmbientCapabilities=
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
-PrivateNetwork=yes
+# Already implied by the three directives around it; stated so the profile
+# keeps headroom under the exposure ceiling the security gate enforces.
+PrivateMounts=yes
+# An address has to be added to the host's interface, which cannot be seen from
+# a private network namespace. This is the largest single concession in the
+# profile and the reason IPAddressDeny and SocketBindDeny below are not
+# optional: the helper can see the host's network but cannot speak on it.
+PrivateNetwork=no
 ProtectClock=yes
 ProtectHostname=yes
 ProtectKernelTunables=yes
@@ -44,11 +55,15 @@ LockPersonality=yes
 MemoryDenyWriteExecute=yes
 RemoveIPC=yes
 DevicePolicy=closed
-RestrictAddressFamilies=AF_UNIX
+# AF_UNIX for the helper's own socket, AF_NETLINK for the address adapter.
+# AF_INET, AF_INET6, and AF_PACKET remain unreachable, so the helper can change
+# the host's addressing without being able to send a packet.
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
 SystemCallArchitectures=native
 SystemCallFilter=@system-service
 SystemCallErrorNumber=EPERM
 IPAddressDeny=any
+SocketBindDeny=any
 TasksMax=64
 LimitNOFILE=1024
 LimitCORE=0

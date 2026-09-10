@@ -26,12 +26,35 @@ service_file="$repo_root/deploy/edge-agent/guardian-edge-privd.service"
 grep -Fxq 'User=root' "$service_file"
 grep -Fxq 'Group=guardian-edge' "$service_file"
 grep -Fxq 'NoNewPrivileges=yes' "$service_file"
-grep -Fxq 'CapabilityBoundingSet=' "$service_file"
-grep -Fxq 'AmbientCapabilities=' "$service_file"
-grep -Fxq 'PrivateNetwork=yes' "$service_file"
-grep -Fxq 'RestrictAddressFamilies=AF_UNIX' "$service_file"
 grep -Fxq 'SystemCallFilter=@system-service' "$service_file"
+
+# P2-W1 widened this profile so the netlink address adapter can run at all, and
+# these four lines are the entire widening. They are asserted exactly, because
+# the difference between CAP_NET_ADMIN and CAP_NET_ADMIN plus one more is the
+# difference between changing an address and owning the host.
+grep -Fxq 'CapabilityBoundingSet=CAP_NET_ADMIN' "$service_file"
+grep -Fxq 'AmbientCapabilities=' "$service_file"
+grep -Fxq 'PrivateNetwork=no' "$service_file"
+grep -Fxq 'RestrictAddressFamilies=AF_UNIX AF_NETLINK' "$service_file"
+
+# A second occurrence of either directive unions with the first, so an exact
+# match on one line is only a real bound if there is exactly one line.
+for directive in CapabilityBoundingSet AmbientCapabilities RestrictAddressFamilies PrivateNetwork; do
+  if [ "$(grep -c "^${directive}=" "$service_file")" -ne 1 ]; then
+    echo "Privileged-helper service declares ${directive} more than once." >&2
+    exit 1
+  fi
+done
+
+# The helper now sees the host's network namespace. These are what stop it
+# using that: no IP traffic, no socket bound to an IP port, and no address
+# family through which either could be attempted.
 grep -Fxq 'IPAddressDeny=any' "$service_file"
+grep -Fxq 'SocketBindDeny=any' "$service_file"
+if grep -Eq '^RestrictAddressFamilies=.*(AF_INET|AF_INET6|AF_PACKET)' "$service_file"; then
+  echo 'Privileged-helper service permits an address family it can send packets over.' >&2
+  exit 1
+fi
 
 systemd-analyze verify \
   deploy/edge-agent/guardian-edge-privd.service \
