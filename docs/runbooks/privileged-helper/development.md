@@ -7,7 +7,7 @@ From the repository root:
 ```bash
 task privileged:generated
 task privileged:security
-task presence:netlink
+task privileged:netlink
 GOWORK=off go -C apps/edge-agent test ./...
 ```
 
@@ -17,12 +17,22 @@ capabilities. That lab proves an authorized UID/GID can call `GetStatus`, wrong
 UID and GID peers fail before dispatch and are audited, and a decoy identity
 cannot open the production-mode socket.
 
-`task presence:netlink` exercises the address adapter against a real kernel in a
+`task privileged:netlink` exercises both host adapters against a real kernel in a
 container holding `CAP_NET_ADMIN` and nothing else, in its own throwaway network
-namespace. It proves an address is added, observed, removed, that repeating
-either is reported as no change, and that an address the adapter did not label
-is refused in both directions and survives untouched. Both labs run in the
-`full` workflow through `task go:check`; neither runs in the fast lane.
+namespace.
+
+For addresses it proves one is added, observed, removed, that repeating either
+is reported as no change, and that an address the adapter did not label is
+refused in both directions and survives untouched.
+
+For egress it proves the thing that matters: a datagram sent from a decoy source
+address is refused by the kernel with `EPERM` once the policy is applied, while
+the same datagram to the same destination from the host's own address still
+goes. It also deletes the table behind the adapter's back to confirm a removed
+policy reads as unconverged rather than as already applied.
+
+Both labs run in the `full` workflow through `task go:check`; neither runs in the
+fast lane.
 
 ## Reference installation
 
@@ -54,12 +64,13 @@ Expected socket metadata:
 
 ## What the installed helper can do
 
-`P2-W1` gave the helper one host-mutating capability and nothing else.
+`P2-W1` and `P2-W2` are implemented, and both fit inside the one capability the
+unit already grants.
 
 | Operation | State | Notes |
 |---|---|---|
 | `EnsureAddress` | implemented | Adds and removes IPv4 addresses over `NETLINK_ROUTE` |
-| `ApplyNftablesPolicy` | `phase-2-adapter-not-implemented` | `P2-W2` |
+| `ApplyNftablesPolicy` | implemented | Default-deny decoy egress over `NETLINK_NETFILTER` |
 | `ReconcileContainer` | `phase-2-adapter-not-implemented` | `P2-W3` |
 | `EnsureNetworkNamespace` | `phase-2-adapter-not-implemented` | `P2-W3` |
 
@@ -104,18 +115,48 @@ carry a label that fits the kernel's 15-character limit, and address operations
 on it are refused with `interface-name-too-long-to-label` rather than performed
 unlabelled.
 
-### If the capability is reported unsupported
+### The decoy egress policy
 
-`GetStatus` reports `PRIVILEGED_OPERATION_ADDRESS` with a reason:
+`ApplyNftablesPolicy` installs `AC-SEC-003`: a decoy cannot open an outbound
+connection. The ruleset lives in the host's own `ip` table `guardian_decoy` and
+is keyed on the `--allow-address-range` prefixes — the same set that decides
+which addresses may be placed, so the two cannot drift apart. Inspect it with:
 
-| Reason | Meaning |
-|---|---|
-| `netlink-address-adapter` | Working |
-| `no-cap-net-admin` | The unit's bounding set does not include `CAP_NET_ADMIN` |
-| `netlink-unavailable` | `RestrictAddressFamilies` omits `AF_NETLINK`, or `PrivateNetwork=yes` |
+```bash
+nft list table ip guardian_decoy
+```
 
-All three are the service profile, not the binary. Check the unit before
-anything else.
+Two base chains, `guardian_forward` and `guardian_output`, send traffic from a
+decoy source to `guardian_egress`, which accepts an established or related reply
+and drops everything else. Both base chains carry policy `accept` on purpose: a
+`drop` policy in a Guardian table would drop the host's own traffic, so the
+denial is in the rules and scoped to decoy sources.
+
+Every rule carries a marker naming the policy version and a digest of the ranges
+it was built from, which is how the helper tells "already applied" from "the
+table was flushed" and from "the configured ranges changed". The result is read
+back from the kernel before the helper reports it as applied.
+
+The ruleset does not survive a reboot — nftables state is kernel state. It is
+reinstalled by the next reconcile pass, and a decoy must not be started before
+that pass completes.
+
+### If a capability is reported unsupported
+
+`GetStatus` reports each operation with a reason:
+
+| Reason | Operation | Meaning |
+|---|---|---|
+| `netlink-address-adapter` | address | Working |
+| `nftables-egress-adapter` | egress | Working |
+| `no-decoy-ranges-configured` | egress | No `--allow-address-range`, so the policy would protect nothing |
+| `no-cap-net-admin` | both | The unit's bounding set does not include `CAP_NET_ADMIN` |
+| `netlink-unavailable` | both | `RestrictAddressFamilies` omits `AF_NETLINK`, or `PrivateNetwork=yes` |
+| `nftables-unavailable` | egress | The kernel has no `nf_tables` subsystem |
+
+Only `no-decoy-ranges-configured` is an argument problem. The rest are the
+service profile or the kernel, not the binary; check the unit before anything
+else.
 
 ## Diagnosis and recovery
 

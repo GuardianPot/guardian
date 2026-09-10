@@ -122,17 +122,54 @@ func TestAnAdapterWithoutTheCapabilityClaimsNothing(t *testing.T) {
 			t.Fatalf("result = %+v", result)
 		}
 	}
-	// The other three operations stay unimplemented: this package fills P2-W1's
-	// address adapter and claims nothing for P2-W2 or P2-W3.
-	for operation, capability := range adapter.Capabilities() {
-		if operation == privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_ADDRESS {
-			continue
-		}
+	// The runtime operations stay unimplemented: P2-W1 and P2-W2 filled the
+	// address and egress adapters and claim nothing for P2-W3.
+	for _, operation := range []privilegedv1.PrivilegedOperation{
+		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_CONTAINER_LIFECYCLE,
+		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NETWORK_NAMESPACE,
+	} {
+		capability := adapter.Capabilities()[operation]
 		if capability.State != privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED ||
 			capability.ReasonCode != unsupportedReason {
 			t.Fatalf("%v = %+v, want an unimplemented capability", operation, capability)
 		}
 	}
+}
+
+// An operation an adapter did not mention is unsupported. A missing entry is
+// not a claim, and the status must never turn one into an available capability.
+func TestAnUnmentionedOperationIsNeverAvailable(t *testing.T) {
+	server, err := NewServer(ServerConfig{
+		Adapter: silentAdapter{},
+		Audit:   &memoryAudit{},
+		Runtime: runtimeProberFunc(func(context.Context) (bool, string) { return false, "probe-failed" }),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := server.GetStatus(context.Background(), &privilegedv1.GetStatusRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(response.GetCapabilities()) != 4 {
+		t.Fatalf("reported %d capabilities, want 4", len(response.GetCapabilities()))
+	}
+	for _, capability := range response.GetCapabilities() {
+		if capability.GetState() != privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED {
+			t.Fatalf("%v = %v, want unsupported", capability.GetOperation(), capability.GetState())
+		}
+		if !reasonCodePattern.MatchString(capability.GetReasonCode()) {
+			t.Fatalf("reason %q is not a closed token", capability.GetReasonCode())
+		}
+	}
+}
+
+// silentAdapter reports nothing at all, which is the shape of a future adapter
+// that forgets an operation.
+type silentAdapter struct{ UnsupportedAdapter }
+
+func (silentAdapter) Capabilities() map[privilegedv1.PrivilegedOperation]AdapterCapability {
+	return nil
 }
 
 // Whatever a probe finds, it is never reported as a capability Guardian has

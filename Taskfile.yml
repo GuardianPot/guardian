@@ -62,7 +62,7 @@ tasks:
       - task: privileged:generated
       - task: edge:integration
       - task: privileged:security
-      - task: presence:netlink
+      - task: privileged:netlink
       - go -C apps/control-plane vet ./...
       - go -C apps/edge-agent vet ./...
       - go -C apps/control-plane test ./...
@@ -216,8 +216,8 @@ tasks:
       - |
         docker run --rm           --network bridge           --user 1000:1000           --cap-drop=ALL           --security-opt=no-new-privileges           --pids-limit=256           --env GOWORK=off           --env GUARDIAN_LIVE_PROBE=1           --env GOCACHE=/tmp/go-build           --env GOMODCACHE=/go/pkg/mod           --env HOME=/tmp/home           --mount "type=bind,src={{.ROOT_DIR}}/apps/edge-agent,dst=/src,readonly"           --mount "type=bind,src=$(go env GOMODCACHE),dst=/go/pkg/mod,readonly"           --workdir /src           {{.EDGE_RACE_IMAGE}}           sh -ec 'mkdir -p /tmp/go-build /tmp/home && exec go test -mod=readonly -count=1 -run TestLiveProbe -v ./internal/presence'
 
-  presence:netlink:
-    desc: Exercise the P2-W1 netlink address adapter against a live kernel in a throwaway namespace
+  privileged:netlink:
+    desc: Exercise the P2-W1 address and P2-W2 egress adapters against a live kernel in a throwaway namespace
     deps: [edge:tools, privileged:generated]
     cmds:
       # The adapter adds and removes real addresses, so it is exercised against
@@ -244,7 +244,7 @@ tasks:
           --mount "type=bind,src=$(go env GOMODCACHE),dst=/go/pkg/mod,readonly" \
           --workdir /src \
           {{.EDGE_RACE_IMAGE}} \
-          sh -ec 'mkdir -p /tmp/go-build /tmp/home && exec go test -mod=readonly -count=1 -run ^TestNetlinkAddressAdapterAgainstALiveKernel$ -v ./internal/privileged'
+          sh -ec 'mkdir -p /tmp/go-build /tmp/home && exec go test -mod=readonly -count=1 -run AgainstALiveKernel -v ./internal/privileged'
 
   edge:race:
     desc: Run Edge Agent race tests in the pinned isolated Go builder

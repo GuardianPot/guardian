@@ -84,8 +84,11 @@ type netlinkConn struct {
 	sequence uint32
 }
 
-func dialNetlink() (*netlinkConn, error) {
-	fd, err := unix.Socket(unix.AF_NETLINK, unix.SOCK_RAW|unix.SOCK_CLOEXEC, unix.NETLINK_ROUTE)
+// dialNetlink opens the route socket, which is what address work uses.
+func dialNetlink() (*netlinkConn, error) { return dialNetlinkProtocol(unix.NETLINK_ROUTE) }
+
+func dialNetlinkProtocol(protocol int) (*netlinkConn, error) {
+	fd, err := unix.Socket(unix.AF_NETLINK, unix.SOCK_RAW|unix.SOCK_CLOEXEC, protocol)
 	if err != nil {
 		return nil, err
 	}
@@ -181,6 +184,93 @@ func (c *netlinkConn) receive(sequence uint32) ([]netlinkMessage, error) {
 			}
 		}
 	}
+}
+
+// batchMessage is one message inside a netlink transaction.
+type batchMessage struct {
+	messageType uint16
+	flags       uint16
+	payload     []byte
+}
+
+/*
+executeBatch sends several messages as one datagram and waits for the kernel to
+acknowledge all of them.
+
+nftables applies a batch atomically: either every message in it takes effect or
+none does. That is what lets an egress policy be replaced without a window in
+which it is absent, which for a default-deny control is the difference between
+reconfiguration and a hole.
+*/
+func (c *netlinkConn) executeBatch(messages []batchMessage) error {
+	if len(messages) == 0 {
+		return nil
+	}
+	var datagram []byte
+	awaited := map[uint32]struct{}{}
+	for _, message := range messages {
+		c.sequence++
+		// Only messages that asked to be acknowledged will be. The transaction
+		// boundaries are handled by nfnetlink itself and answer nothing, so
+		// waiting on the last sequence number rather than on these would wait
+		// for a reply the kernel never sends.
+		if message.flags&unix.NLM_F_ACK != 0 {
+			awaited[c.sequence] = struct{}{}
+		}
+		total := unix.SizeofNlMsghdr + len(message.payload)
+		header := make([]byte, unix.SizeofNlMsghdr)
+		binary.NativeEndian.PutUint32(header[0:4], uint32(total))
+		binary.NativeEndian.PutUint16(header[4:6], message.messageType)
+		binary.NativeEndian.PutUint16(header[6:8], message.flags)
+		binary.NativeEndian.PutUint32(header[8:12], c.sequence)
+		binary.NativeEndian.PutUint32(header[12:16], c.portID)
+		datagram = append(datagram, header...)
+		datagram = append(datagram, message.payload...)
+		for len(datagram)%netlinkAlignment != 0 {
+			datagram = append(datagram, 0)
+		}
+	}
+	if err := unix.Sendto(c.fd, datagram, 0, &unix.SockaddrNetlink{Family: unix.AF_NETLINK}); err != nil {
+		return err
+	}
+	return c.acknowledge(awaited)
+}
+
+// acknowledge reads until every message that asked for an acknowledgement has
+// been answered, and fails on the first non-zero errno. A batch is
+// all-or-nothing, so one refusal means nothing in it was applied.
+func (c *netlinkConn) acknowledge(awaited map[uint32]struct{}) error {
+	for len(awaited) != 0 {
+		buffer := make([]byte, netlinkBufferBytes)
+		read, from, err := unix.Recvfrom(c.fd, buffer, 0)
+		if err != nil {
+			return err
+		}
+		source, ok := from.(*unix.SockaddrNetlink)
+		if !ok || source.Pid != 0 {
+			continue
+		}
+		messages, err := parseNetlinkMessages(buffer[:read])
+		if err != nil {
+			return err
+		}
+		for _, message := range messages {
+			if message.portID != c.portID || message.messageType != unix.NLMSG_ERROR {
+				continue
+			}
+			if _, expected := awaited[message.sequence]; !expected {
+				continue
+			}
+			if len(message.data) < 4 {
+				return errNetlinkTruncated
+			}
+			if number := int32(binary.NativeEndian.Uint32(message.data[0:4])); number != 0 {
+				return unix.Errno(-number)
+			}
+			delete(awaited, message.sequence)
+		}
+	}
+	return nil
 }
 
 // addressesOn returns every IPv4 address the kernel reports on one interface.

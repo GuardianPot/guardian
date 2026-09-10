@@ -47,7 +47,7 @@ func TestNetlinkAddressAdapterAgainstALiveKernel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("the lab container has no %s: %v", labInterface, err)
 	}
-	adapter := NewHostAdapter().(hostAdapter)
+	adapter := NewHostAdapter(Allowlist{}).(hostAdapter)
 	if adapter.address.State != privilegedv1.CapabilityState_CAPABILITY_STATE_AVAILABLE {
 		t.Fatalf("address capability = %+v inside the lab", adapter.address)
 	}

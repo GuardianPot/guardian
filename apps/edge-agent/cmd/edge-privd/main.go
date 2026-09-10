@@ -107,7 +107,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		// With no --allow-* arguments every typed operation is refused before
 		// the adapter is consulted, so installing the helper changes nothing on
 		// its own.
-		Adapter: privileged.NewHostAdapter(),
+		Adapter: privileged.NewHostAdapter(allowlist),
 		Audit:   recorder,
 	})
 	if err != nil {

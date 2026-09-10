@@ -27,14 +27,27 @@ removing an address it did not add — and that is refused by the label check in
 both directions.
 */
 type hostAdapter struct {
-	address AdapterCapability
+	address  AdapterCapability
+	nftables AdapterCapability
+	// decoyRanges is the compiled allowlist. The egress policy is built from
+	// it, which is what keeps the set of addresses Guardian may place and the
+	// set it denies egress for from ever drifting apart.
+	decoyRanges []netip.Prefix
 }
 
 // NewHostAdapter builds the Linux adapter and settles, once, what it can
-// actually do. The capability is probed rather than assumed, so a helper
-// deployed without CAP_NET_ADMIN or without netlink reports `unsupported`
-// instead of failing every call at the point of use.
-func NewHostAdapter() Adapter { return hostAdapter{address: probeAddressCapability()} }
+// actually do. Each capability is probed rather than assumed, so a helper
+// deployed without CAP_NET_ADMIN, without netlink, or without decoy ranges
+// reports `unsupported` instead of failing every call at the point of use.
+func NewHostAdapter(allowlist Allowlist) Adapter {
+	ranges := make([]netip.Prefix, len(allowlist.addressRanges))
+	copy(ranges, allowlist.addressRanges)
+	return hostAdapter{
+		address:     probeAddressCapability(),
+		nftables:    probeNftablesCapability(ranges),
+		decoyRanges: ranges,
+	}
+}
 
 func probeAddressCapability() AdapterCapability {
 	if !holdsCapNetAdmin() {
@@ -59,6 +72,48 @@ func probeAddressCapability() AdapterCapability {
 	}
 }
 
+/*
+probeNftablesCapability establishes three things before claiming the egress
+policy can be applied: the capability, a working nf_tables subsystem, and a
+decoy range to write a policy about.
+
+The third is not pedantry. A policy built from an empty range list installs
+rules that match nothing, and reporting that as `applied` would tell an operator
+their decoys are contained when nothing is containing them. `AC-SEC-003` is the
+one control standing between medium-interaction decoy software and the
+internet, so the failure to avoid is a false claim of enforcement.
+*/
+func probeNftablesCapability(ranges []netip.Prefix) AdapterCapability {
+	unsupported := func(reason string) AdapterCapability {
+		return AdapterCapability{
+			State:      privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED,
+			ReasonCode: reason,
+		}
+	}
+	// Configuration before capability, because this answer does not depend on
+	// where the helper is running and is the one an operator can act on.
+	if len(ranges) == 0 {
+		return unsupported("no-decoy-ranges-configured")
+	}
+	if !holdsCapNetAdmin() {
+		return unsupported("no-cap-net-admin")
+	}
+	connection, err := dialNetlinkProtocol(unix.NETLINK_NETFILTER)
+	if err != nil {
+		return unsupported("netlink-unavailable")
+	}
+	defer func() { _ = connection.Close() }()
+	// Ask the subsystem a real question. A kernel without nf_tables answers
+	// this with something other than "no such table".
+	if _, err := observedEgressPolicy(connection); err != nil {
+		return unsupported("nftables-unavailable")
+	}
+	return AdapterCapability{
+		State:      privilegedv1.CapabilityState_CAPABILITY_STATE_AVAILABLE,
+		ReasonCode: "nftables-egress-adapter",
+	}
+}
+
 func holdsCapNetAdmin() bool {
 	header := unix.CapUserHeader{Version: unix.LINUX_CAPABILITY_VERSION_3}
 	var data [2]unix.CapUserData
@@ -72,7 +127,7 @@ func holdsCapNetAdmin() bool {
 func (a hostAdapter) Capabilities() map[privilegedv1.PrivilegedOperation]AdapterCapability {
 	return map[privilegedv1.PrivilegedOperation]AdapterCapability{
 		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_ADDRESS:             a.address,
-		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NFTABLES_POLICY:     notImplemented(),
+		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NFTABLES_POLICY:     a.nftables,
 		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_CONTAINER_LIFECYCLE: notImplemented(),
 		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NETWORK_NAMESPACE:   notImplemented(),
 	}
@@ -201,8 +256,64 @@ func removeAddress(connection *netlinkConn, index int, prefix netip.Prefix, labe
 	return AdapterResult{}, err
 }
 
-func (hostAdapter) ApplyNftablesPolicy(context.Context, NftablesOperation) (AdapterResult, error) {
-	return unsupportedResult(), nil
+/*
+ApplyNftablesPolicy installs `AC-SEC-003`: a decoy cannot open an outbound
+connection.
+
+What is installed does not depend on the request. The profile is the only one
+the contract defines, and the addresses it covers come from the helper's
+root-controlled startup arguments, so an RPC caller chooses *when* the policy is
+applied and never *what* it says. The namespace argument names which allowlisted
+Guardian namespace the operator is asserting the profile for; applying it for a
+second namespace produces the same ruleset and reports no change.
+
+The result is read back from the kernel before it is reported. A transaction the
+kernel acknowledged is not the same fact as a ruleset that is present, and for a
+containment control only the second one is worth reporting.
+*/
+func (a hostAdapter) ApplyNftablesPolicy(ctx context.Context, operation NftablesOperation) (AdapterResult, error) {
+	if a.nftables.State != privilegedv1.CapabilityState_CAPABILITY_STATE_AVAILABLE {
+		return unsupportedOutcome(a.nftables.ReasonCode), nil
+	}
+	if err := ctx.Err(); err != nil {
+		return AdapterResult{}, err
+	}
+	if operation.Profile != privilegedv1.NftablesProfile_NFTABLES_PROFILE_DEFAULT_DENY_EGRESS {
+		return AdapterResult{}, violation(codes.InvalidArgument, "invalid-nftables-profile")
+	}
+	if len(a.decoyRanges) == 0 {
+		// Unreachable while the capability probe holds, and checked anyway: an
+		// empty policy is the one outcome that must never be called applied.
+		return unsupportedOutcome("no-decoy-ranges-configured"), nil
+	}
+	connection, err := dialNetlinkProtocol(unix.NETLINK_NETFILTER)
+	if err != nil {
+		return AdapterResult{}, err
+	}
+	defer func() { _ = connection.Close() }()
+
+	ruleset := buildEgressPolicy(a.decoyRanges)
+	observed, err := observedEgressPolicy(connection)
+	if err != nil {
+		return AdapterResult{}, err
+	}
+	if ruleset.matches(observed) {
+		return unchanged("egress-policy-already-applied"), nil
+	}
+	if err := applyEgressPolicy(connection, ruleset); err != nil {
+		if errors.Is(err, unix.EPERM) || errors.Is(err, unix.EACCES) {
+			return unsupportedOutcome("no-cap-net-admin"), nil
+		}
+		return AdapterResult{}, err
+	}
+	confirmed, err := observedEgressPolicy(connection)
+	if err != nil {
+		return AdapterResult{}, err
+	}
+	if !ruleset.matches(confirmed) {
+		return AdapterResult{}, violation(codes.Internal, "egress-policy-not-confirmed")
+	}
+	return applied("egress-policy-applied"), nil
 }
 
 func (hostAdapter) ReconcileContainer(context.Context, ContainerOperation) (AdapterResult, error) {
