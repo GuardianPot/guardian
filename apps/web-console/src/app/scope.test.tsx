@@ -91,7 +91,15 @@ describe('with exactly one environment', () => {
     await waitFor(() => {
       expect(router.state.location.search).toBe(`?env=${environmentID}`);
     });
-    expect(await screen.findByLabelText('Environment scope')).toHaveValue(environmentID);
+    // The control's value is asserted inside `waitFor` as well, not just its
+    // existence. The selector is in the tree before the scope resolves, so
+    // `findByLabelText` returns immediately and the value can still be a render
+    // behind the router state that was just awaited — which is exactly how this
+    // failed intermittently under a full-suite run and never in isolation.
+    const selector = await screen.findByLabelText('Environment scope');
+    await waitFor(() => {
+      expect(selector).toHaveValue(environmentID);
+    });
   });
 });
 
