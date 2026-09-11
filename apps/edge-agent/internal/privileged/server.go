@@ -266,7 +266,7 @@ func rpcError(err error) error {
 }
 
 func (s *Server) authorizeAndAudit(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (response any, err error) {
-	operationCtx, cancel := boundedContext(ctx, operationTimeout)
+	operationCtx, cancel := boundedContext(ctx, timeoutFor(info.FullMethod))
 	defer cancel()
 
 	requestID, fingerprint := requestAuditMetadata(info.FullMethod, request)
@@ -292,6 +292,16 @@ func (s *Server) authorizeAndAudit(ctx context.Context, request any, info *grpc.
 		state.recorded.Store(true)
 	}
 	return response, err
+}
+
+// timeoutFor keeps every operation at the helper's short bound except the one
+// that may have to fetch an image. Nothing else is allowed to hold a root
+// process's request slot for minutes.
+func timeoutFor(method string) time.Duration {
+	if method == privilegedv1.PrivilegedHelperService_ReconcileContainer_FullMethodName {
+		return containerOperationTimeout
+	}
+	return operationTimeout
 }
 
 func boundedContext(ctx context.Context, maximum time.Duration) (context.Context, context.CancelFunc) {

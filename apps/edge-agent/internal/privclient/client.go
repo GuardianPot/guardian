@@ -23,10 +23,13 @@ import (
 )
 
 const (
-	componentName  = "privileged-helper"
-	probeTimeout   = 2 * time.Second
-	monitorPeriod  = 5 * time.Second
-	shutdownReason = "shutdown"
+	componentName = "privileged-helper"
+	probeTimeout  = 2 * time.Second
+	monitorPeriod = 5 * time.Second
+	// A little over the helper's own container bound, so the helper's timeout
+	// is the one that fires and its reason reaches the caller.
+	containerCallTimeout = 3*time.Minute + 10*time.Second
+	shutdownReason       = "shutdown"
 )
 
 var ErrUnavailable = errors.New("privileged-helper-unavailable")
@@ -158,7 +161,9 @@ func (c *Client) ReconcileContainer(ctx context.Context, request *privilegedv1.R
 	if err != nil {
 		return nil, err
 	}
-	callCtx, cancel := c.callContext(ctx)
+	// The one call allowed to outlast the client's short timeout: a first pass
+	// may fetch an image. The helper bounds it on its side too.
+	callCtx, cancel := context.WithTimeout(ctx, containerCallTimeout)
 	defer cancel()
 	return service.ReconcileContainer(callCtx, request)
 }

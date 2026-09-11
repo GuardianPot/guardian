@@ -12,9 +12,18 @@ import (
 
 func TestEdgePrivilegeAndStorageBoundaries(t *testing.T) {
 	moduleRoot := filepath.Clean(filepath.Join("..", ".."))
+	// containerd is root-equivalent authority, so it is named file by file
+	// rather than by directory. P1-W8 needed only the reachability probe;
+	// P2-W3's runtime manager adds its client and its reconciler. Every entry is
+	// inside the privileged helper, and a new file that wants containerd has to
+	// be added here by name and reviewed.
 	containerdImportAllowlist := map[string]struct{}{
-		filepath.Join("internal", "privileged", "runtime.go"):                  {},
-		filepath.Join("internal", "privileged", "runtime_integration_test.go"): {},
+		filepath.Join("internal", "privileged", "runtime.go"):                   {},
+		filepath.Join("internal", "privileged", "runtime_integration_test.go"):  {},
+		filepath.Join("internal", "privileged", "containerd_client.go"):         {},
+		filepath.Join("internal", "privileged", "container_runtime.go"):         {},
+		filepath.Join("internal", "privileged", "container_runtime_test.go"):    {},
+		filepath.Join("internal", "privileged", "containerd_lab_linux_test.go"): {},
 	}
 	forbiddenEverywhere := map[string]string{
 		"os/exec":                        "the main daemon must not execute shell or child commands",

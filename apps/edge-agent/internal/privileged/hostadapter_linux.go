@@ -33,6 +33,8 @@ type hostAdapter struct {
 	// it, which is what keeps the set of addresses Guardian may place and the
 	// set it denies egress for from ever drifting apart.
 	decoyRanges []netip.Prefix
+	containers  AdapterCapability
+	runtime     *containerRuntime
 }
 
 // NewHostAdapter builds the Linux adapter and settles, once, what it can
@@ -42,11 +44,56 @@ type hostAdapter struct {
 func NewHostAdapter(allowlist Allowlist) Adapter {
 	ranges := make([]netip.Prefix, len(allowlist.addressRanges))
 	copy(ranges, allowlist.addressRanges)
-	return hostAdapter{
+	adapter := hostAdapter{
 		address:     probeAddressCapability(),
 		nftables:    probeNftablesCapability(ranges),
 		decoyRanges: ranges,
+		containers:  containerCapability(allowlist),
 	}
+	adapter.runtime = &containerRuntime{
+		dial:              func() (decoyRuntimeAPI, error) { return dialContainerd(containerdSocketPath) },
+		workloadDirectory: DefaultWorkloadDirectory,
+		egressReady:       adapter.egressReady,
+	}
+	return adapter
+}
+
+// containerCapability does not probe containerd. Whether the runtime answers
+// right now is GetRuntimeStatus's question and changes minute to minute; this
+// one is whether the helper can manage decoy containers at all on this host.
+func containerCapability(allowlist Allowlist) AdapterCapability {
+	if len(allowlist.workloads) == 0 {
+		return AdapterCapability{
+			State:      privilegedv1.CapabilityState_CAPABILITY_STATE_UNSUPPORTED,
+			ReasonCode: "no-workloads-allowlisted",
+		}
+	}
+	return AdapterCapability{
+		State:      privilegedv1.CapabilityState_CAPABILITY_STATE_AVAILABLE,
+		ReasonCode: "containerd-runtime-adapter",
+	}
+}
+
+// egressReady is the P2-W2 ordering, checked where decoys are started: the
+// default-deny policy for exactly the configured ranges must be installed now.
+// Anything short of a positive answer is "not ready".
+func (a hostAdapter) egressReady() error {
+	if a.nftables.State != privilegedv1.CapabilityState_CAPABILITY_STATE_AVAILABLE {
+		return errors.New(a.nftables.ReasonCode)
+	}
+	connection, err := dialNetlinkProtocol(unix.NETLINK_NETFILTER)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = connection.Close() }()
+	observed, err := observedEgressPolicy(connection)
+	if err != nil {
+		return err
+	}
+	if !buildEgressPolicy(a.decoyRanges).matches(observed) {
+		return errors.New("egress-policy-not-applied")
+	}
+	return nil
 }
 
 func probeAddressCapability() AdapterCapability {
@@ -128,7 +175,7 @@ func (a hostAdapter) Capabilities() map[privilegedv1.PrivilegedOperation]Adapter
 	return map[privilegedv1.PrivilegedOperation]AdapterCapability{
 		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_ADDRESS:             a.address,
 		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NFTABLES_POLICY:     a.nftables,
-		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_CONTAINER_LIFECYCLE: notImplemented(),
+		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_CONTAINER_LIFECYCLE: a.containers,
 		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NETWORK_NAMESPACE:   notImplemented(),
 	}
 }
@@ -316,8 +363,16 @@ func (a hostAdapter) ApplyNftablesPolicy(ctx context.Context, operation Nftables
 	return applied("egress-policy-applied"), nil
 }
 
-func (hostAdapter) ReconcileContainer(context.Context, ContainerOperation) (AdapterResult, error) {
-	return unsupportedResult(), nil
+// ReconcileContainer converges one decoy container; see container_runtime.go
+// for the rules.
+func (a hostAdapter) ReconcileContainer(ctx context.Context, operation ContainerOperation) (AdapterResult, error) {
+	if a.containers.State != privilegedv1.CapabilityState_CAPABILITY_STATE_AVAILABLE || a.runtime == nil {
+		if a.containers.ReasonCode == "" {
+			return unsupportedResult(), nil
+		}
+		return unsupportedOutcome(a.containers.ReasonCode), nil
+	}
+	return a.runtime.reconcile(ctx, operation)
 }
 
 func (hostAdapter) EnsureNetworkNamespace(context.Context, NamespaceOperation) (AdapterResult, error) {

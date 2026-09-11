@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -133,14 +134,24 @@ type specDeviceCgroup struct {
 }
 
 type specSeccomp struct {
-	DefaultAction string        `json:"defaultAction"`
-	Architectures []string      `json:"architectures,omitempty"`
-	Syscalls      []specSyscall `json:"syscalls"`
+	DefaultAction   string        `json:"defaultAction"`
+	DefaultErrnoRet *uint         `json:"defaultErrnoRet,omitempty"`
+	Architectures   []string      `json:"architectures,omitempty"`
+	Syscalls        []specSyscall `json:"syscalls"`
 }
 
 type specSyscall struct {
-	Names  []string `json:"names"`
-	Action string   `json:"action"`
+	Names    []string         `json:"names"`
+	Action   string           `json:"action"`
+	ErrnoRet *uint            `json:"errnoRet,omitempty"`
+	Args     []specSyscallArg `json:"args,omitempty"`
+}
+
+type specSyscallArg struct {
+	Index    uint   `json:"index"`
+	Value    uint64 `json:"value"`
+	ValueTwo uint64 `json:"valueTwo,omitempty"`
+	Op       string `json:"op"`
 }
 
 // ImageEntrypoint is what the image's own configuration says to run. The OCI
@@ -212,6 +223,10 @@ Everything a decoy is denied is denied by construction:
     already refused a definition without them.
 */
 func BuildContainerSpec(workload Workload, entrypoint ImageEntrypoint) (ContainerSpec, error) {
+	return buildContainerSpec(workload, entrypoint, hostPlatform())
+}
+
+func buildContainerSpec(workload Workload, entrypoint ImageEntrypoint, platform specPlatform) (ContainerSpec, error) {
 	if err := workload.validate(); err != nil {
 		return ContainerSpec{}, err
 	}
@@ -219,6 +234,12 @@ func BuildContainerSpec(workload Workload, entrypoint ImageEntrypoint) (Containe
 		return ContainerSpec{}, err
 	}
 	granted := grantedCapabilities(workload)
+	seccomp, err := translateSeccomp(granted, platform)
+	if err != nil {
+		// No decoy runs without a profile. A platform the profile does not
+		// cover is a platform this build does not deploy decoys on.
+		return ContainerSpec{}, err
+	}
 	env := entrypoint.Env
 	if len(env) == 0 {
 		env = []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}
@@ -261,7 +282,7 @@ func BuildContainerSpec(workload Workload, entrypoint ImageEntrypoint) (Containe
 		Root: &specRoot{Path: "rootfs", Readonly: true},
 		// Not the host's name: see defaultDecoyHostname.
 		Hostname: defaultDecoyHostname,
-		Mounts:   decoyMounts(),
+		Mounts:   decoyMounts(workload),
 		Linux: &specLinux{
 			Namespaces: []specNamespace{
 				{Type: "pid"}, {Type: "ipc"}, {Type: "uts"},
@@ -278,7 +299,7 @@ func BuildContainerSpec(workload Workload, entrypoint ImageEntrypoint) (Containe
 			},
 			MaskedPaths:   maskedPaths(),
 			ReadonlyPaths: readonlyPaths(),
-			Seccomp:       decoySeccomp(),
+			Seccomp:       seccomp,
 			CgroupsPath:   workload.CgroupPath(),
 		},
 	}, nil
@@ -305,7 +326,7 @@ The writable areas are tmpfs and bounded, because the root filesystem is
 read-only and a decoy still has to be able to write a log its telemetry adapter
 will read.
 */
-func decoyMounts() []specMount {
+func decoyMounts(workload Workload) []specMount {
 	return []specMount{
 		{Destination: "/proc", Type: "proc", Source: "proc",
 			Options: []string{"nosuid", "noexec", "nodev"}},
@@ -324,7 +345,8 @@ func decoyMounts() []specMount {
 		// Where a pack writes what its telemetry adapter reads. Bounded, and
 		// noexec so that a file a decoy writes is not a file it can run.
 		{Destination: "/var/log/guardian", Type: "tmpfs", Source: "tmpfs",
-			Options: []string{"nosuid", "nodev", "noexec", "mode=0755", "size=32m"}},
+			Options: []string{"nosuid", "nodev", "noexec", "mode=0750", "size=32m",
+				"uid=" + strconv.Itoa(workload.User.UID), "gid=" + strconv.Itoa(workload.User.GID)}},
 	}
 }
 
@@ -343,57 +365,6 @@ func maskedPaths() []string {
 func readonlyPaths() []string {
 	return []string{
 		"/proc/bus", "/proc/fs", "/proc/irq", "/proc/sys", "/proc/sysrq-trigger",
-	}
-}
-
-/*
-decoySeccomp is a blocklist, and calling it that matters.
-
-Docker and containerd ship an allowlist: deny by default, permit roughly three
-hundred and fifty syscalls. That is the stronger design and it is not written
-here, because reproducing it by hand is several hundred lines of security
-policy that would then have to be maintained against kernel additions — and
-getting it wrong in the permissive direction produces a profile that looks like
-a control and is not one.
-
-What is here denies the syscalls that grant new privilege, load code into the
-kernel, or reach outside the container: module loading, kexec, `bpf`,
-`ptrace`, mount manipulation, keyring access, and the rest below. Combined with
-an empty capability set and `noNewPrivileges`, most of them would already fail
-with EPERM; the profile makes them fail before they reach the kernel's
-implementation, which is where the interesting bugs are.
-
-It is weaker than an allowlist, it is named as such here and in the security
-review, and adopting a maintained allowlist is recorded as the remaining
-decision for this half of the package.
-*/
-func decoySeccomp() *specSeccomp {
-	denied := []string{
-		// Loading code into the kernel.
-		"init_module", "finit_module", "delete_module", "kexec_load", "kexec_file_load",
-		// Tracing and cross-process inspection.
-		"ptrace", "process_vm_readv", "process_vm_writev", "kcmp",
-		// Namespace and mount manipulation.
-		"mount", "mount_setattr", "umount", "umount2", "pivot_root", "chroot",
-		"setns", "unshare", "open_tree", "move_mount", "fsopen", "fsconfig",
-		"fsmount", "fspick",
-		// Kernel interfaces that are privilege escalation surfaces.
-		"bpf", "perf_event_open", "add_key", "request_key", "keyctl",
-		"userfaultfd", "io_uring_setup", "io_uring_enter", "io_uring_register",
-		// Host state a decoy has no business changing.
-		// adjtimex and personality are deliberately absent: without
-		// capabilities neither changes anything outside the container, and
-		// both have harmless read-only uses a pack might make.
-		"reboot", "swapon", "swapoff", "settimeofday", "clock_settime",
-		"clock_adjtime", "sethostname", "setdomainname",
-		"acct", "quotactl", "nfsservctl", "vm86", "vm86old",
-		"create_module", "get_kernel_syms", "query_module", "uselib",
-		"lookup_dcookie", "pciconfig_read", "pciconfig_write",
-	}
-	sort.Strings(denied)
-	return &specSeccomp{
-		DefaultAction: "SCMP_ACT_ALLOW",
-		Syscalls:      []specSyscall{{Names: denied, Action: "SCMP_ACT_ERRNO"}},
 	}
 }
 

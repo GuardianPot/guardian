@@ -122,10 +122,9 @@ func TestAnAdapterWithoutTheCapabilityClaimsNothing(t *testing.T) {
 			t.Fatalf("result = %+v", result)
 		}
 	}
-	// The runtime operations stay unimplemented: P2-W1 and P2-W2 filled the
-	// address and egress adapters and claim nothing for P2-W3.
+	// Network namespaces stay unimplemented: creating one needs CAP_SYS_ADMIN,
+	// which the helper does not hold.
 	for _, operation := range []privilegedv1.PrivilegedOperation{
-		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_CONTAINER_LIFECYCLE,
 		privilegedv1.PrivilegedOperation_PRIVILEGED_OPERATION_NETWORK_NAMESPACE,
 	} {
 		capability := adapter.Capabilities()[operation]

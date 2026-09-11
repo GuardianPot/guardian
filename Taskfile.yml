@@ -63,6 +63,7 @@ tasks:
       - task: edge:integration
       - task: privileged:security
       - task: privileged:netlink
+      - task: privileged:containerd
       - go -C apps/control-plane vet ./...
       - go -C apps/edge-agent vet ./...
       - go -C apps/control-plane test ./...
@@ -245,6 +246,31 @@ tasks:
           --workdir /src \
           {{.EDGE_RACE_IMAGE}} \
           sh -ec 'mkdir -p /tmp/go-build /tmp/home && exec go test -mod=readonly -count=1 -run AgainstALiveKernel -v ./internal/privileged'
+
+  privileged:containerd:
+    desc: Exercise the P2-W3 decoy runtime against a real containerd 2.x in a throwaway privileged container
+    deps: [edge:tools, privileged:generated]
+    cmds:
+      # Privileged because containerd itself must mount, create cgroups, and
+      # create namespaces. The code under test reaches containerd only through
+      # its socket, as the helper does on a host. The lab script pins and
+      # checksums containerd and runc, and the decoy image is pinned by digest.
+      - |
+        docker run --rm \
+          --privileged \
+          --network bridge \
+          --tmpfs /var/lib/containerd:rw,exec \
+          --env GOWORK=off \
+          --env GUARDIAN_CONTAINERD_LAB=1 \
+          --env GUARDIAN_NETLINK_LAB=1 \
+          --env GOCACHE=/tmp/go-build \
+          --env GOMODCACHE=/go/pkg/mod \
+          --env HOME=/tmp/home \
+          --mount "type=bind,src={{.ROOT_DIR}}/apps/edge-agent,dst=/src,readonly" \
+          --mount "type=bind,src={{.ROOT_DIR}}/tests/security/containerd-runtime,dst=/lab,readonly" \
+          --mount "type=bind,src=$(go env GOMODCACHE),dst=/go/pkg/mod,readonly" \
+          {{.EDGE_RACE_IMAGE}} \
+          bash -c 'mkdir -p /tmp/go-build /tmp/home && bash /lab/lab.sh'
 
   edge:race:
     desc: Run Edge Agent race tests in the pinned isolated Go builder

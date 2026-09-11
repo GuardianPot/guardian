@@ -8,8 +8,14 @@ From the repository root:
 task privileged:generated
 task privileged:security
 task privileged:netlink
+task privileged:containerd
 GOWORK=off go -C apps/edge-agent test ./...
 ```
+
+`task privileged:containerd` runs pinned, checksum-verified containerd 2.3.5 and
+runc 1.5.1 in a throwaway privileged container, pulls busybox by digest, and
+runs the decoy lifecycle against them. A probe running as the decoy reports its
+own isolation by exit code. It needs network access and an amd64 host.
 
 `task privileged:security` runs ordinary abuse tests, systemd profile checks,
 and a network-disabled root container with only `CHOWN`, `SETUID`, and `SETGID`
@@ -64,17 +70,20 @@ Expected socket metadata:
 
 ## What the installed helper can do
 
-`P2-W1` and `P2-W2` are implemented, and both fit inside the one capability the
-unit already grants.
+`P2-W1`, `P2-W2`, and `P2-W3`'s container lifecycle are implemented, and none
+of them needed a capability beyond the one the unit grants.
 
 | Operation | State | Notes |
 |---|---|---|
 | `EnsureAddress` | implemented | Adds and removes IPv4 addresses over `NETLINK_ROUTE` |
 | `ApplyNftablesPolicy` | implemented | Default-deny decoy egress over `NETLINK_NETFILTER` |
-| `ReconcileContainer` | `phase-2-adapter-not-implemented` | `P2-W3` |
-| `EnsureNetworkNamespace` | `phase-2-adapter-not-implemented` | `P2-W3` |
+| `ReconcileContainer` | implemented | Decoy containers through containerd 2.x |
+| `EnsureNetworkNamespace` | `phase-2-adapter-not-implemented` | Needs `CAP_SYS_ADMIN`; see `P2-W3` section 7 |
 
-The unit's `CapabilityBoundingSet=CAP_NET_ADMIN` is the whole of its privilege.
+The unit's `CapabilityBoundingSet=CAP_NET_ADMIN` is the whole of the helper's
+own privilege. It is not the whole of what the helper can cause: the containerd
+socket is a root-equivalent API, so a decoy is contained by the spec the helper
+sends, not by the helper's capabilities.
 Do not add `CAP_SYS_ADMIN`, `CAP_NET_RAW`, a runtime socket, or a raw policy
 input through a local override; each belongs to a later work package with its
 own security review, and `task privileged:security` fails if the unit grants
@@ -173,9 +182,37 @@ tag form. `NET_BIND_SERVICE` is the only grantable capability, the uid and gid
 must not be 0, and an unknown field is refused rather than ignored. The file
 must be a regular file: a symlink is refused, not followed.
 
-The container lifecycle that consumes these definitions is not implemented yet;
-see `docs/work-packages/phase-2/P2-W3.md`. Installing a definition today changes
-nothing on the host.
+### Decoy containers
+
+The helper needs containerd 2.x with its Transfer service (the default in 2.x)
+at `/run/containerd/containerd.sock`. Everything it creates lives in the
+containerd namespace `guardian-decoy`, and nothing else on the host should use
+that namespace:
+
+```bash
+ctr -n guardian-decoy containers ls
+ctr -n guardian-decoy tasks ls
+```
+
+A running state is refused with `egress-policy-not-applied` until the egress
+policy is installed on the current boot, so after a reboot apply the policy
+before asking for decoys. Stopped and absent work regardless, including for a
+workload whose definition has been removed.
+
+Images are fetched by digest from the definition's repository without
+credentials; a registry that requires authentication fails the pull and the
+decoy does not start. Decoy containers have no network yet — each has its own
+namespace with only `lo` — until network attachment is decided.
+
+| Refusal | Meaning |
+|---|---|
+| `workload-not-installed` | No definition file for this id |
+| `workload-definition-invalid` | The definition failed validation |
+| `egress-policy-not-applied` | The default-deny policy is not installed right now |
+| `image-digest-mismatch` | The image record does not point at the pinned digest |
+| `image-platform-unavailable` | The image has no manifest for this host's platform |
+| `container-start-failed` | The runtime could not start the task; nothing was left behind |
+| `runtime-unreachable` | containerd did not answer on its socket |
 
 ### If a capability is reported unsupported
 
@@ -189,6 +226,8 @@ nothing on the host.
 | `no-cap-net-admin` | both | The unit's bounding set does not include `CAP_NET_ADMIN` |
 | `netlink-unavailable` | both | `RestrictAddressFamilies` omits `AF_NETLINK`, or `PrivateNetwork=yes` |
 | `nftables-unavailable` | egress | The kernel has no `nf_tables` subsystem |
+| `containerd-runtime-adapter` | containers | Working |
+| `no-workloads-allowlisted` | containers | No `--allow-workload`, so there is nothing to run |
 
 Only `no-decoy-ranges-configured` is an argument problem. The rest are the
 service profile or the kernel, not the binary; check the unit before anything

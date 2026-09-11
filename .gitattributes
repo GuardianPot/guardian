@@ -6,3 +6,7 @@ go.sum text eol=lf
 # them. A CRLF working copy on Windows makes every one of those matches fail
 # locally while passing in CI, which is the worst way for a check to be wrong.
 *.service text eol=lf
+
+# Vendored upstream seccomp profile: embedded byte for byte and pinned by
+# hash, so no line-ending conversion may touch it on any platform.
+apps/edge-agent/internal/privileged/seccompprofile/** -text

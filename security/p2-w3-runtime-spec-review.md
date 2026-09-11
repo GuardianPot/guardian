@@ -1,94 +1,131 @@
-# P2-W3 decoy runtime spec security review
+# P2-W3 decoy runtime security review
 
-- Review date: 2026-09-11
-- Work package: P2-W3 (first slice: workload definition and OCI spec)
+- Review dates: 2026-09-11 (workload definition and spec), 2026-09-11
+  (lifecycle, seccomp allowlist, lab)
+- Work package: P2-W3
 - Decisions: DR-02, DR-04, SP-02, ADR 0009
-- Acceptance: AC-SEC-001, AC-SEC-002 in the structural direction
-- Scope: `apps/edge-agent/internal/privileged/workload.go` and
-  `containerspec.go`. No container is created by anything in this slice.
+- Acceptance: AC-SEC-001, AC-SEC-002, crash/restart, no runtime socket mount
+- Scope: `apps/edge-agent/internal/privileged` — `workload.go`,
+  `containerspec.go`, `seccomp.go`, `containerd_client.go`,
+  `container_runtime.go`, and the vendored `seccompprofile/`
 
-## What this slice decides
+## The finding to read first: the containerd socket is root
 
-Every other isolation statement in the repository is about what cannot be
-*asked for*. The OCI spec is the one place that says what a decoy is *granted*,
-so it is where `AC-SEC-001` and `AC-SEC-002` are actually decided.
+The helper's capability bounding set is `CAP_NET_ADMIN`, and `systemd-analyze`
+scores the unit at 1.8. Neither number describes what the helper can cause.
+The containerd API has no authorisation beyond the socket's permissions: anyone
+who can send it a spec can run anything, as root, with any capability and any
+mount. The helper can reach that socket — it could since `P1-W8`, when the
+runtime probe first connected — so its effective privilege is root, mediated by
+containerd.
+
+What contains a decoy is therefore not the helper's capabilities but what this
+code can send containerd, which is only the output of `BuildContainerSpec`. That
+is why the spec is hand-written and minimal, why the Edge Agent can name a
+workload but never describe one, and why the tests check the serialised spec
+rather than the struct. It is also why a bug in this package is a root bug, and
+why every new file that imports containerd has to be added by name to the
+module's boundary test.
 
 ## Trust boundary
 
-The runtime detail comes from a root-owned file, not from any request. The Edge
-Agent sends only a workload id. A compromised Edge Agent can choose among
-installed, allowlisted workloads and their run state; it cannot introduce an
-image, capability, mount, or user.
+The runtime detail comes from a root-owned definition, never from a request. A
+compromised Edge Agent can choose among installed, allowlisted workloads and
+their run state. It cannot introduce an image, capability, mount, or user.
 
-Inside the file, the controls are aimed at an operator's mistake rather than an
-attacker, since only root can write it: a tag instead of a digest, a second
-capability, uid 0, a missing resource bound, or an unknown field that its author
-believed was a restriction. Each is refused, and each refusal is tested.
+The definition's controls are aimed at an operator's mistake: a tag instead of
+a digest, a second capability, uid 0, a missing resource bound, an unknown field
+its author believed was a restriction. The loader validates the id before it
+becomes a path, uses `Lstat`, and compares the opened descriptor with the
+checked file; the first version used `Stat`, which follows symlinks, and a test
+caught it.
 
-The loader takes the workload id from the Edge, so the id is validated against
-the allowlist pattern before it becomes part of a path, the file is checked with
-`Lstat`, and the opened descriptor is compared with the checked one. The first
-version used `Stat`, which follows symlinks; the symlink test caught it before
-it was committed.
+## What a decoy is granted
 
-## The spec starts from nothing
+The spec starts from nothing. It cannot express a namespace path, a privileged
+flag, a device allowance, or a bind mount, because those fields do not exist in
+it. A read-only root, bounded tmpfs, all six namespaces new, capabilities
+exactly the grant, `no_new_privs`, the workload's non-root user, memory with no
+swap beyond it, CPU and pid limits, deny-all devices.
 
-The spec is a small hand-written struct rather than the full runtime-spec
-types. A builder that starts from a complete struct grants whatever it forgets to
-clear; this one cannot express a host namespace path, a privileged flag, a
-device allowance, or a bind mount, because none of those fields exists in it.
+Two properties were wrong until the lab ran them, and both are now fixed and
+asserted:
 
-Asserted against the serialised JSON — what containerd would receive:
+- The root snapshot was a read-only view, which stops runc creating mount
+  points the image does not ship; no decoy could have started. It is now a
+  writable snapshot with the spec's read-only remount on top, which is what the
+  decoy sees and what the probe checks.
+- The telemetry tmpfs was root-owned, so a non-root decoy could not have written
+  the events its adapter reads. It now belongs to the workload's uid and stays
+  `noexec`.
 
-- no mention of the runtime socket, Docker's socket, or any Guardian state or
-  configuration path;
-- every mount sourced from a kernel filesystem, none from a host path, none a
-  bind;
-- read-only root; bounded tmpfs; `noexec` on the areas a decoy writes;
-- capability sets exactly the grant, and empty without one; `noNewPrivileges`;
-- the workload's non-root uid and gid, never the image's;
-- all six namespaces new;
-- memory with no swap beyond it, CPU quota, pids, deny-all devices.
+## Seccomp is the upstream allowlist
 
-The image supplies only its program: arguments, environment, and working
-directory, bounded, NUL-free, and with an absolute, clean working directory.
-That runs inside the boundary above and cannot widen it.
+`github.com/moby/profiles/seccomp` v0.2.3 — the file Docker Engine 29.8.0
+vendors — is embedded unmodified, pinned by SHA-256, with its Apache-2.0
+licence beside it. Guardian maintains no syscall policy of its own. It
+maintains the translation from Docker's conditional format, and that
+translation is tested in both directions: a capability-gated allowance appears
+when its capability is granted and not otherwise, an architecture-gated one
+only on that architecture, a kernel-gated one only on a kernel known to be new
+enough. An unknown kernel satisfies no minimum, and an unmapped architecture is
+refused rather than run unfiltered. The profile format is decoded strictly, so
+an upstream change to it is noticed at update time.
 
-## Seccomp is a blocklist
+One difference from the blocklist it replaced is worth recording: upstream
+allows `ptrace` and `process_vm_*` from kernel 4.8. A decoy is alone in its pid
+namespace and has no `CAP_SYS_PTRACE`, so it can trace only its own processes.
+That is Docker's judgement and it is adopted as such.
 
-The profile allows by default and denies about fifty syscalls that load
-kernel code, trace other processes, manipulate mounts and namespaces, or reach
-escalation-prone kernel interfaces (`bpf`, `io_uring`, `userfaultfd`, keyrings).
-With empty capabilities and `noNewPrivileges` most of them already fail; the
-profile stops them before they reach the kernel implementation.
+The lab confirms the filter is in force from inside the decoy.
 
-This is weaker than the default-deny allowlist Docker and containerd ship, and
-it is named as a blocklist in the code, the tests, and here. It should not be
-read as equivalent. Cowrie runs attacker input, so `P2-W5` should not ship on it
-alone; adopting a maintained allowlist is recorded as an owner decision in
-`P2-W3` section 7.
+## Runtime behaviour
 
-## Privilege
+- **Namespace scoping.** Every containerd call carries the `guardian-decoy`
+  namespace. The helper cannot list, inspect, or remove another tenant's
+  containers, and the lab confirms a decoy does not exist when looked up from
+  containerd's default namespace.
+- **Egress ordering.** A running state is refused unless the default-deny
+  policy for exactly the configured ranges is installed, read from the kernel at
+  that moment. The refusal happens before containerd is contacted.
+- **Stopping never depends on the definition.** An operator can always stop or
+  remove a decoy, including one whose definition has been uninstalled.
+- **No runtime text crosses the RPC.** containerd and runc errors name sockets,
+  paths, and digests; they become closed reason codes. The lab sees the raw
+  error through a test-only hook that nothing reachable over the RPC can set.
+- **A long call, bounded.** `ReconcileContainer` may hold a request slot for up
+  to three minutes because a first pass can fetch an image. Only allowlisted
+  workloads reach it, the helper's concurrency bound still applies, and every
+  other privileged call keeps five seconds.
+- **Digests end to end.** containerd verifies the pull against the pinned
+  digest; the helper refuses an image record pointing anywhere else and hashes
+  every manifest and config blob it reads itself.
 
-This slice changes no privilege and no service directive. The analysis for the
-rest of the package: the container lifecycle needs no new capability, because
-containerd does the privileged work and the helper already reaches its socket.
-The capability that would grow is `CAP_SYS_ADMIN`, for creating network
-namespaces in `EnsureNetworkNamespace`, and the profile has no room for it. That
-is the network-attachment decision in `P2-W3` section 7.
+## Dependencies
+
+No new direct dependency. Using `containerd/api/types` brings
+`opencontainers/image-spec` and `opencontainers/go-digest` into `go.sum` as
+indirect modules; `containerd/api` already required both, and both are type
+definitions. The vendored seccomp profile is data, not code.
 
 ## Not covered
 
-The runtime direction of `AC-SEC-002` — a running decoy failing to reach the
-socket — needs a real container and belongs to the lifecycle slice. So do
-restart behaviour, partial-create cleanup, and the ordering requirement from
-`P2-W2` that no decoy starts before the egress policy is applied on the current
-boot.
+- **Network attachment.** A running decoy has only `lo`. The accepted design
+  was tested and does not hold: moving a veth into a decoy's namespace needs
+  only `CAP_NET_ADMIN`, but configuring the namespace needs `CAP_SYS_PTRACE`
+  and `CAP_SYS_ADMIN`. The decision is back with the Product Owner in `P2-W3`
+  section 7, alongside the `ADR 0016` conflict it exposes.
+- **Image provenance beyond the digest.** Signature enforcement is Phase 5.
+  Until then an operator who pins a digest is trusting whoever published it.
+- **Private registries.** The pull carries no credentials, so a registry
+  requiring authentication fails the pull and the decoy does not start.
+- **Pack images.** None exists yet; the lab uses busybox.
 
 ## Conclusion
 
-No privilege, dependency, contract, or execution surface changed. What a decoy
-receives is fixed by a spec that cannot express the grants `AC-SEC-001` and
-`AC-SEC-002` forbid, tested at the level a runtime reads. Two known weaknesses
-are named rather than hidden: a blocklist seccomp profile, and a network
-attachment design that is not yet decided.
+The decoy container is contained by construction, proven from inside a running
+one. The helper's own privilege did not change on paper and should not be read
+as low in fact: through containerd it is root, and the spec builder is the
+control that matters. The one missing capability, network attachment, is
+missing because the design it was waiting on was tested and failed, and it goes
+back for a decision rather than being improvised.
