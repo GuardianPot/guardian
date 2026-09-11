@@ -141,6 +141,42 @@ The ruleset does not survive a reboot — nftables state is kernel state. It is
 reinstalled by the next reconcile pass, and a decoy must not be started before
 that pass completes.
 
+### Workload definitions
+
+`ReconcileContainer` names a workload; it cannot describe one. What a workload
+id means on this host is a root-owned file, and a container can exist only if
+the file is installed *and* the id is allowlisted with `--allow-workload`:
+
+```text
+/etc/guardian-edge/workloads/<workload-id>.json   root:root 0644
+```
+
+```json
+{
+  "schema": "guardian.workload.v1",
+  "workload_id": "guardian-workload-ssh-a",
+  "pack": "ssh-cowrie",
+  "pack_version": "0.1.0",
+  "image": {
+    "repository": "registry.example.internal/guardian/ssh-cowrie",
+    "digest": "sha256:<64 hex characters>"
+  },
+  "ports": [{ "port": 22, "protocol": "tcp" }],
+  "privileges": { "capabilities": ["NET_BIND_SERVICE"] },
+  "resources": { "cpu_millicores": 500, "memory_mib": 256, "pids": 128 },
+  "user": { "uid": 10001, "gid": 10001 }
+}
+```
+
+Every field is required. The image is identified by digest only — there is no
+tag form. `NET_BIND_SERVICE` is the only grantable capability, the uid and gid
+must not be 0, and an unknown field is refused rather than ignored. The file
+must be a regular file: a symlink is refused, not followed.
+
+The container lifecycle that consumes these definitions is not implemented yet;
+see `docs/work-packages/phase-2/P2-W3.md`. Installing a definition today changes
+nothing on the host.
+
 ### If a capability is reported unsupported
 
 `GetStatus` reports each operation with a reason:
