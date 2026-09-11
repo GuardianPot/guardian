@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/rtnetlink"
 	"golang.org/x/sys/unix"
 )
 
@@ -179,13 +180,13 @@ func policyDigest(ranges []netip.Prefix) string {
 // first makes the delete safe when there is no table yet; deleting is what
 // removes rules a previous version left behind. Because the batch is atomic,
 // there is no moment at which the table exists without its rules.
-func applyEgressPolicy(connection *netlinkConn, ruleset nftRuleset) error {
-	messages := []batchMessage{batchBoundary(unix.NFNL_MSG_BATCH_BEGIN)}
+func applyEgressPolicy(connection *rtnetlink.Conn, ruleset nftRuleset) error {
+	messages := []rtnetlink.BatchMessage{batchBoundary(unix.NFNL_MSG_BATCH_BEGIN)}
 	appendMessage := func(command uint16, flags uint16, payload []byte) {
-		messages = append(messages, batchMessage{
-			messageType: nftMessageType(command),
-			flags:       unix.NLM_F_REQUEST | unix.NLM_F_ACK | flags,
-			payload:     payload,
+		messages = append(messages, rtnetlink.BatchMessage{
+			Type:    nftMessageType(command),
+			Flags:   unix.NLM_F_REQUEST | unix.NLM_F_ACK | flags,
+			Payload: payload,
 		})
 	}
 
@@ -203,7 +204,7 @@ func applyEgressPolicy(connection *netlinkConn, ruleset nftRuleset) error {
 		appendMessage(unix.NFT_MSG_NEWRULE, unix.NLM_F_CREATE|unix.NLM_F_APPEND, rulePayload(rule))
 	}
 	messages = append(messages, batchBoundary(unix.NFNL_MSG_BATCH_END))
-	return connection.executeBatch(messages)
+	return connection.ExecuteBatch(messages)
 }
 
 /*
@@ -217,10 +218,10 @@ from a different set of decoy ranges.
 The expressions themselves are not parsed back. What proves they behave is the
 lab test, which sends a packet.
 */
-func observedEgressPolicy(connection *netlinkConn) (map[string][]string, error) {
+func observedEgressPolicy(connection *rtnetlink.Conn) (map[string][]string, error) {
 	payload := nfgenmsg(unix.NFPROTO_IPV4)
 	payload = appendNftString(payload, unix.NFTA_RULE_TABLE, nftTableName)
-	messages, err := connection.execute(nftMessageType(unix.NFT_MSG_GETRULE),
+	messages, err := connection.Execute(nftMessageType(unix.NFT_MSG_GETRULE),
 		unix.NLM_F_REQUEST|unix.NLM_F_DUMP, payload)
 	if err != nil {
 		// No table is a legitimate observation: the policy is simply not
@@ -232,20 +233,20 @@ func observedEgressPolicy(connection *netlinkConn) (map[string][]string, error) 
 	}
 	observed := map[string][]string{}
 	for _, message := range messages {
-		if len(message.data) < nfgenmsgBytes {
+		if len(message.Data) < nfgenmsgBytes {
 			continue
 		}
-		attributes, err := parseNetlinkAttributes(message.data[nfgenmsgBytes:])
+		attributes, err := rtnetlink.ParseAttributes(message.Data[nfgenmsgBytes:])
 		if err != nil {
 			return nil, err
 		}
 		var chain, userData string
 		for _, attribute := range attributes {
-			switch attribute.attributeType &^ unix.NLA_F_NESTED {
+			switch attribute.Type &^ unix.NLA_F_NESTED {
 			case unix.NFTA_RULE_CHAIN:
-				chain = nftStringValue(attribute.value)
+				chain = nftStringValue(attribute.Value)
 			case unix.NFTA_RULE_USERDATA:
-				userData = nftStringValue(attribute.value)
+				userData = nftStringValue(attribute.Value)
 			}
 		}
 		if chain != "" {
@@ -294,10 +295,10 @@ func nftMessageType(command uint16) uint16 {
 
 // batchBoundary opens or closes a transaction. Its resource id names the
 // nftables subsystem, which is how the kernel knows whose batch this is.
-func batchBoundary(kind uint16) batchMessage {
+func batchBoundary(kind uint16) rtnetlink.BatchMessage {
 	payload := []byte{unix.AF_UNSPEC, unix.NFNETLINK_V0, 0, 0}
 	binary.BigEndian.PutUint16(payload[2:4], uint16(unix.NFNL_SUBSYS_NFTABLES))
-	return batchMessage{messageType: kind, flags: unix.NLM_F_REQUEST, payload: payload}
+	return rtnetlink.BatchMessage{Type: kind, Flags: unix.NLM_F_REQUEST, Payload: payload}
 }
 
 func tablePayload() []byte {
@@ -331,7 +332,7 @@ func rulePayload(rule nftRule) []byte {
 		list = appendNftNested(list, unix.NFTA_LIST_ELEM, expression)
 	}
 	payload = appendNftNested(payload, unix.NFTA_RULE_EXPRESSIONS, list)
-	payload = appendAttribute(payload, unix.NFTA_RULE_USERDATA, append([]byte(rule.userData), 0))
+	payload = rtnetlink.AppendAttribute(payload, unix.NFTA_RULE_USERDATA, append([]byte(rule.userData), 0))
 	return payload
 }
 
@@ -369,15 +370,15 @@ func exprBitwiseRaw(mask, xor []byte) []byte {
 	inner := appendNftUint32(nil, unix.NFTA_BITWISE_SREG, unix.NFT_REG_1)
 	inner = appendNftUint32(inner, unix.NFTA_BITWISE_DREG, unix.NFT_REG_1)
 	inner = appendNftUint32(inner, unix.NFTA_BITWISE_LEN, uint32(len(mask)))
-	inner = appendNftNested(inner, unix.NFTA_BITWISE_MASK, appendAttribute(nil, unix.NFTA_DATA_VALUE, mask))
-	inner = appendNftNested(inner, unix.NFTA_BITWISE_XOR, appendAttribute(nil, unix.NFTA_DATA_VALUE, xor))
+	inner = appendNftNested(inner, unix.NFTA_BITWISE_MASK, rtnetlink.AppendAttribute(nil, unix.NFTA_DATA_VALUE, mask))
+	inner = appendNftNested(inner, unix.NFTA_BITWISE_XOR, rtnetlink.AppendAttribute(nil, unix.NFTA_DATA_VALUE, xor))
 	return nftExpression("bitwise", inner)
 }
 
 func exprCmp(operation uint32, value []byte) []byte {
 	inner := appendNftUint32(nil, unix.NFTA_CMP_SREG, unix.NFT_REG_1)
 	inner = appendNftUint32(inner, unix.NFTA_CMP_OP, operation)
-	inner = appendNftNested(inner, unix.NFTA_CMP_DATA, appendAttribute(nil, unix.NFTA_DATA_VALUE, value))
+	inner = appendNftNested(inner, unix.NFTA_CMP_DATA, rtnetlink.AppendAttribute(nil, unix.NFTA_DATA_VALUE, value))
 	return nftExpression("cmp", inner)
 }
 
@@ -398,16 +399,16 @@ func exprVerdict(code int32, chain string) []byte {
 func appendNftUint32(payload []byte, attributeType uint16, value uint32) []byte {
 	encoded := make([]byte, 4)
 	binary.BigEndian.PutUint32(encoded, value)
-	return appendAttribute(payload, attributeType, encoded)
+	return rtnetlink.AppendAttribute(payload, attributeType, encoded)
 }
 
 // appendNftString writes a NUL-terminated string attribute.
 func appendNftString(payload []byte, attributeType uint16, value string) []byte {
-	return appendAttribute(payload, attributeType, append([]byte(value), 0))
+	return rtnetlink.AppendAttribute(payload, attributeType, append([]byte(value), 0))
 }
 
 func appendNftNested(payload []byte, attributeType uint16, inner []byte) []byte {
-	return appendAttribute(payload, attributeType|unix.NLA_F_NESTED, inner)
+	return rtnetlink.AppendAttribute(payload, attributeType|unix.NLA_F_NESTED, inner)
 }
 
 func nftStringValue(value []byte) string {

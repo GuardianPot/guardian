@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	privilegedv1 "github.com/GuardianPot/guardian/apps/edge-agent/internal/privileged/gen/guardian/privileged/v1"
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/rtnetlink"
 )
 
 /*
@@ -52,7 +53,7 @@ func TestNetlinkAddressAdapterAgainstALiveKernel(t *testing.T) {
 		t.Fatalf("address capability = %+v inside the lab", adapter.address)
 	}
 
-	connection, err := dialNetlink()
+	connection, err := rtnetlink.DialRoute()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,8 +63,8 @@ func TestNetlinkAddressAdapterAgainstALiveKernel(t *testing.T) {
 	foreign := netip.MustParsePrefix(labForeignPrefix)
 	before := addressStrings(t, connection, link.Index)
 	t.Cleanup(func() {
-		_ = connection.deleteAddress(link.Index, decoy)
-		_ = connection.deleteAddress(link.Index, foreign)
+		_ = connection.DeleteAddress(link.Index, decoy)
+		_ = connection.DeleteAddress(link.Index, foreign)
 	})
 
 	t.Run("an address is added, observed, and idempotent", func(t *testing.T) {
@@ -72,13 +73,13 @@ func TestNetlinkAddressAdapterAgainstALiveKernel(t *testing.T) {
 			result.ReasonCode != "address-added" {
 			t.Fatalf("first apply = %+v", result)
 		}
-		observed, err := connection.findAddress(link.Index, decoy)
+		observed, err := connection.FindAddress(link.Index, decoy)
 		if err != nil || observed == nil {
 			t.Fatalf("the kernel does not report the address it accepted: %v", err)
 		}
 		// The label is what makes the address provably Guardian's later.
-		if observed.label != labInterface+guardianLabelSuffix {
-			t.Fatalf("label = %q, want %q", observed.label, labInterface+guardianLabelSuffix)
+		if observed.Label != labInterface+guardianLabelSuffix {
+			t.Fatalf("label = %q, want %q", observed.Label, labInterface+guardianLabelSuffix)
 		}
 		// And read back through the standard library, which has its own netlink
 		// implementation. Agreement between this adapter's decoder and an
@@ -103,7 +104,7 @@ func TestNetlinkAddressAdapterAgainstALiveKernel(t *testing.T) {
 			result.ReasonCode != "address-removed" {
 			t.Fatalf("first release = %+v", result)
 		}
-		observed, err := connection.findAddress(link.Index, decoy)
+		observed, err := connection.FindAddress(link.Index, decoy)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -130,7 +131,7 @@ func TestNetlinkAddressAdapterAgainstALiveKernel(t *testing.T) {
 	 * address is still there afterwards.
 	 */
 	t.Run("an address the host owns is never taken or removed", func(t *testing.T) {
-		if err := connection.addAddress(link.Index, foreign, labForeignLabelName); err != nil {
+		if err := connection.AddAddress(link.Index, foreign, labForeignLabelName); err != nil {
 			t.Fatalf("could not stage a host-owned address: %v", err)
 		}
 		for _, state := range []privilegedv1.PresenceState{
@@ -144,14 +145,14 @@ func TestNetlinkAddressAdapterAgainstALiveKernel(t *testing.T) {
 				t.Fatalf("state %v = %v, want a host-owned refusal", state, err)
 			}
 		}
-		observed, err := connection.findAddress(link.Index, foreign)
+		observed, err := connection.FindAddress(link.Index, foreign)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if observed == nil || observed.label != labForeignLabelName {
+		if observed == nil || observed.Label != labForeignLabelName {
 			t.Fatalf("the host's address did not survive the refusal: %+v", observed)
 		}
-		if err := connection.deleteAddress(link.Index, foreign); err != nil {
+		if err := connection.DeleteAddress(link.Index, foreign); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -202,15 +203,15 @@ func stdlibReports(t *testing.T, interfaceName, prefix string) bool {
 	return false
 }
 
-func addressStrings(t *testing.T, connection *netlinkConn, index int) map[string]struct{} {
+func addressStrings(t *testing.T, connection *rtnetlink.Conn, index int) map[string]struct{} {
 	t.Helper()
-	addresses, err := connection.addressesOn(index)
+	addresses, err := connection.Addresses(index)
 	if err != nil {
 		t.Fatal(err)
 	}
 	set := make(map[string]struct{}, len(addresses))
 	for _, address := range addresses {
-		set[address.prefix.String()] = struct{}{}
+		set[address.Prefix.String()] = struct{}{}
 	}
 	return set
 }

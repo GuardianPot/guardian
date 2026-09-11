@@ -9,6 +9,7 @@ import (
 	"net/netip"
 
 	privilegedv1 "github.com/GuardianPot/guardian/apps/edge-agent/internal/privileged/gen/guardian/privileged/v1"
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/rtnetlink"
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
 )
@@ -81,7 +82,7 @@ func (a hostAdapter) egressReady() error {
 	if a.nftables.State != privilegedv1.CapabilityState_CAPABILITY_STATE_AVAILABLE {
 		return errors.New(a.nftables.ReasonCode)
 	}
-	connection, err := dialNetlinkProtocol(unix.NETLINK_NETFILTER)
+	connection, err := rtnetlink.Dial(unix.NETLINK_NETFILTER)
 	if err != nil {
 		return err
 	}
@@ -103,7 +104,7 @@ func probeAddressCapability() AdapterCapability {
 			ReasonCode: "no-cap-net-admin",
 		}
 	}
-	connection, err := dialNetlink()
+	connection, err := rtnetlink.DialRoute()
 	if err != nil {
 		// The service profile restricts address families; a helper that cannot
 		// open NETLINK_ROUTE says so rather than discovering it per request.
@@ -145,7 +146,7 @@ func probeNftablesCapability(ranges []netip.Prefix) AdapterCapability {
 	if !holdsCapNetAdmin() {
 		return unsupported("no-cap-net-admin")
 	}
-	connection, err := dialNetlinkProtocol(unix.NETLINK_NETFILTER)
+	connection, err := rtnetlink.Dial(unix.NETLINK_NETFILTER)
 	if err != nil {
 		return unsupported("netlink-unavailable")
 	}
@@ -245,13 +246,13 @@ func (a hostAdapter) EnsureAddress(ctx context.Context, operation AddressOperati
 		return AdapterResult{}, violation(codes.FailedPrecondition, "interface-not-found")
 	}
 
-	connection, err := dialNetlink()
+	connection, err := rtnetlink.DialRoute()
 	if err != nil {
 		return AdapterResult{}, err
 	}
 	defer func() { _ = connection.Close() }()
 
-	existing, err := connection.findAddress(link.Index, prefix)
+	existing, err := connection.FindAddress(link.Index, prefix)
 	if err != nil {
 		return AdapterResult{}, err
 	}
@@ -261,25 +262,25 @@ func (a hostAdapter) EnsureAddress(ctx context.Context, operation AddressOperati
 	return placeAddress(connection, link.Index, prefix, label, existing)
 }
 
-func placeAddress(connection *netlinkConn, index int, prefix netip.Prefix, label string, existing *hostAddress) (AdapterResult, error) {
+func placeAddress(connection *rtnetlink.Conn, index int, prefix netip.Prefix, label string, existing *rtnetlink.Address) (AdapterResult, error) {
 	if existing != nil {
-		if existing.label != label {
+		if existing.Label != label {
 			return AdapterResult{}, violation(codes.FailedPrecondition, "address-held-by-host")
 		}
 		return unchanged("address-already-present"), nil
 	}
-	err := connection.addAddress(index, prefix, label)
+	err := connection.AddAddress(index, prefix, label)
 	switch {
 	case err == nil:
 		return applied("address-added"), nil
 	case errors.Is(err, unix.EEXIST):
 		// Something added the address between the dump and the write. Whose it
 		// is decides whether this is convergence or a collision.
-		raced, lookupErr := connection.findAddress(index, prefix)
+		raced, lookupErr := connection.FindAddress(index, prefix)
 		if lookupErr != nil {
 			return AdapterResult{}, lookupErr
 		}
-		if raced == nil || raced.label != label {
+		if raced == nil || raced.Label != label {
 			return AdapterResult{}, violation(codes.FailedPrecondition, "address-held-by-host")
 		}
 		return unchanged("address-already-present"), nil
@@ -289,15 +290,15 @@ func placeAddress(connection *netlinkConn, index int, prefix netip.Prefix, label
 	return AdapterResult{}, err
 }
 
-func removeAddress(connection *netlinkConn, index int, prefix netip.Prefix, label string, existing *hostAddress) (AdapterResult, error) {
+func removeAddress(connection *rtnetlink.Conn, index int, prefix netip.Prefix, label string, existing *rtnetlink.Address) (AdapterResult, error) {
 	if existing == nil {
 		return unchanged("address-already-absent"), nil
 	}
-	if existing.label != label {
+	if existing.Label != label {
 		// The single most important refusal in this package.
 		return AdapterResult{}, violation(codes.FailedPrecondition, "address-held-by-host")
 	}
-	err := connection.deleteAddress(index, prefix)
+	err := connection.DeleteAddress(index, prefix)
 	switch {
 	case err == nil:
 		return applied("address-removed"), nil
@@ -339,7 +340,7 @@ func (a hostAdapter) ApplyNftablesPolicy(ctx context.Context, operation Nftables
 		// empty policy is the one outcome that must never be called applied.
 		return unsupportedOutcome("no-decoy-ranges-configured"), nil
 	}
-	connection, err := dialNetlinkProtocol(unix.NETLINK_NETFILTER)
+	connection, err := rtnetlink.Dial(unix.NETLINK_NETFILTER)
 	if err != nil {
 		return AdapterResult{}, err
 	}

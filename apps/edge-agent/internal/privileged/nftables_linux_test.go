@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	privilegedv1 "github.com/GuardianPot/guardian/apps/edge-agent/internal/privileged/gen/guardian/privileged/v1"
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/rtnetlink"
 	"golang.org/x/sys/unix"
 )
 
@@ -177,32 +178,32 @@ func TestPrefixMasksAreTheSubnetsOwn(t *testing.T) {
  */
 func TestNftablesIntegerAttributesAreBigEndian(t *testing.T) {
 	encoded := appendNftUint32(nil, unix.NFTA_PAYLOAD_OFFSET, ipv4SourceOffset)
-	attributes, err := parseNetlinkAttributes(encoded)
+	attributes, err := rtnetlink.ParseAttributes(encoded)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(attributes) != 1 || len(attributes[0].value) != 4 {
+	if len(attributes) != 1 || len(attributes[0].Value) != 4 {
 		t.Fatalf("attributes = %+v", attributes)
 	}
-	if got := binary.BigEndian.Uint32(attributes[0].value); got != ipv4SourceOffset {
+	if got := binary.BigEndian.Uint32(attributes[0].Value); got != ipv4SourceOffset {
 		t.Fatalf("value decodes big-endian as %d, want %d", got, ipv4SourceOffset)
 	}
 	// The attribute type itself stays in the host's order, like every other
 	// netlink attribute header.
-	if attributes[0].attributeType != unix.NFTA_PAYLOAD_OFFSET {
-		t.Fatalf("attribute type = %d", attributes[0].attributeType)
+	if attributes[0].Type != unix.NFTA_PAYLOAD_OFFSET {
+		t.Fatalf("attribute type = %d", attributes[0].Type)
 	}
 
 	// A nested attribute is flagged, and the flag is not part of the type.
 	nested := appendNftNested(nil, unix.NFTA_CHAIN_HOOK, encoded)
-	outer, err := parseNetlinkAttributes(nested)
+	outer, err := rtnetlink.ParseAttributes(nested)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if outer[0].attributeType&unix.NLA_F_NESTED == 0 {
+	if outer[0].Type&unix.NLA_F_NESTED == 0 {
 		t.Fatal("a nested attribute was not flagged as nested")
 	}
-	if outer[0].attributeType&^unix.NLA_F_NESTED != unix.NFTA_CHAIN_HOOK {
+	if outer[0].Type&^unix.NLA_F_NESTED != unix.NFTA_CHAIN_HOOK {
 		t.Fatal("the nested flag corrupted the attribute type")
 	}
 }

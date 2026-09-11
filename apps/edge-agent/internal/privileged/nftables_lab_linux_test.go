@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	privilegedv1 "github.com/GuardianPot/guardian/apps/edge-agent/internal/privileged/gen/guardian/privileged/v1"
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/rtnetlink"
 	"golang.org/x/sys/unix"
 )
 
@@ -62,7 +63,7 @@ func TestNftablesEgressPolicyAgainstALiveKernel(t *testing.T) {
 	}
 
 	// A decoy address to send from, and the on-link route that comes with it.
-	routes, err := dialNetlink()
+	routes, err := rtnetlink.DialRoute()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,10 +73,10 @@ func TestNftablesEgressPolicyAgainstALiveKernel(t *testing.T) {
 		t.Fatal(err)
 	}
 	decoy := netip.MustParsePrefix(labEgressSourcePrefix)
-	if err := routes.addAddress(link.Index, decoy, labInterface+guardianLabelSuffix); err != nil {
+	if err := routes.AddAddress(link.Index, decoy, labInterface+guardianLabelSuffix); err != nil {
 		t.Fatalf("could not stage a decoy address: %v", err)
 	}
-	t.Cleanup(func() { _ = routes.deleteAddress(link.Index, decoy) })
+	t.Cleanup(func() { _ = routes.DeleteAddress(link.Index, decoy) })
 	hostSource := primaryAddress(t, link, decoy.Addr())
 	t.Cleanup(func() { deleteGuardianTable(t) })
 
@@ -148,7 +149,7 @@ func TestNftablesEgressPolicyAgainstALiveKernel(t *testing.T) {
 
 	// A policy built from different ranges must not be mistaken for this one.
 	t.Run("a different range set is not the same policy", func(t *testing.T) {
-		connection, err := dialNetlinkProtocol(unix.NETLINK_NETFILTER)
+		connection, err := rtnetlink.Dial(unix.NETLINK_NETFILTER)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -202,22 +203,22 @@ func primaryAddress(t *testing.T, link *net.Interface, exclude netip.Addr) netip
 
 func deleteGuardianTable(t *testing.T) {
 	t.Helper()
-	connection, err := dialNetlinkProtocol(unix.NETLINK_NETFILTER)
+	connection, err := rtnetlink.Dial(unix.NETLINK_NETFILTER)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = connection.Close() }()
-	_ = connection.executeBatch([]batchMessage{
+	_ = connection.ExecuteBatch([]rtnetlink.BatchMessage{
 		batchBoundary(unix.NFNL_MSG_BATCH_BEGIN),
 		{
-			messageType: nftMessageType(unix.NFT_MSG_NEWTABLE),
-			flags:       unix.NLM_F_REQUEST | unix.NLM_F_ACK | unix.NLM_F_CREATE,
-			payload:     tablePayload(),
+			Type:    nftMessageType(unix.NFT_MSG_NEWTABLE),
+			Flags:   unix.NLM_F_REQUEST | unix.NLM_F_ACK | unix.NLM_F_CREATE,
+			Payload: tablePayload(),
 		},
 		{
-			messageType: nftMessageType(unix.NFT_MSG_DELTABLE),
-			flags:       unix.NLM_F_REQUEST | unix.NLM_F_ACK,
-			payload:     tablePayload(),
+			Type:    nftMessageType(unix.NFT_MSG_DELTABLE),
+			Flags:   unix.NLM_F_REQUEST | unix.NLM_F_ACK,
+			Payload: tablePayload(),
 		},
 		batchBoundary(unix.NFNL_MSG_BATCH_END),
 	})
