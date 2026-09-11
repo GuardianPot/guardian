@@ -64,6 +64,7 @@ tasks:
       - task: privileged:security
       - task: privileged:netlink
       - task: privileged:containerd
+      - task: privileged:network-spike
       - go -C apps/control-plane vet ./...
       - go -C apps/edge-agent vet ./...
       - go -C apps/control-plane test ./...
@@ -271,6 +272,19 @@ tasks:
           --mount "type=bind,src=$(go env GOMODCACHE),dst=/go/pkg/mod,readonly" \
           {{.EDGE_RACE_IMAGE}} \
           bash -c 'mkdir -p /tmp/go-build /tmp/home && bash /lab/lab.sh'
+
+  privileged:network-spike:
+    desc: Prove the ADR 0019 decoy datapath on a real kernel with each actor at its production capabilities
+    cmds:
+      # The evidence ADR 0019 was accepted on. Privileged only so the script
+      # can build four namespaces; every step that stands for the helper, the
+      # holder, or the decoy drops to that actor's capability set first.
+      - |
+        docker run --rm \
+          --privileged \
+          --mount "type=bind,src={{.ROOT_DIR}}/tests/security/network-holder,dst=/spike,readonly" \
+          debian:bookworm-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171 \
+          bash /spike/spike.sh
 
   edge:race:
     desc: Run Edge Agent race tests in the pinned isolated Go builder

@@ -46,7 +46,7 @@ the Step 2–6 source documents.
 | [0013](0013-product-device-pki.md) | Product-specific device X.509 CA |
 | [0014](0014-opentelemetry-observability.md) | OpenTelemetry instrumentation |
 | [0015](0015-reproducible-artifacts.md) | Reproducible artifacts and provenance |
-| [0016](0016-routed-secondary-ip-placement.md) | Routed secondary-IP placement |
+| [0016](0016-routed-secondary-ip-placement.md) | Routed secondary-IP placement (superseded in part by 0019) |
 | [0017](0017-versioned-device-telemetry-contracts.md) | Versioned device and telemetry contracts |
 
 ## Project ADRs
@@ -58,6 +58,7 @@ mark it `Accepted` when you have made the call.
 | ADR | Decision | Status |
 |---|---|---|
 | [0018](0018-web-console-frontend-architecture.md) | Web Console frontend architecture | Accepted |
+| [0019](0019-decoy-network-holder.md) | Decoy network holder and routed /32 delivery | Accepted |
 
 ## Change proposals (historical)
 

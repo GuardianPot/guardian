@@ -1,6 +1,6 @@
 # ADR 0016: Routed secondary-IP placement
 
-- Status: Accepted
+- Status: Accepted; superseded in part by [ADR 0019](0019-decoy-network-holder.md)
 - Decision refs: `NW-01`, `NW-02`, `SP-01`
 - Source: P0-W5 spike and change proposal 0001
 - Owner approval: `@sinanganiz`, 2026-08-22
