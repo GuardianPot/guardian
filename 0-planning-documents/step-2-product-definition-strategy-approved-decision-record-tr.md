@@ -1944,7 +1944,7 @@ Bu distinction özellikle önemlidir. Örneğin source entity resolution ürün 
 
 ---
 
-## CU-03 — Product capability universe Guardpot/competitor parity hedeflemeli mi?
+## CU-03 — Product capability universe competitor parity hedeflemeli mi?
 
 **Durum:** APPROVED
 
@@ -2075,13 +2075,13 @@ Bu bir superiority claim değildir; ürün yönü hipotezidir.
 
 ---
 
-## DP-07 — Guardpot ve enterprise deception'a karşı differentiation
+## DP-07 — Enterprise deception'a karşı differentiation
 
 **Durum:** APPROVED
 
 **RECOMMENDED answer:**
 
-Guardpot ve enterprise deception platformları geniş capability surface sunabilir. [S8][S9][S10]
+Enterprise deception platformları geniş capability surface sunabilir. [S8][S9][S10]
 
 Bizim farklılık tezimiz:
 
@@ -2091,7 +2091,7 @@ Bizim farklılık tezimiz:
 - incident/action clarity,
 - feature accumulation yerine purposeful deception.
 
-Rakibin VPN, mail security, ASM veya full TI capability'sini kopyalamak hedef değildir.
+Rakiplerin VPN, mail security, ASM veya full TI capability'lerini kopyalamak hedef değildir.
 
 ---
 
@@ -2320,14 +2320,14 @@ Bu, “self-service satış modeli kesin seçildi” anlamına gelmez. Yalnız p
 | AI-17 | AI infrastructure deception ürün vizyonunda kalmalı mı? | **RECOMMENDED — Evet, “Future Opportunity” statüsünde.** | APPROVED |
 | CU-01 | Capability sınıfları | **RECOMMENDED sınıflandırma:** | APPROVED |
 | CU-02 | Capability tree'de “Core” ne anlama gelir? | **RECOMMENDED — Core = ürün kimliğinin uzun vadeli minimum sözleşmesi; MVP zorunluluğu değildir.** | APPROVED |
-| CU-03 | Product capability universe Guardpot/competitor parity hedeflemeli mi? | **RECOMMENDED — Hayır.** | APPROVED |
+| CU-03 | Product capability universe competitor parity hedeflemeli mi? | **RECOMMENDED — Hayır.** | APPROVED |
 | DP-01 | Ana differentiation tezi nedir? | **RECOMMENDED — D, fakat messaging tek cümlede outcome'a indirgenmeli.** | APPROVED |
 | DP-02 | Ürün kategori adı ne olmalı? | **RECOMMENDED:** | APPROVED |
 | DP-03 | “Honeypot” kelimesi pazarlamada ne kadar önde olmalı? | **RECOMMENDED — Technical explanation'da görünür, value proposition'da secondary.** | APPROVED |
 | DP-04 | EDR/NDR olan müşteriye “neden bize ihtiyaç var?” cevabı | **RECOMMENDED differentiation answer:** | APPROVED |
 | DP-05 | OpenCanary'ye karşı differentiation | **RECOMMENDED answer:** | APPROVED |
 | DP-06 | Thinkst Canary'ye karşı differentiation | **RECOMMENDED answer:** | APPROVED |
-| DP-07 | Guardpot ve enterprise deception'a karşı differentiation | **RECOMMENDED answer:** | APPROVED |
+| DP-07 | Enterprise deception'a karşı differentiation | **RECOMMENDED answer:** | APPROVED |
 | DP-08 | Moat nerede oluşabilir? | **RECOMMENDED — Tek moat varsayımı yapılmamalı; compound product moat hedeflenmeli.** | APPROVED |
 | DP-09 | Product Principles final seti | **RECOMMENDED — Bu 12 ilke Product Principles v1 olarak owner approval'a sunulsun.** | APPROVED |
 | DP-10 | Positioning statement seçenekleri | **RECOMMENDED — B ana positioning; A category descriptor olarak destek; C kullanılmasın veya secondary messaging olsun.** | APPROVED |
