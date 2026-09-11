@@ -87,7 +87,7 @@ func TestAddressClaimedByAnotherHostIsRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report, err := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/24")})
+	report, err := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/32")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestAddressIsRefusedWhenTheConflictProbeCannotAnswer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report, err := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/24")})
+	report, err := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/32")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestAFreeAddressIsApplied(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report, err := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/24")})
+	report, err := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/32")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestAFailedApplyLeavesNoOrphanAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report, err := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/24")})
+	report, err := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/32")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestAFailedApplyLeavesNoOrphanAddress(t *testing.T) {
 	if got := statuses(report)["a"]; got != StatusFailed {
 		t.Fatalf("status = %q, want %q", got, StatusFailed)
 	}
-	if got := operations(driver); len(got) != 2 || got[1] != "absent 10.20.0.40/24" {
+	if got := operations(driver); len(got) != 2 || got[1] != "absent 10.20.0.40/32" {
 		t.Fatalf("a failed apply did not release the address: %v", got)
 	}
 	if len(reconciler.Held()) != 0 {
@@ -195,7 +195,7 @@ func TestAnUnconfirmedApplyIsNotPresence(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report, _ := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/24")})
+	report, _ := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/32")})
 
 	if got := statuses(report)["a"]; got != StatusFailed {
 		t.Fatalf("status = %q, want %q", got, StatusFailed)
@@ -214,7 +214,7 @@ func TestNoPrivilegedHelperIsUnsupportedRatherThanPresent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report, _ := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/24")})
+	report, _ := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/32")})
 
 	if got := statuses(report)["a"]; got != StatusUnsupported {
 		t.Fatalf("status = %q, want %q", got, StatusUnsupported)
@@ -232,7 +232,7 @@ func TestAnUndesiredAddressIsReleased(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	if _, err := reconciler.Reconcile(ctx, []Address{address("a", "10.20.0.40/24")}); err != nil {
+	if _, err := reconciler.Reconcile(ctx, []Address{address("a", "10.20.0.40/32")}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -262,17 +262,17 @@ func TestAnAddressMovingBetweenDecoysIsReleasedFirst(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	if _, err := reconciler.Reconcile(ctx, []Address{address("a", "10.20.0.40/24")}); err != nil {
+	if _, err := reconciler.Reconcile(ctx, []Address{address("a", "10.20.0.40/32")}); err != nil {
 		t.Fatal(err)
 	}
 	driver.calls = nil
 
-	if _, err := reconciler.Reconcile(ctx, []Address{address("b", "10.20.0.40/24")}); err != nil {
+	if _, err := reconciler.Reconcile(ctx, []Address{address("b", "10.20.0.40/32")}); err != nil {
 		t.Fatal(err)
 	}
 
 	got := operations(driver)
-	if len(got) != 2 || got[0] != "absent 10.20.0.40/24" || got[1] != "present 10.20.0.40/24" {
+	if len(got) != 2 || got[0] != "absent 10.20.0.40/32" || got[1] != "present 10.20.0.40/32" {
 		t.Fatalf("operations = %v, want the release before the apply", got)
 	}
 }
@@ -292,7 +292,7 @@ func TestAfterARestartTheReconcilerStillKnowsWhatItHolds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := first.Reconcile(ctx, []Address{address("a", "10.20.0.40/24")}); err != nil {
+	if _, err := first.Reconcile(ctx, []Address{address("a", "10.20.0.40/32")}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -317,7 +317,7 @@ func TestAfterARestartTheReconcilerStillKnowsWhatItHolds(t *testing.T) {
 	if got := statuses(report)["a"]; got != StatusRemoved {
 		t.Fatalf("status = %q, want %q", got, StatusRemoved)
 	}
-	if got := operations(driver); len(got) != 1 || got[0] != "absent 10.20.0.40/24" {
+	if got := operations(driver); len(got) != 1 || got[0] != "absent 10.20.0.40/32" {
 		t.Fatalf("operations = %v, want a single release", got)
 	}
 }
@@ -331,7 +331,7 @@ func TestReconcilingAnUnchangedSetTouchesNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	desired := []Address{address("a", "10.20.0.40/24")}
+	desired := []Address{address("a", "10.20.0.40/32")}
 	if _, err := reconciler.Reconcile(ctx, desired); err != nil {
 		t.Fatal(err)
 	}
@@ -359,8 +359,8 @@ func TestReleaseAllRemovesEveryHeldAddress(t *testing.T) {
 	}
 	ctx := context.Background()
 	if _, err := reconciler.Reconcile(ctx, []Address{
-		address("a", "10.20.0.40/24"),
-		address("b", "10.20.0.41/24"),
+		address("a", "10.20.0.40/32"),
+		address("b", "10.20.0.41/32"),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -383,7 +383,7 @@ func TestAnInvalidAddressIsRefusedBeforeItReachesTheHost(t *testing.T) {
 	report, err := reconciler.Reconcile(context.Background(), []Address{
 		{DecoyID: "a", InterfaceName: "eth0", Prefix: "not-an-address"},
 		{DecoyID: "b", InterfaceName: "eth0", Prefix: "8.8.8.8/24"},
-		{DecoyID: "c", InterfaceName: "", Prefix: "10.20.0.40/24"},
+		{DecoyID: "c", InterfaceName: "", Prefix: "10.20.0.40/32"},
 	})
 	if err != nil {
 		t.Fatal(err)

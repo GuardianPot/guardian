@@ -72,16 +72,23 @@ type Reservations interface {
 type Address struct {
 	DecoyID       string
 	InterfaceName string
-	// Prefix is the full CIDR the host applies, such as 10.20.0.40/24. The host
-	// address is what the decoy answers on; the prefix length is the zone's.
+	// Prefix is the decoy's address as a /32 identity, such as 10.20.0.40/32.
+	// ADR 0016 binds decoy addresses this way on purpose: a zone-length prefix
+	// would give the host a connected route for the whole subnet, and on an
+	// interface that does not already carry that subnet Guardian would be
+	// claiming routing for addresses it does not own.
 	Prefix string
 }
 
-// Host returns the address without its prefix length.
+// Host returns the address without its prefix length. Anything other than a
+// /32 is refused, for the reason on Prefix.
 func (a Address) Host() (netip.Addr, error) {
 	prefix, err := netip.ParsePrefix(a.Prefix)
 	if err != nil {
 		return netip.Addr{}, fmt.Errorf("%w: %q", ErrInvalidAddress, a.Prefix)
+	}
+	if prefix.Bits() != 32 {
+		return netip.Addr{}, fmt.Errorf("%w: a decoy address is a /32 identity", ErrInvalidAddress)
 	}
 	if !prefix.Addr().Is4() || !prefix.Addr().IsPrivate() {
 		return netip.Addr{}, fmt.Errorf("%w: not a private IPv4 host address", ErrInvalidAddress)

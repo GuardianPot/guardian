@@ -69,7 +69,7 @@ func helperFor(t *testing.T, helper *fakeHelper) Driver {
 	return driver
 }
 
-var decoyAddress = Address{DecoyID: "decoy-1", InterfaceName: "eth0", Prefix: "10.20.0.40/24"}
+var decoyAddress = Address{DecoyID: "decoy-1", InterfaceName: "eth0", Prefix: "10.20.0.40/32"}
 
 /*
  * Only an answer that says the host is in the requested state becomes presence.
@@ -223,8 +223,10 @@ func TestAnInvalidAddressNeverReachesTheHelper(t *testing.T) {
 	for _, address := range []Address{
 		{DecoyID: "decoy-1", InterfaceName: "eth0", Prefix: "not-a-prefix"},
 		{DecoyID: "decoy-1", InterfaceName: "eth0", Prefix: "8.8.8.0/24"},
-		{DecoyID: "decoy-1", InterfaceName: "", Prefix: "10.20.0.40/24"},
-		{DecoyID: "", InterfaceName: "eth0", Prefix: "10.20.0.40/24"},
+		// ADR 0016: a decoy address is a /32 identity, never the zone's prefix.
+		{DecoyID: "decoy-1", InterfaceName: "eth0", Prefix: "10.20.0.40/24"},
+		{DecoyID: "decoy-1", InterfaceName: "", Prefix: "10.20.0.40/32"},
+		{DecoyID: "", InterfaceName: "eth0", Prefix: "10.20.0.40/32"},
 	} {
 		outcome, err := driver.Present(context.Background(), address)
 		if err == nil {

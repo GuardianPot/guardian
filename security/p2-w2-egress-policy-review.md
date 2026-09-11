@@ -149,6 +149,10 @@ semantics, the reconciler, the helper driver, and both labs, and bundling it
 into this commit would make both harder to review. It is currently inert because
 nothing calls the reconciler. It should be corrected before anything does.
 
+**Corrected** in a separate commit after P2-W3: `presence.Address` accepts only
+a `/32`, and the address adapter refuses any other length with
+`address-must-be-host-identity`.
+
 ## Conclusion
 
 No new privilege, no new dependency, no execution surface, and no contract

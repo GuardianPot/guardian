@@ -21,7 +21,7 @@ func TestLiveProbeDistinguishesAGatewayFromAFreeAddress(t *testing.T) {
 	probe := NewNeighbourProbe()
 	ctx := context.Background()
 
-	inUse, checked, err := probe.InUse(ctx, Address{DecoyID: "gw", InterfaceName: "eth0", Prefix: gw.String() + "/16"})
+	inUse, checked, err := probe.InUse(ctx, Address{DecoyID: "gw", InterfaceName: "eth0", Prefix: gw.String() + "/32"})
 	if err != nil || !checked || !inUse {
 		t.Fatalf("gateway %s: inUse=%v checked=%v err=%v, want a checked conflict", gw, inUse, checked, err)
 	}
@@ -29,7 +29,7 @@ func TestLiveProbeDistinguishesAGatewayFromAFreeAddress(t *testing.T) {
 	free := gw.As4()
 	free[2], free[3] = 99, 234
 	candidate := netip.AddrFrom4(free)
-	inUse, checked, err = probe.InUse(ctx, Address{DecoyID: "free", InterfaceName: "eth0", Prefix: candidate.String() + "/16"})
+	inUse, checked, err = probe.InUse(ctx, Address{DecoyID: "free", InterfaceName: "eth0", Prefix: candidate.String() + "/32"})
 	if err != nil || !checked || inUse {
 		t.Fatalf("free %s: inUse=%v checked=%v err=%v, want checked and free", candidate, inUse, checked, err)
 	}

@@ -32,9 +32,13 @@ subnet that nothing answers on, so nothing leaves the container's bridge.
 */
 
 const (
-	labDecoyRange       = "10.99.7.0/24"
-	labEgressTarget     = "10.99.7.99"
-	labEgressTargetPort = 9
+	labDecoyRange = "10.99.7.0/24"
+	// Staged directly rather than through EnsureAddress, and zone-length on
+	// purpose: the on-link route it brings is what lets the experiment send
+	// without anything leaving the container.
+	labEgressSourcePrefix = "10.99.7.40/24"
+	labEgressTarget       = "10.99.7.99"
+	labEgressTargetPort   = 9
 )
 
 func TestNftablesEgressPolicyAgainstALiveKernel(t *testing.T) {
@@ -67,7 +71,7 @@ func TestNftablesEgressPolicyAgainstALiveKernel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoy := netip.MustParsePrefix(labDecoyPrefix)
+	decoy := netip.MustParsePrefix(labEgressSourcePrefix)
 	if err := routes.addAddress(link.Index, decoy, labInterface+guardianLabelSuffix); err != nil {
 		t.Fatalf("could not stage a decoy address: %v", err)
 	}

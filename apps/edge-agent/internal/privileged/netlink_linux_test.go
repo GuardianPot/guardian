@@ -43,7 +43,7 @@ func TestTheAdapterRefusesBeforeItTouchesTheHost(t *testing.T) {
 		reason    string
 	}{
 		"an unspecified desired state": {
-			addressRequest("lo", "10.20.0.40/24", privilegedv1.PresenceState_PRESENCE_STATE_UNSPECIFIED),
+			addressRequest("lo", "10.20.0.40/32", privilegedv1.PresenceState_PRESENCE_STATE_UNSPECIFIED),
 			"invalid-presence-state",
 		},
 		"an IPv6 address, which cannot carry the ownership label": {
@@ -52,6 +52,11 @@ func TestTheAdapterRefusesBeforeItTouchesTheHost(t *testing.T) {
 		"an address that is not a prefix at all": {
 			addressRequest("lo", "10.20.0.40", present), "unsupported-address-family",
 		},
+		// ADR 0016: a zone-length prefix would install a connected route for
+		// the whole subnet on the interface.
+		"a zone-length prefix rather than a /32 identity": {
+			addressRequest("lo", "10.20.0.40/24", present), "address-must-be-host-identity",
+		},
 		"an IPv4-mapped IPv6 address wearing IPv4's clothes": {
 			addressRequest("lo", "::ffff:10.20.0.40/120", present), "unsupported-address-family",
 		},
@@ -59,11 +64,11 @@ func TestTheAdapterRefusesBeforeItTouchesTheHost(t *testing.T) {
 		// leaves no room for one would get an unlabelled address, and an
 		// unlabelled address is one this adapter could not later prove it added.
 		"an interface name too long to label": {
-			addressRequest("verylonginterface", "10.20.0.40/24", present),
+			addressRequest("verylonginterface", "10.20.0.40/32", present),
 			"interface-name-too-long-to-label",
 		},
 		"an interface that does not exist": {
-			addressRequest("gdnabsent0", "10.20.0.40/24", present), "interface-not-found",
+			addressRequest("gdnabsent0", "10.20.0.40/32", present), "interface-not-found",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -86,7 +91,7 @@ func TestTheAdapterRefusesBeforeItTouchesTheHost(t *testing.T) {
 // and reporting a failure would make a reconciler retry forever.
 func TestRemovingFromAnAbsentInterfaceIsNotAFailure(t *testing.T) {
 	result, err := available().EnsureAddress(context.Background(),
-		addressRequest("gdnabsent0", "10.20.0.40/24", privilegedv1.PresenceState_PRESENCE_STATE_ABSENT))
+		addressRequest("gdnabsent0", "10.20.0.40/32", privilegedv1.PresenceState_PRESENCE_STATE_ABSENT))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +118,7 @@ func TestAnAdapterWithoutTheCapabilityClaimsNothing(t *testing.T) {
 		privilegedv1.PresenceState_PRESENCE_STATE_ABSENT,
 	} {
 		result, err := adapter.EnsureAddress(context.Background(),
-			addressRequest("lo", "10.20.0.40/24", state))
+			addressRequest("lo", "10.20.0.40/32", state))
 		if err != nil {
 			t.Fatal(err)
 		}

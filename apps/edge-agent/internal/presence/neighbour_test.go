@@ -85,7 +85,7 @@ func TestAResolvedNeighbourIsReportedInUseWithoutSendingAnything(t *testing.T) {
 		func(context.Context, Address) error { sent++; return nil },
 	)
 
-	inUse, checked, err := probe.InUse(context.Background(), address("a", "10.20.0.40/24"))
+	inUse, checked, err := probe.InUse(context.Background(), address("a", "10.20.0.40/32"))
 
 	if err != nil || !inUse || !checked {
 		t.Fatalf("inUse=%v checked=%v err=%v, want a checked conflict", inUse, checked, err)
@@ -103,7 +103,7 @@ func TestAnUnresolvedNeighbourIsReportedFree(t *testing.T) {
 		noNudge,
 	)
 
-	inUse, checked, err := probe.InUse(context.Background(), address("a", "10.20.0.40/24"))
+	inUse, checked, err := probe.InUse(context.Background(), address("a", "10.20.0.40/32"))
 
 	if err != nil || inUse || !checked {
 		t.Fatalf("inUse=%v checked=%v err=%v, want checked and free", inUse, checked, err)
@@ -114,7 +114,7 @@ func TestAnUnresolvedNeighbourIsReportedFree(t *testing.T) {
 func TestNoEntryAfterTheWindowIsReportedFree(t *testing.T) {
 	probe := probeWith(map[string]neighbour{}, nil, noNudge)
 
-	inUse, checked, err := probe.InUse(context.Background(), address("a", "10.20.0.40/24"))
+	inUse, checked, err := probe.InUse(context.Background(), address("a", "10.20.0.40/32"))
 
 	if err != nil || inUse || !checked {
 		t.Fatalf("inUse=%v checked=%v err=%v, want checked and free", inUse, checked, err)
@@ -128,7 +128,7 @@ func TestNoEntryAfterTheWindowIsReportedFree(t *testing.T) {
 func TestAnUnreadableTableReportsNotChecked(t *testing.T) {
 	probe := probeWith(nil, errors.New("permission denied"), noNudge)
 
-	inUse, checked, err := probe.InUse(context.Background(), address("a", "10.20.0.40/24"))
+	inUse, checked, err := probe.InUse(context.Background(), address("a", "10.20.0.40/32"))
 
 	if err != nil || inUse || checked {
 		t.Fatalf("inUse=%v checked=%v err=%v, want not checked", inUse, checked, err)
@@ -141,7 +141,7 @@ func TestAFailedSendReportsNotChecked(t *testing.T) {
 		return errors.New("network unreachable")
 	})
 
-	inUse, checked, err := probe.InUse(context.Background(), address("a", "10.20.0.40/24"))
+	inUse, checked, err := probe.InUse(context.Background(), address("a", "10.20.0.40/32"))
 
 	if err != nil || inUse || checked {
 		t.Fatalf("inUse=%v checked=%v err=%v, want not checked", inUse, checked, err)
@@ -179,7 +179,7 @@ func TestOnAnUnsupportedPlatformTheProbeRefusesToAnswer(t *testing.T) {
 		t.Skip("this host can read a neighbour cache")
 	}
 
-	_, checked, err := probe.InUse(context.Background(), address("a", "10.20.0.40/24"))
+	_, checked, err := probe.InUse(context.Background(), address("a", "10.20.0.40/32"))
 
 	if err != nil || checked {
 		t.Fatalf("checked=%v err=%v, want an unchecked answer off Linux", checked, err)
@@ -200,7 +200,7 @@ func TestTheProbeAndReconcilerRefuseAnOccupiedAddressTogether(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report, err := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/24")})
+	report, err := reconciler.Reconcile(context.Background(), []Address{address("a", "10.20.0.40/32")})
 	if err != nil {
 		t.Fatal(err)
 	}

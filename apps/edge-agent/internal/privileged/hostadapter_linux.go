@@ -223,6 +223,12 @@ func (a hostAdapter) EnsureAddress(ctx context.Context, operation AddressOperati
 		// for IPv4 addresses, so an IPv6 decoy address would be unmarked.
 		return AdapterResult{}, violation(codes.InvalidArgument, "unsupported-address-family")
 	}
+	// ADR 0016: a decoy address is bound as a /32 identity. A zone-length
+	// prefix would install a connected route for the whole subnet, which on an
+	// interface not already carrying it claims routing Guardian does not own.
+	if prefix.Bits() != 32 {
+		return AdapterResult{}, violation(codes.InvalidArgument, "address-must-be-host-identity")
+	}
 	label, ok := guardianLabel(operation.InterfaceName)
 	if !ok {
 		return AdapterResult{}, violation(codes.FailedPrecondition, "interface-name-too-long-to-label")

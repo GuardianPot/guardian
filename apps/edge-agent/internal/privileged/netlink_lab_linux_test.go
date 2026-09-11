@@ -16,7 +16,7 @@ import (
 The netlink lab.
 
 Everything here mutates a real interface, so it runs only inside the throwaway
-container `task presence:netlink` builds: its own network namespace, its own
+container `task privileged:netlink` builds: its own network namespace, its own
 `eth0`, CAP_NET_ADMIN and nothing else. Nothing outside that namespace can be
 reached, which is what makes it safe to assert against a live kernel rather
 than a fake.
@@ -29,8 +29,8 @@ Guardian refuses to remove an address it did not add.
 const (
 	netlinkLabEnv       = "GUARDIAN_NETLINK_LAB"
 	labInterface        = "eth0"
-	labDecoyPrefix      = "10.99.7.40/24"
-	labForeignPrefix    = "10.99.7.41/24"
+	labDecoyPrefix      = "10.99.7.40/32"
+	labForeignPrefix    = "10.99.7.41/32"
 	labForeignLabelName = labInterface + ":host"
 )
 
