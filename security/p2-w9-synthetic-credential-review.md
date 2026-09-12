@@ -117,11 +117,13 @@ fs-prod-01" names a production host.
 
 ## Deliberately not covered
 
-- **Delivery to the decoy.** A decoy must compare what an attacker typed against
-  the planted hash, and `P2-W15` gave the decoy desired object nowhere to put a
-  credential. Bridging that needs a public-contract change, which is a
-  stop-and-ask, so the domain is complete and currently unreachable from a
-  decoy.
+- **Delivery to the decoy.** Decided 2026-09-13 and not yet implemented: the
+  hash travels in the root-installed workload definition, with no public
+  contract change (`P2-W9` section 5). The review that implementation needs is
+  of that path: the definition is world-readable on the Edge, which is
+  acceptable only because it carries a hash of 128-bit worthless material and
+  never the secret, and the Edge's recognition rule must be the Control
+  Plane's exactly.
 - **Storage and API.** No table, no migration, no REST surface. All three follow
   the delivery decision, since it may change what is stored.
 - **Pack recognition.** `P2-W5` and `P2-W7` present and recognise the

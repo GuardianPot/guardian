@@ -20,9 +20,33 @@ advance.
 | `P2-W3` — containerd production runtime manager | draft, implemented on `main` with ADR 0019 network attachment 2026-09-13 |
 | `P2-W10` — Canonical event and evidence envelope | draft, implemented on `main` 2026-09-08 |
 | `P2-W11` — Edge normalization adapters | draft, implemented on `main` 2026-09-08 |
-| `P2-W9` — Synthetic credential domain | draft, domain on `main` 2026-09-10; decoy delivery blocked |
+| `P2-W9` — Synthetic credential domain | draft, domain on `main` 2026-09-10; decoy delivery decided 2026-09-13, not implemented |
 
 Every other roadmap workstream is unwritten.
+
+## Owner decisions for the remaining Phase 2 work (2026-09-13)
+
+**Delivery order.** The Product Owner's order, with what is done:
+
+1. `CP-0004`, 2. `WCX-11`, 3. `P2-W4`, 4. `P2-W1`, 5. `P2-W2`, 6. `P2-W3` — on
+   `main`; `P2-W3` includes ADR 0019 network attachment (`09f3f3d`).
+7. `P2-W10` + `P2-W11` — on `main`.
+8. `P2-W9` — domain on `main`; decoy delivery is next.
+9. `P2-W5` .. `P2-W8` — SSH/Cowrie, HTTP/Admin, PostgreSQL, SMB packs.
+10. `P2-W12` + `P2-W13` — local spool and central ingest, blob and quarantine.
+11. `P2-W14` — functional decoy health and coverage.
+
+**Synthetic credential delivery (`P2-W9` section 5) — the workload definition.**
+Recognition material reaches the Edge the way a decoy's address does: in the
+root-installed workload definition, not in `openapi/`, `proto/`, or the decoy
+desired-state object. The public contracts do not change. See `P2-W9` section 5.
+
+**Pack implementation (`P2-W5` .. `P2-W8`) — Cowrie for SSH, Guardian Go for the
+rest.** `P2-W5` wraps upstream Cowrie as a digest-pinned image with a Guardian
+adapter; it is the only new third-party component. `P2-W6` (HTTP/Admin),
+`P2-W7` (PostgreSQL), and `P2-W8` (SMB) are Guardian's own Go emulators and add
+no new dependency. Each pack still needs its work package written before it is
+implemented, and each is new attacker-facing code with its own security review.
 
 `P2-W4` was written and implemented in the same pass, in the order the Product
 Owner set. Its `status` stays `draft` because promoting it is the owner's
