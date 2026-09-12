@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/netip"
 	"os"
 	"regexp"
 	"strings"
@@ -86,6 +87,24 @@ type Workload struct {
 	// Required and non-zero: a decoy is attacker-facing software and has no
 	// reason to be root even in its own namespace.
 	User WorkloadUser `json:"user"`
+	// Network is where the decoy answers (ADR 0019). It is root's to say, like
+	// everything else here: an Edge Agent that could name the address in a
+	// request could point any installed decoy at any allowlisted address.
+	Network WorkloadNetwork `json:"network"`
+}
+
+// WorkloadNetwork is the decoy's one address and the zone interface its
+// neighbours reach it through. The helper still refuses an interface or an
+// address its root-controlled allowlist does not name.
+type WorkloadNetwork struct {
+	Interface string `json:"interface"`
+	Address   string `json:"address"`
+}
+
+// DecoyAddress is the parsed address. It is valid only on a validated workload.
+func (n WorkloadNetwork) DecoyAddress() netip.Addr {
+	address, _ := netip.ParseAddr(n.Address)
+	return address
 }
 
 type WorkloadImage struct {
@@ -251,6 +270,15 @@ func (w Workload) validate() error {
 	// bug away from being root outside it, and nothing a decoy does needs it.
 	if w.User.UID < 1 || w.User.UID > 65533 || w.User.GID < 1 || w.User.GID > 65533 {
 		return fmt.Errorf("%w: user must be a non-root uid/gid", ErrWorkloadInvalid)
+	}
+	if !validInterfaceName(w.Network.Interface) {
+		return fmt.Errorf("%w: network interface", ErrWorkloadInvalid)
+	}
+	// The canonical dotted form only, IPv4 only: the address becomes interface
+	// names and a /32, and there is exactly one spelling of each.
+	address, err := netip.ParseAddr(w.Network.Address)
+	if err != nil || !address.Is4() || address.String() != w.Network.Address || !validRoutableAddress(address) {
+		return fmt.Errorf("%w: network address", ErrWorkloadInvalid)
 	}
 	return nil
 }

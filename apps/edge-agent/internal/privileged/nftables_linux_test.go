@@ -30,48 +30,66 @@ func installed(ruleset nftRuleset) map[string][]string {
 	return observed
 }
 
+var zoneInterfaces = []string{"eth1", "br-decoy"}
+
+func rulesIn(ruleset nftRuleset, chain string) []nftRule {
+	var rules []nftRule
+	for _, rule := range ruleset.rules {
+		if rule.chain == chain {
+			rules = append(rules, rule)
+		}
+	}
+	return rules
+}
+
 /*
  * The shape of the policy, stated once so a change to it has to be deliberate.
  *
- * Two rules decide (accept a reply, drop everything else) and one rule per
- * decoy range per hook routes traffic to that decision. Both hooks matter:
- * `forward` is a decoy in its own namespace, `output` is anything the host
- * itself sends from a decoy address.
+ * Two rules decide a decoy's traffic (accept a reply, drop everything else),
+ * one rule per decoy range per hook and one per decoy veth route to that
+ * decision. Both hooks matter: `forward` is a decoy in its own namespace,
+ * `output` is anything the host itself sends from a decoy address. Traffic
+ * forwarded in from a zone interface goes to a second decision that returns it
+ * only for a decoy range.
  */
-func TestThePolicyCoversEveryDecoyRangeOnBothHooks(t *testing.T) {
-	ruleset := buildEgressPolicy(prefixes("10.20.0.0/24", "10.30.0.0/16"))
-	counts := map[string]int{}
-	for _, rule := range ruleset.rules {
-		counts[rule.chain]++
-	}
-	if counts[nftEgressChain] != 2 {
-		t.Fatalf("the decision chain has %d rules, want accept-established and drop", counts[nftEgressChain])
-	}
-	for _, hook := range []string{nftForwardHook, nftOutputHook} {
-		if counts[hook] != 2 {
-			t.Fatalf("%s has %d rules, want one per decoy range", hook, counts[hook])
+func TestThePolicyCoversEveryDecoyRangeOnBothHooksAndEveryZone(t *testing.T) {
+	ruleset := buildEgressPolicy(prefixes("10.20.0.0/24", "10.30.0.0/16"), zoneInterfaces)
+	for chain, want := range map[string]int{
+		nftEgressChain: 2,
+		nftZoneChain:   3, // one return per range, then drop
+		nftForwardHook: 5, // two ranges, the decoy veths, two zones
+		nftOutputHook:  2,
+	} {
+		if got := len(rulesIn(ruleset, chain)); got != want {
+			t.Fatalf("%s has %d rules, want %d", chain, got, want)
 		}
 	}
-	// The last rule of the decision chain is an unconditional drop. If anything
-	// were appended after it, the deny would stop being the default.
-	var decision []nftRule
-	for _, rule := range ruleset.rules {
-		if rule.chain == nftEgressChain {
-			decision = append(decision, rule)
+	// Both decisions end in an unconditional drop. If anything were appended
+	// after it, the deny would stop being the default.
+	for _, chain := range []string{nftEgressChain, nftZoneChain} {
+		rules := rulesIn(ruleset, chain)
+		last := rules[len(rules)-1]
+		if len(last.expressions) != 1 || !bytes.Equal(last.expressions[0], exprVerdict(nfDrop, "")) {
+			t.Fatalf("%s does not end in an unconditional drop", chain)
 		}
 	}
-	if len(decision[1].expressions) != 1 {
-		t.Fatalf("the final decision carries %d expressions, want an unconditional verdict", len(decision[1].expressions))
+	// A zone rule matches the exact name; the veth rule matches the prefix every
+	// decoy veth carries and nothing longer than it.
+	forward := rulesIn(ruleset, nftForwardHook)
+	if !bytes.Equal(forward[2].expressions[1], exprCmp(unix.NFT_CMP_EQ, []byte("gdn"))) ||
+		!bytes.Equal(forward[2].expressions[2], exprVerdict(unix.NFT_JUMP, nftEgressChain)) {
+		t.Fatal("the decoy veth rule does not send a veth's traffic to the egress decision")
 	}
-	if !bytes.Equal(decision[1].expressions[0], exprVerdict(nfDrop, "")) {
-		t.Fatal("the policy does not end in a drop")
+	if !bytes.Equal(forward[3].expressions[1], exprCmp(unix.NFT_CMP_EQ, []byte("br-decoy\x00"))) ||
+		!bytes.Equal(forward[3].expressions[2], exprVerdict(unix.NFT_JUMP, nftZoneChain)) {
+		t.Fatal("a zone rule is not an exact-name jump to the zone decision")
 	}
 }
 
 // Every rule carries a distinct marker, which is what makes a missing rule
 // detectable rather than merely a different count.
 func TestEveryRuleCarriesADistinctMarker(t *testing.T) {
-	ruleset := buildEgressPolicy(prefixes("10.20.0.0/24", "10.30.0.0/16"))
+	ruleset := buildEgressPolicy(prefixes("10.20.0.0/24", "10.30.0.0/16"), zoneInterfaces)
 	seen := map[string]struct{}{}
 	for _, rule := range ruleset.rules {
 		key := rule.chain + "/" + rule.userData
@@ -90,7 +108,7 @@ func TestEveryRuleCarriesADistinctMarker(t *testing.T) {
  * that it is contained.
  */
 func TestAnythingOtherThanTheExactPolicyIsNotApplied(t *testing.T) {
-	ruleset := buildEgressPolicy(prefixes("10.20.0.0/24"))
+	ruleset := buildEgressPolicy(prefixes("10.20.0.0/24"), zoneInterfaces)
 	if !ruleset.matches(installed(ruleset)) {
 		t.Fatal("the policy does not match itself")
 	}
@@ -105,6 +123,9 @@ func TestAnythingOtherThanTheExactPolicyIsNotApplied(t *testing.T) {
 		},
 		"one hook lost its rule": func(observed map[string][]string) {
 			observed[nftForwardHook] = nil
+		},
+		"the zone decision was flushed": func(observed map[string][]string) {
+			delete(observed, nftZoneChain)
 		},
 		"a rule was replaced with another version": func(observed map[string][]string) {
 			observed[nftEgressChain][0] = "gdn0:deadbeefdeadbeef:0"
@@ -133,20 +154,25 @@ func TestAnythingOtherThanTheExactPolicyIsNotApplied(t *testing.T) {
  * another must rewrite. Ordering is not a change: the allowlist is a set, and
  * two spellings of the same set must not cause a rewrite on every pass.
  */
-func TestTheMarkerFollowsTheRangesAndNotTheirOrder(t *testing.T) {
-	one := buildEgressPolicy(prefixes("10.20.0.0/24", "10.30.0.0/16"))
-	reordered := buildEgressPolicy(prefixes("10.30.0.0/16", "10.20.0.0/24"))
+func TestTheMarkerFollowsTheRangesAndInterfacesAndNotTheirOrder(t *testing.T) {
+	one := buildEgressPolicy(prefixes("10.20.0.0/24", "10.30.0.0/16"), []string{"eth1", "br-decoy"})
+	reordered := buildEgressPolicy(prefixes("10.30.0.0/16", "10.20.0.0/24"), []string{"br-decoy", "eth1"})
 	if one.digest != reordered.digest || !one.matches(installed(reordered)) {
-		t.Fatal("the same ranges in another order produced a different policy")
+		t.Fatal("the same ranges and interfaces in another order produced a different policy")
 	}
 	for _, different := range [][]netip.Prefix{
 		prefixes("10.20.0.0/24"),
 		prefixes("10.20.0.0/24", "10.30.0.0/24"),
 		prefixes("10.20.0.0/25", "10.30.0.0/16"),
 	} {
-		other := buildEgressPolicy(different)
+		other := buildEgressPolicy(different, zoneInterfaces)
 		if other.digest == one.digest {
 			t.Fatalf("%v produced the same marker as a different range set", different)
+		}
+	}
+	for _, interfaces := range [][]string{nil, {"eth1"}, {"eth1", "br-decoy", "eth2"}} {
+		if buildEgressPolicy(prefixes("10.20.0.0/24", "10.30.0.0/16"), interfaces).digest == one.digest {
+			t.Fatalf("%v produced the same marker as a different interface set", interfaces)
 		}
 	}
 }

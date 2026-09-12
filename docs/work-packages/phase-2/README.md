@@ -15,7 +15,9 @@ advance.
 |---|---|
 | `P2-W15` — Decoy domain, lifecycle contract, and management surface | delivered 2026-09-08 |
 | `P2-W4` — Decoy manifest schema | draft, implemented on `main` 2026-09-08 |
-| `P2-W1` — Routed presence driver | draft, driver and conflict probe on `main` 2026-09-08; netlink adapter blocked |
+| `P2-W1` — Routed presence driver | draft, driver, conflict probe, and proxy-ARP adapter on `main` 2026-09-13 |
+| `P2-W2` — nftables egress policy | draft, implemented on `main`; zone forwarding rule added 2026-09-13 |
+| `P2-W3` — containerd production runtime manager | draft, implemented on `main` with ADR 0019 network attachment 2026-09-13 |
 | `P2-W10` — Canonical event and evidence envelope | draft, implemented on `main` 2026-09-08 |
 | `P2-W11` — Edge normalization adapters | draft, implemented on `main` 2026-09-08 |
 | `P2-W9` — Synthetic credential domain | draft, domain on `main` 2026-09-10; decoy delivery blocked |

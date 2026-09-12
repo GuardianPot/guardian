@@ -4,11 +4,9 @@ package privileged
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	privilegedv1 "github.com/GuardianPot/guardian/apps/edge-agent/internal/privileged/gen/guardian/privileged/v1"
-	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
 )
 
@@ -43,7 +41,7 @@ func TestTheAdapterRefusesBeforeItTouchesTheHost(t *testing.T) {
 			addressRequest("lo", "10.20.0.40/32", privilegedv1.PresenceState_PRESENCE_STATE_UNSPECIFIED),
 			"invalid-presence-state",
 		},
-		"an IPv6 address, which cannot carry the ownership label": {
+		"an IPv6 address, which proxy ARP cannot answer for": {
 			addressRequest("lo", "fd00::1/64", present), "unsupported-address-family",
 		},
 		"an address that is not a prefix at all": {
@@ -56,13 +54,6 @@ func TestTheAdapterRefusesBeforeItTouchesTheHost(t *testing.T) {
 		},
 		"an IPv4-mapped IPv6 address wearing IPv4's clothes": {
 			addressRequest("lo", "::ffff:10.20.0.40/120", present), "unsupported-address-family",
-		},
-		// A label is capped at IFNAMSIZ-1 by the kernel. An interface whose name
-		// leaves no room for one would get an unlabelled address, and an
-		// unlabelled address is one this adapter could not later prove it added.
-		"an interface name too long to label": {
-			addressRequest("verylonginterface", "10.20.0.40/32", present),
-			"interface-name-too-long-to-label",
 		},
 		"an interface that does not exist": {
 			addressRequest("gdnabsent0", "10.20.0.40/32", present), "interface-not-found",
@@ -194,33 +185,5 @@ func TestTheProbedCapabilityIsOneOfTwoHonestAnswers(t *testing.T) {
 	}
 	if !reasonCodePattern.MatchString(capability.ReasonCode) {
 		t.Fatalf("reason %q is not a closed token", capability.ReasonCode)
-	}
-}
-
-// The label is the kernel's own ownership marker and it has a hard length
-// limit. A name that does not fit is refused rather than left unmarked.
-func TestGuardianLabelsFitTheKernelsLimit(t *testing.T) {
-	for name, wantOK := range map[string]bool{
-		"eth0":              true,
-		"ens192":            true,
-		"guardian0":         true,
-		"br-decoy-01":       true,
-		"":                  false,
-		"enx00e04c680001":   false,
-		"verylonginterface": false,
-	} {
-		label, ok := guardianLabel(name)
-		if ok != wantOK {
-			t.Fatalf("guardianLabel(%q) ok = %v, want %v", name, ok, wantOK)
-		}
-		if !ok {
-			continue
-		}
-		if len(label) >= unix.IFNAMSIZ {
-			t.Fatalf("label %q is %d bytes, kernel allows %d", label, len(label), unix.IFNAMSIZ-1)
-		}
-		if !strings.HasPrefix(label, name+":") {
-			t.Fatalf("label %q does not begin with the interface name", label)
-		}
 	}
 }

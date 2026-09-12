@@ -73,7 +73,7 @@ func TestNftablesEgressPolicyAgainstALiveKernel(t *testing.T) {
 		t.Fatal(err)
 	}
 	decoy := netip.MustParsePrefix(labEgressSourcePrefix)
-	if err := routes.AddAddress(link.Index, decoy, labInterface+guardianLabelSuffix); err != nil {
+	if err := routes.AddAddress(link.Index, decoy, labInterface+":lab"); err != nil {
 		t.Fatalf("could not stage a decoy address: %v", err)
 	}
 	t.Cleanup(func() { _ = routes.DeleteAddress(link.Index, decoy) })
@@ -147,8 +147,9 @@ func TestNftablesEgressPolicyAgainstALiveKernel(t *testing.T) {
 		}
 	})
 
-	// A policy built from different ranges must not be mistaken for this one.
-	t.Run("a different range set is not the same policy", func(t *testing.T) {
+	// A policy built from different ranges or interfaces must not be mistaken
+	// for this one.
+	t.Run("a different range or interface set is not the same policy", func(t *testing.T) {
 		connection, err := rtnetlink.Dial(unix.NETLINK_NETFILTER)
 		if err != nil {
 			t.Fatal(err)
@@ -158,11 +159,14 @@ func TestNftablesEgressPolicyAgainstALiveKernel(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		other := buildEgressPolicy([]netip.Prefix{netip.MustParsePrefix("10.88.0.0/16")})
-		if other.matches(observed) {
+		zones := []string{labInterface}
+		if buildEgressPolicy([]netip.Prefix{netip.MustParsePrefix("10.88.0.0/16")}, zones).matches(observed) {
 			t.Fatal("a policy for other ranges matched the installed one")
 		}
-		if !buildEgressPolicy([]netip.Prefix{decoy.Masked()}).matches(observed) {
+		if buildEgressPolicy([]netip.Prefix{decoy.Masked()}, []string{"eth9"}).matches(observed) {
+			t.Fatal("a policy for other interfaces matched the installed one")
+		}
+		if !buildEgressPolicy([]netip.Prefix{decoy.Masked()}, zones).matches(observed) {
 			t.Fatal("the installed policy did not match the one that was applied")
 		}
 	})

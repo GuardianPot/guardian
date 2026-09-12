@@ -234,3 +234,8 @@ func (c *Conn) acknowledge(awaited map[uint32]struct{}) error {
 // change is the flag set for a request that alters kernel state and must be
 // acknowledged.
 const change = unix.NLM_F_REQUEST | unix.NLM_F_ACK
+
+// lookup is the flag set for a single-object GET. Without NLM_F_ACK the kernel
+// sends the object and nothing after it, so a reader waiting for the end of the
+// reply would wait until its timeout; the acknowledgement is the end marker.
+const lookup = unix.NLM_F_REQUEST | unix.NLM_F_ACK

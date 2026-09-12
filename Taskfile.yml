@@ -246,7 +246,7 @@ tasks:
           --mount "type=bind,src=$(go env GOMODCACHE),dst=/go/pkg/mod,readonly" \
           --workdir /src \
           {{.EDGE_RACE_IMAGE}} \
-          sh -ec 'mkdir -p /tmp/go-build /tmp/home && exec go test -mod=readonly -count=1 -run AgainstALiveKernel -v ./internal/privileged'
+          sh -ec 'mkdir -p /tmp/go-build /tmp/home && exec go test -mod=readonly -count=1 -run AgainstALiveKernel -v ./internal/privileged ./internal/rtnetlink'
 
   privileged:containerd:
     desc: Exercise the P2-W3 decoy runtime against a real containerd 2.x in a throwaway privileged container

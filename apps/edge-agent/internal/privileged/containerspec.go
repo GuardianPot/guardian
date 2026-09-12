@@ -101,9 +101,11 @@ type specLinux struct {
 
 type specNamespace struct {
 	Type string `json:"type"`
-	// Path is never set. A namespace entry with a path joins an existing
-	// namespace, which for `network` would be how a decoy ends up on the
-	// host's stack. Its absence is what makes every namespace here a new one.
+	// Path joins an existing namespace instead of creating one. It is set in
+	// exactly one case: a decoy's network namespace, to its own holder's
+	// (ADR 0019), and only in the form holderNamespacePattern admits. Every
+	// other namespace, and every holder namespace, is new.
+	Path string `json:"path,omitempty"`
 }
 
 type specResources struct {
@@ -224,6 +226,29 @@ Everything a decoy is denied is denied by construction:
 */
 func BuildContainerSpec(workload Workload, entrypoint ImageEntrypoint) (ContainerSpec, error) {
 	return buildContainerSpec(workload, entrypoint, hostPlatform())
+}
+
+// BuildJoinedContainerSpec is the decoy spec with its network namespace joined
+// to its holder's. The path is checked against the one form it may take before
+// it is written.
+func BuildJoinedContainerSpec(workload Workload, entrypoint ImageEntrypoint, networkNamespace string) (ContainerSpec, error) {
+	return buildJoinedContainerSpec(workload, entrypoint, networkNamespace, hostPlatform())
+}
+
+func buildJoinedContainerSpec(workload Workload, entrypoint ImageEntrypoint, networkNamespace string, platform specPlatform) (ContainerSpec, error) {
+	if !holderNamespacePattern.MatchString(networkNamespace) {
+		return ContainerSpec{}, fmt.Errorf("%w: network namespace", ErrWorkloadInvalid)
+	}
+	spec, err := buildContainerSpec(workload, entrypoint, platform)
+	if err != nil {
+		return ContainerSpec{}, err
+	}
+	for index := range spec.Linux.Namespaces {
+		if spec.Linux.Namespaces[index].Type == "network" {
+			spec.Linux.Namespaces[index].Path = networkNamespace
+		}
+	}
+	return spec, nil
 }
 
 func buildContainerSpec(workload Workload, entrypoint ImageEntrypoint, platform specPlatform) (ContainerSpec, error) {

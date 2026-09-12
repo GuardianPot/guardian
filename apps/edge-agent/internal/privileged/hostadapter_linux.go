@@ -17,15 +17,18 @@ import (
 /*
 hostAdapter is the production adapter on Linux.
 
-It fills exactly one typed operation — `EnsureAddress`, which `P2-W1` needs —
-and leaves the other three reporting `unsupported`. That is deliberate: the
-nftables and containerd adapters are `P2-W2` and `P2-W3`, each is a separate
-privileged surface with its own review, and a helper that claimed a capability
-it does not have would be the exact failure this product is built not to make.
+It fills the three typed operations Phase 2 needs — `EnsureAddress` (`P2-W1`),
+`ApplyNftablesPolicy` (`P2-W2`), and `ReconcileContainer` (`P2-W3`, with the
+network holder of ADR 0019) — and leaves `EnsureNetworkNamespace` reporting
+`unsupported`. Creating a namespace from the helper needs CAP_SYS_ADMIN, which
+is exactly what ADR 0019 was chosen to avoid; a decoy's namespace belongs to its
+holder instead. A helper that claimed a capability it does not have would be the
+exact failure this product is built not to make.
 
-The address half is written so that only one thing can go wrong badly — Guardian
-removing an address it did not add — and that is refused by the label check in
-both directions.
+Every change the adapter makes to the host is marked as Guardian's in a field
+the kernel keeps, and nothing unmarked is changed: a proxy neighbour or route
+carries Guardian's protocol, and a decoy's veth carries an alias naming its
+workload.
 */
 type hostAdapter struct {
 	address  AdapterCapability
@@ -34,8 +37,11 @@ type hostAdapter struct {
 	// it, which is what keeps the set of addresses Guardian may place and the
 	// set it denies egress for from ever drifting apart.
 	decoyRanges []netip.Prefix
-	containers  AdapterCapability
-	runtime     *containerRuntime
+	// interfaces are the allowlisted zone interfaces. The egress policy drops
+	// forwarded traffic arriving on them unless it is addressed to a decoy.
+	interfaces []string
+	containers AdapterCapability
+	runtime    *containerRuntime
 }
 
 // NewHostAdapter builds the Linux adapter and settles, once, what it can
@@ -49,12 +55,17 @@ func NewHostAdapter(allowlist Allowlist) Adapter {
 		address:     probeAddressCapability(),
 		nftables:    probeNftablesCapability(ranges),
 		decoyRanges: ranges,
+		interfaces:  allowlist.interfaceNames(),
 		containers:  containerCapability(allowlist),
 	}
 	adapter.runtime = &containerRuntime{
 		dial:              func() (decoyRuntimeAPI, error) { return dialContainerd(containerdSocketPath) },
 		workloadDirectory: DefaultWorkloadDirectory,
 		egressReady:       adapter.egressReady,
+		allowsNetwork:     allowlist.allowsWorkloadNetwork,
+		network:           &hostNetwork{stateDirectory: DefaultNetworkStateDirectory},
+		holderBinary:      DefaultHolderBinary,
+		verifyHolder:      verifyHolderBinary,
 	}
 	return adapter
 }
@@ -75,9 +86,10 @@ func containerCapability(allowlist Allowlist) AdapterCapability {
 	}
 }
 
-// egressReady is the P2-W2 ordering, checked where decoys are started: the
-// default-deny policy for exactly the configured ranges must be installed now.
-// Anything short of a positive answer is "not ready".
+// egressReady is the P2-W2 ordering, checked where decoys are started and
+// before forwarding is enabled: the default-deny policy for exactly the
+// configured ranges and interfaces must be installed now. Anything short of a
+// positive answer is "not ready".
 func (a hostAdapter) egressReady() error {
 	if a.nftables.State != privilegedv1.CapabilityState_CAPABILITY_STATE_AVAILABLE {
 		return errors.New(a.nftables.ReasonCode)
@@ -91,7 +103,7 @@ func (a hostAdapter) egressReady() error {
 	if err != nil {
 		return err
 	}
-	if !buildEgressPolicy(a.decoyRanges).matches(observed) {
+	if !buildEgressPolicy(a.decoyRanges, a.interfaces).matches(observed) {
 		return errors.New("egress-policy-not-applied")
 	}
 	return nil
@@ -182,21 +194,29 @@ func (a hostAdapter) Capabilities() map[privilegedv1.PrivilegedOperation]Adapter
 }
 
 /*
-EnsureAddress adds or removes one decoy address on one host interface.
+EnsureAddress makes the host answer, or stop answering, ARP for one decoy
+address on one zone interface.
+
+ADR 0019 moved the address itself into the decoy's namespace, so "present" is a
+proxy-ARP entry on the zone interface rather than an address the host holds. It
+draws the zone's traffic for the address to the Edge, which routes it to the
+decoy. The kernel answers a proxy entry only on an interface that forwards, and
+forwarding is enabled when a decoy is attached, so an address with no decoy
+behind it draws nothing.
 
 The rules, in the order they are applied:
 
  1. An adapter that cannot do address work reports `unsupported` and touches
     nothing. `presence.Reconciler` maps that to a status that never claims the
     address is present.
- 2. Guardian labels every address it adds. An address already on the interface
-    without that label belongs to the host, and the request is refused in both
-    directions — taking one over would mean deleting, later, an address Guardian
-    never placed. This is the failure that would cause a customer outage, and it
-    is the one refusal in this file that is not about tidiness.
- 3. Adding an address that is already Guardian's, or removing one that is
-    already gone, is `unchanged`. The helper is called repeatedly by a
-    reconciler; converging twice must not report two changes.
+ 2. Guardian marks every proxy entry it adds with its own protocol. An entry
+    without it belongs to the host, and so does an address any host interface
+    holds as its own. Both are refused in both directions — taking one over
+    would mean deleting, later, something Guardian never placed. This is the
+    failure that would cause a customer outage.
+ 3. Adding an entry that is already Guardian's, or removing one that is already
+    gone, is `unchanged`. The helper is called repeatedly by a reconciler;
+    converging twice must not report two changes.
 
 The netlink calls are not context-aware — they are blocking syscalls bounded by
 the socket's own receive timeout — so cancellation is observed on entry and the
@@ -220,24 +240,18 @@ func (a hostAdapter) EnsureAddress(ctx context.Context, operation AddressOperati
 	}
 	prefix, err := netip.ParsePrefix(operation.AddressPrefix)
 	if err != nil || !prefix.Addr().Is4() || prefix.Addr().Is4In6() {
-		// IPv4 only: the ownership label the rules above depend on exists only
-		// for IPv4 addresses, so an IPv6 decoy address would be unmarked.
+		// IPv4 only: proxy ARP, the decoy's veth names, and the egress policy
+		// are all IPv4 mechanisms.
 		return AdapterResult{}, violation(codes.InvalidArgument, "unsupported-address-family")
 	}
-	// ADR 0016: a decoy address is bound as a /32 identity. A zone-length
-	// prefix would install a connected route for the whole subnet, which on an
-	// interface not already carrying it claims routing Guardian does not own.
+	// ADR 0016: a decoy address is a /32 identity.
 	if prefix.Bits() != 32 {
 		return AdapterResult{}, violation(codes.InvalidArgument, "address-must-be-host-identity")
-	}
-	label, ok := guardianLabel(operation.InterfaceName)
-	if !ok {
-		return AdapterResult{}, violation(codes.FailedPrecondition, "interface-name-too-long-to-label")
 	}
 	link, err := net.InterfaceByName(operation.InterfaceName)
 	if err != nil {
 		if operation.DesiredState == privilegedv1.PresenceState_PRESENCE_STATE_ABSENT {
-			// No interface, no address on it. Removal has nothing to do.
+			// No interface, no entry on it. Removal has nothing to do.
 			return AdapterResult{
 				Outcome:    privilegedv1.OperationOutcome_OPERATION_OUTCOME_UNCHANGED,
 				ReasonCode: "interface-absent",
@@ -252,57 +266,82 @@ func (a hostAdapter) EnsureAddress(ctx context.Context, operation AddressOperati
 	}
 	defer func() { _ = connection.Close() }()
 
-	existing, err := connection.FindAddress(link.Index, prefix)
+	existing, err := proxyEntry(connection, link.Index, prefix.Addr())
 	if err != nil {
 		return AdapterResult{}, err
 	}
 	if operation.DesiredState == privilegedv1.PresenceState_PRESENCE_STATE_ABSENT {
-		return removeAddress(connection, link.Index, prefix, label, existing)
+		return removeProxyEntry(connection, link.Index, prefix.Addr(), existing)
 	}
-	return placeAddress(connection, link.Index, prefix, label, existing)
+	return placeProxyEntry(connection, link.Index, prefix.Addr(), existing)
 }
 
-func placeAddress(connection *rtnetlink.Conn, index int, prefix netip.Prefix, label string, existing *rtnetlink.Address) (AdapterResult, error) {
-	if existing != nil {
-		if existing.Label != label {
-			return AdapterResult{}, violation(codes.FailedPrecondition, "address-held-by-host")
-		}
-		return unchanged("address-already-present"), nil
+func proxyEntry(connection *rtnetlink.Conn, index int, address netip.Addr) (*rtnetlink.ProxyNeighbour, error) {
+	entries, err := connection.ProxyNeighbours(index)
+	if err != nil {
+		return nil, err
 	}
-	err := connection.AddAddress(index, prefix, label)
-	switch {
-	case err == nil:
-		return applied("address-added"), nil
-	case errors.Is(err, unix.EEXIST):
-		// Something added the address between the dump and the write. Whose it
-		// is decides whether this is convergence or a collision.
-		raced, lookupErr := connection.FindAddress(index, prefix)
-		if lookupErr != nil {
-			return AdapterResult{}, lookupErr
+	for _, entry := range entries {
+		if entry.Address == address {
+			found := entry
+			return &found, nil
 		}
-		if raced == nil || raced.Label != label {
-			return AdapterResult{}, violation(codes.FailedPrecondition, "address-held-by-host")
-		}
-		return unchanged("address-already-present"), nil
-	case errors.Is(err, unix.EPERM), errors.Is(err, unix.EACCES):
-		return unsupportedOutcome("no-cap-net-admin"), nil
 	}
-	return AdapterResult{}, err
+	return nil, nil
 }
 
-func removeAddress(connection *rtnetlink.Conn, index int, prefix netip.Prefix, label string, existing *rtnetlink.Address) (AdapterResult, error) {
+func placeProxyEntry(connection *rtnetlink.Conn, index int, address netip.Addr, existing *rtnetlink.ProxyNeighbour) (AdapterResult, error) {
+	held, err := connection.HoldsAddress(address)
+	if err != nil {
+		return AdapterResult{}, err
+	}
+	if held || (existing != nil && existing.Protocol != rtnetlink.ProtocolGuardian) {
+		return AdapterResult{}, violation(codes.FailedPrecondition, "address-held-by-host")
+	}
+	result := unchanged("address-already-present")
+	if existing == nil {
+		err := connection.AddProxyNeighbour(index, address, rtnetlink.ProtocolGuardian)
+		switch {
+		case err == nil:
+			result = applied("address-added")
+		case errors.Is(err, unix.EEXIST):
+			// Something added the entry between the dump and the write. Whose it
+			// is decides whether this is convergence or a collision.
+			raced, lookupErr := proxyEntry(connection, index, address)
+			if lookupErr != nil {
+				return AdapterResult{}, lookupErr
+			}
+			if raced == nil || raced.Protocol != rtnetlink.ProtocolGuardian {
+				return AdapterResult{}, violation(codes.FailedPrecondition, "address-held-by-host")
+			}
+		case errors.Is(err, unix.EPERM), errors.Is(err, unix.EACCES):
+			return unsupportedOutcome("no-cap-net-admin"), nil
+		default:
+			return AdapterResult{}, err
+		}
+	}
+	// A real host answers ARP at once; the kernel's default proxy delay of up
+	// to 0.8s is a tell a careful scanner can time. Set on every pass, so a
+	// changed setting is put back.
+	if err := connection.SetProxyDelay(index, 0); err != nil {
+		return AdapterResult{}, err
+	}
+	return result, nil
+}
+
+func removeProxyEntry(connection *rtnetlink.Conn, index int, address netip.Addr, existing *rtnetlink.ProxyNeighbour) (AdapterResult, error) {
 	if existing == nil {
 		return unchanged("address-already-absent"), nil
 	}
-	if existing.Label != label {
+	if existing.Protocol != rtnetlink.ProtocolGuardian {
 		// The single most important refusal in this package.
 		return AdapterResult{}, violation(codes.FailedPrecondition, "address-held-by-host")
 	}
-	err := connection.DeleteAddress(index, prefix)
+	err := connection.DeleteProxyNeighbour(index, address)
 	switch {
 	case err == nil:
 		return applied("address-removed"), nil
-	case errors.Is(err, unix.EADDRNOTAVAIL), errors.Is(err, unix.ENOENT):
+	case errors.Is(err, unix.ENOENT):
 		return unchanged("address-already-absent"), nil
 	case errors.Is(err, unix.EPERM), errors.Is(err, unix.EACCES):
 		return unsupportedOutcome("no-cap-net-admin"), nil
@@ -312,14 +351,16 @@ func removeAddress(connection *rtnetlink.Conn, index int, prefix netip.Prefix, l
 
 /*
 ApplyNftablesPolicy installs `AC-SEC-003`: a decoy cannot open an outbound
-connection.
+connection, and the zone cannot use the Edge as a router to anything but a
+decoy.
 
 What is installed does not depend on the request. The profile is the only one
-the contract defines, and the addresses it covers come from the helper's
-root-controlled startup arguments, so an RPC caller chooses *when* the policy is
-applied and never *what* it says. The namespace argument names which allowlisted
-Guardian namespace the operator is asserting the profile for; applying it for a
-second namespace produces the same ruleset and reports no change.
+the contract defines, and the addresses and interfaces it covers come from the
+helper's root-controlled startup arguments, so an RPC caller chooses *when* the
+policy is applied and never *what* it says. The namespace argument names which
+allowlisted Guardian namespace the operator is asserting the profile for;
+applying it for a second namespace produces the same ruleset and reports no
+change.
 
 The result is read back from the kernel before it is reported. A transaction the
 kernel acknowledged is not the same fact as a ruleset that is present, and for a
@@ -346,7 +387,7 @@ func (a hostAdapter) ApplyNftablesPolicy(ctx context.Context, operation Nftables
 	}
 	defer func() { _ = connection.Close() }()
 
-	ruleset := buildEgressPolicy(a.decoyRanges)
+	ruleset := buildEgressPolicy(a.decoyRanges, a.interfaces)
 	observed, err := observedEgressPolicy(connection)
 	if err != nil {
 		return AdapterResult{}, err

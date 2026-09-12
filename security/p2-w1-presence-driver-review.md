@@ -156,52 +156,43 @@ rather than parking it.
 
 ### The refusal that matters: Guardian never removes an address it did not add
 
-Every address the adapter places carries the IPv4 label `<interface>:gdn`. The
-label is the kernel's own ownership marker, visible in `ip -4 addr show`, and it
-is checked in both directions: an address on the interface without it is the
-host's, and both placing over it and removing it are refused with
-`address-held-by-host`.
+Revised 2026-09-13 for [ADR 0019](../docs/adr/0019-decoy-network-holder.md). The
+address now lives in the decoy's namespace, and what the adapter places on the
+host is a proxy-ARP entry on the zone interface, marked with protocol 71 in the
+kernel's own record (`ip neigh show proxy`). It is checked in both directions:
+an entry without Guardian's protocol, or an address any host interface holds as
+its own, is the host's, and both placing over it and removing it are refused
+with `address-held-by-host`.
 
 This is what stands between a misconfigured `--allow-address-range` and a
 customer outage. The allowlist is the primary control and it is unchanged; the
-label is the second one, and it is enforced by the kernel's own record rather
-than by any state this helper keeps — which matters, because the helper is
-deliberately stateless across restarts.
+protocol marker is the second one, and it is enforced by the kernel's own record
+rather than by any state this helper keeps.
 
-The trade is a length limit. A label is capped at 15 characters and convention
-requires it to start with the interface name, so an interface name longer than
-11 characters cannot carry one. Rather than place an unlabelled address, the
-adapter refuses with `interface-name-too-long-to-label`. A loud refusal on an
-unusual interface name is better than an address Guardian could not later prove
-was its own; every conventional name (`eth0`, `ens192`, `enp0s31f6`, `br-decoy`)
-fits.
+The first version marked local addresses with the IPv4 label `<interface>:gdn`,
+which capped interface names at 11 characters. The protocol field has no such
+limit, and the refusal `interface-name-too-long-to-label` is gone with it. The
+residual risk that came with secondary addresses — deleting a subnet's primary
+address removes its secondaries — went too, because Guardian holds no address on
+the host.
 
-IPv6 is refused for the same reason: labels are an IPv4 mechanism, so an IPv6
-decoy address would be unmarked. `presence.Address` already accepted only
-private IPv4, so this narrows nothing in practice.
+IPv6 stays refused: proxy ARP, the decoy veth names, and the egress policy are
+IPv4 mechanisms.
 
-### One residual risk, and it is the operator's to avoid
-
-Deleting the *primary* address of an IPv4 subnet makes the kernel remove the
-secondaries in that subnet with it. Guardian's addresses are added after the
-host's and are therefore secondaries, so removing one cascades to nothing. The
-exception is a host address added to an interface *after* Guardian's, in a
-subnet the operator also allowlisted as a decoy range — a configuration that
-already requires putting production addressing inside a decoy range. The host
-mitigation is `net.ipv4.conf.<if>.promote_secondaries=1`. It is recorded here
-rather than coded around, because no check inside the helper can distinguish
-that case from a legitimate one.
+A proxy entry is answered only on an interface that forwards, which the runtime
+enables when a decoy is attached. The zone-level consequence of that forwarding
+is reviewed in `security/p2-w3-runtime-spec-review.md`.
 
 ### Evidence
 
-`task presence:netlink` runs the adapter against a real kernel in a container
+`task privileged:netlink` runs the adapter against a real kernel in a container
 holding `CAP_NET_ADMIN` and nothing else, in a throwaway network namespace: an
-address is added and observed carrying Guardian's label, adding it again reports
-no change, it is removed, removing it again reports no change, and an address
-staged with a foreign label is refused in both directions and survives intact.
-The interface's pre-existing addresses are compared before and after, and the
-placement is confirmed a second time through `net.Interface.Addrs`, which
-reaches the kernel by a netlink implementation this repository did not write.
+entry is added and observed carrying Guardian's protocol, the host is shown not
+to hold the address, the proxy delay reads zero, adding it again reports no
+change, it is removed, removing it again reports no change, an entry staged with
+iproute2's `static` protocol is refused in both directions and survives intact,
+and an address the host holds is never proxied. The interface's addresses and
+proxy entries are compared before and after.
 
 ## What is not covered
 
@@ -232,9 +223,9 @@ it has been measured, tightened where it could be, and pinned line by line.
 
 The failure this package exists to prevent — Guardian taking an address a
 production host was using — now has two independent controls: the operator's
-allowlist, and the kernel's own record of which addresses Guardian labelled. The
-second one is new, and it is the reason the adapter is safer than the RPC
-boundary alone made it.
+allowlist, and the kernel's own record of which proxy entries Guardian marked.
+The second one is the reason the adapter is safer than the RPC boundary alone
+made it.
 
 The profile has roughly 0.2 of headroom under the security gate's ceiling. That
 is deliberate: `P2-W2` and `P2-W3` each want another capability, and neither

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/netip"
 	"regexp"
+	"sort"
 	"strings"
 
 	privilegedv1 "github.com/GuardianPot/guardian/apps/edge-agent/internal/privileged/gen/guardian/privileged/v1"
@@ -201,6 +202,27 @@ func validateMessage(message proto.Message, requestID string) error {
 		return violation(codes.InvalidArgument, "invalid-request-id")
 	}
 	return nil
+}
+
+// allowsWorkloadNetwork is the same bound EnsureAddress applies, applied to the
+// network a root-installed definition names: a definition cannot attach a decoy
+// to an interface or an address the helper was not started with.
+func (p Allowlist) allowsWorkloadNetwork(network WorkloadNetwork) bool {
+	if _, ok := p.interfaces[network.Interface]; !ok {
+		return false
+	}
+	address, err := netip.ParseAddr(network.Address)
+	return err == nil && p.allowsPrefix(netip.PrefixFrom(address, address.BitLen()))
+}
+
+// interfaceNames is the allowlisted interfaces in a stable order.
+func (p Allowlist) interfaceNames() []string {
+	names := make([]string, 0, len(p.interfaces))
+	for name := range p.interfaces {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 func (p Allowlist) allowsPrefix(request netip.Prefix) bool {

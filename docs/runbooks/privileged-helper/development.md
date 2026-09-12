@@ -50,7 +50,16 @@ CGO_ENABLED=0 GOWORK=off go -C apps/edge-agent build -trimpath -o /tmp/guardian-
 
 Install the binary as
 `/usr/libexec/guardian-edge/guardian-edge-privd`, owner `root:root`, mode
-`0755`. Install the sysusers, tmpfiles, helper service, and main service files
+`0755`. Build the decoy network holder the same way and install it beside the
+helper; the helper refuses to run one that is not root-owned or is writable by
+anyone else:
+
+```bash
+CGO_ENABLED=0 GOWORK=off go -C apps/edge-agent build -trimpath -o /tmp/guardian-netholder ./cmd/guardian-netholder
+install -o root -g root -m 0755 /tmp/guardian-netholder /usr/libexec/guardian-edge/guardian-netholder
+```
+
+ Install the sysusers, tmpfiles, helper service, and main service files
 from `deploy/edge-agent/`, then run:
 
 ```bash
@@ -70,15 +79,16 @@ Expected socket metadata:
 
 ## What the installed helper can do
 
-`P2-W1`, `P2-W2`, and `P2-W3`'s container lifecycle are implemented, and none
-of them needed a capability beyond the one the unit grants.
+`P2-W1`, `P2-W2`, and `P2-W3` are implemented, including decoy network
+attachment (ADR 0019), and none of them needed a capability beyond the one the
+unit grants.
 
 | Operation | State | Notes |
 |---|---|---|
-| `EnsureAddress` | implemented | Adds and removes IPv4 addresses over `NETLINK_ROUTE` |
-| `ApplyNftablesPolicy` | implemented | Default-deny decoy egress over `NETLINK_NETFILTER` |
-| `ReconcileContainer` | implemented | Decoy containers through containerd 2.x |
-| `EnsureNetworkNamespace` | `phase-2-adapter-not-implemented` | Needs `CAP_SYS_ADMIN`; see `P2-W3` section 7 |
+| `EnsureAddress` | implemented | Adds and removes a decoy address's proxy-ARP entry over `NETLINK_ROUTE` |
+| `ApplyNftablesPolicy` | implemented | Default-deny decoy egress and zone forwarding restriction over `NETLINK_NETFILTER` |
+| `ReconcileContainer` | implemented | Decoy and network-holder containers through containerd 2.x, and their host side |
+| `EnsureNetworkNamespace` | `phase-2-adapter-not-implemented` | Would need `CAP_SYS_ADMIN`; a decoy's namespace belongs to its holder instead (ADR 0019) |
 
 The unit's `CapabilityBoundingSet=CAP_NET_ADMIN` is the whole of the helper's
 own privilege. It is not the whole of what the helper can cause: the containerd
@@ -107,22 +117,33 @@ No positional argument is accepted. Put only decoy ranges in
 `--allow-address-range`: an allowlisted range containing a production host's
 address is the one configuration mistake this design cannot protect against.
 
-### Addresses Guardian placed are labelled
+Allowlist only zone interfaces the host does not already route for. Once the
+egress policy is applied, traffic forwarded in from an allowlisted interface is
+dropped unless it is addressed to a decoy range.
 
-Every address the adapter adds carries the IPv4 label `<interface>:gdn`, so
-`ip -4 addr show` distinguishes them by eye:
+### What Guardian puts on the host is marked
+
+A decoy's address lives inside its holder's namespace, not on the host.
+`EnsureAddress` adds a proxy-ARP entry for it on the zone interface, and the
+runtime adds a veth and a `/32` route. Each is marked where the kernel keeps it:
 
 ```bash
-ip -4 -o addr show label '*:gdn'
+ip neigh show proxy            # entries with "proto 71" are Guardian's
+ip route show proto 71         # one /32 per running decoy
+ip -d link show | grep -B1 'alias guardian-decoy'
 ```
 
-The label is also the adapter's ownership check. An address on an allowlisted
-interface that does not carry it is refused in both directions with
-`address-held-by-host` — Guardian will neither adopt nor remove an address it
-did not place. An interface whose name is longer than 11 characters cannot
-carry a label that fits the kernel's 15-character limit, and address operations
-on it are refused with `interface-name-too-long-to-label` rather than performed
-unlabelled.
+The marks are also the ownership check. A proxy entry without protocol 71, or
+an address a host interface holds, is refused in both directions with
+`address-held-by-host`. A link named like a decoy veth without Guardian's alias
+is refused with `interface-held-by-host`. Guardian adopts and removes only what
+it placed.
+
+The kernel answers a proxy entry only on an interface that forwards. Forwarding
+on the zone interface is enabled when the first decoy on it is attached and
+turned off again when the last goes, if it was off before; the record of that is
+a file per interface in `/run/guardian-edge-privd/forwarding`. The proxy delay on
+the interface is set to zero.
 
 ### The decoy egress policy
 
@@ -136,13 +157,16 @@ nft list table ip guardian_decoy
 ```
 
 Two base chains, `guardian_forward` and `guardian_output`, send traffic from a
-decoy source to `guardian_egress`, which accepts an established or related reply
-and drops everything else. Both base chains carry policy `accept` on purpose: a
+decoy source — and, in `guardian_forward`, anything arriving from a `gdn*` decoy
+veth — to `guardian_egress`, which accepts an established or related reply and
+drops everything else. `guardian_forward` also sends traffic arriving on each
+`--allow-interface` to `guardian_zone`, which lets it through only to a decoy
+range. Both base chains carry policy `accept` on purpose: a
 `drop` policy in a Guardian table would drop the host's own traffic, so the
 denial is in the rules and scoped to decoy sources.
 
 Every rule carries a marker naming the policy version and a digest of the ranges
-it was built from, which is how the helper tells "already applied" from "the
+and interfaces it was built from, which is how the helper tells "already applied" from "the
 table was flushed" and from "the configured ranges changed". The result is read
 back from the kernel before the helper reports it as applied.
 
@@ -173,7 +197,8 @@ the file is installed *and* the id is allowlisted with `--allow-workload`:
   "ports": [{ "port": 22, "protocol": "tcp" }],
   "privileges": { "capabilities": ["NET_BIND_SERVICE"] },
   "resources": { "cpu_millicores": 500, "memory_mib": 256, "pids": 128 },
-  "user": { "uid": 10001, "gid": 10001 }
+  "user": { "uid": 10001, "gid": 10001 },
+  "network": { "interface": "guardian0", "address": "192.0.2.40" }
 }
 ```
 
@@ -181,6 +206,12 @@ Every field is required. The image is identified by digest only — there is no
 tag form. `NET_BIND_SERVICE` is the only grantable capability, the uid and gid
 must not be 0, and an unknown field is refused rather than ignored. The file
 must be a regular file: a symlink is refused, not followed.
+
+`network` is where the decoy answers: one IPv4 address in canonical form, on one
+zone interface. It must be the address the Control Plane assigned the decoy, and
+the helper refuses it with `workload-network-not-allowlisted` unless the
+interface is an `--allow-interface` and the address is inside an
+`--allow-address-range`.
 
 ### Decoy containers
 
@@ -201,17 +232,32 @@ workload whose definition has been removed.
 
 Images are fetched by digest from the definition's repository without
 credentials; a registry that requires authentication fails the pull and the
-decoy does not start. Decoy containers have no network yet — each has its own
-namespace with only `lo` — until network attachment is decided.
+decoy does not start.
+
+Every decoy has a network holder, the container `<workload-id>.holder`, which
+owns the decoy's network namespace and gives it `eth0` with its `/32`. Holder and
+decoy restart together: a holder that dies is replaced on the next pass, and
+its decoy is rebuilt into the new namespace (`holder-replaced`). Stopping ends
+the decoy, removes its veth, then ends the holder; removing also deletes both
+containers.
 
 | Refusal | Meaning |
 |---|---|
 | `workload-not-installed` | No definition file for this id |
 | `workload-definition-invalid` | The definition failed validation |
+| `workload-network-not-allowlisted` | The definition's interface or address is outside the helper's allowlist |
 | `egress-policy-not-applied` | The default-deny policy is not installed right now |
+| `holder-binary-untrusted` | The holder binary is missing, not root-owned, or writable by others |
 | `image-digest-mismatch` | The image record does not point at the pinned digest |
 | `image-platform-unavailable` | The image has no manifest for this host's platform |
-| `container-start-failed` | The runtime could not start the task; nothing was left behind |
+| `holder-start-failed` | The runtime could not start the holder |
+| `container-start-failed` | The runtime could not start the decoy; nothing was left behind |
+| `holder-changed-before-start` | The holder changed while the decoy was joining it; retried on the next pass |
+| `interface-not-found` | The definition's zone interface does not exist |
+| `interface-held-by-host` | A link with the decoy veth's name is not Guardian's |
+| `decoy-address-in-use` | Another workload's decoy is attached at this address |
+| `route-held-by-host` | A route to the decoy's address exists that is not Guardian's |
+| `network-attach-failed` | The kernel refused a host-side change; see the helper's journal |
 | `runtime-unreachable` | containerd did not answer on its socket |
 
 ### If a capability is reported unsupported

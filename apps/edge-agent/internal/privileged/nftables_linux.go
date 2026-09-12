@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/netholder"
 	"github.com/GuardianPot/guardian/apps/edge-agent/internal/rtnetlink"
 	"golang.org/x/sys/unix"
 )
@@ -41,10 +42,11 @@ const (
 	// nftPolicyVersion is part of the rule marker. Changing the ruleset without
 	// changing this would let a host keep an older policy and be reported as
 	// converged.
-	nftPolicyVersion = "gdn1"
+	nftPolicyVersion = "gdn2"
 
 	nftTableName   = "guardian_decoy"
 	nftEgressChain = "guardian_egress"
+	nftZoneChain   = "guardian_zone"
 	nftForwardHook = "guardian_forward"
 	nftOutputHook  = "guardian_output"
 
@@ -57,9 +59,10 @@ const (
 	ctStateEstablished = 0x02
 	ctStateRelated     = 0x04
 
-	// Offset of `saddr` within `struct iphdr`.
-	ipv4SourceOffset = 12
-	ipv4AddressBytes = 4
+	// Offsets of `saddr` and `daddr` within `struct iphdr`.
+	ipv4SourceOffset      = 12
+	ipv4DestinationOffset = 16
+	ipv4AddressBytes      = 4
 
 	// The `filter` priority both iptables and nft use for these hooks.
 	nftFilterPriority = 0
@@ -88,24 +91,32 @@ not on an interface or a namespace. That choice matters:
   - They are the *same* compiled set that gates `EnsureAddress`, so the set of
     addresses Guardian can place and the set it denies egress for cannot drift
     apart. A decoy address that exists is an address this policy covers.
-  - It needs no knowledge of how the decoy's namespace or veth is named, so it
-    cannot silently stop matching when `P2-W3` chooses those names.
+  - A decoy's veth is matched by the name prefix the helper gives every one of
+    them, as a second route to the same decision: whatever arrives from a
+    decoy's namespace is a decoy's, whichever source address it carries.
 
 Base chains carry policy `accept` on purpose. An nftables chain policy applies
 to every packet reaching that hook, so a `drop` policy in a Guardian table would
 drop the host's own forwarded traffic. Denial is expressed in the rules, scoped
 to decoy sources, and a drop in any table still wins — so a deny-shaped policy
 composes safely with whatever else is on the host.
+
+ADR 0019 made the Edge forward for decoys, and forwarding on a zone interface
+would on its own let anything in that zone use the Edge as a router. So traffic
+forwarded in from an allowlisted interface goes to `guardian_zone`, which
+returns it only when it is addressed to a decoy range and drops it otherwise.
 */
-func buildEgressPolicy(ranges []netip.Prefix) nftRuleset {
+func buildEgressPolicy(ranges []netip.Prefix, interfaces []string) nftRuleset {
 	sorted := make([]netip.Prefix, len(ranges))
 	copy(sorted, ranges)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].String() < sorted[j].String() })
+	zones := append([]string(nil), interfaces...)
+	sort.Strings(zones)
 
-	digest := policyDigest(sorted)
+	digest := policyDigest(sorted, zones)
 	ruleset := nftRuleset{digest: digest}
 
-	// The shared decision, reached only by traffic from a decoy address.
+	// The shared decision, reached only by traffic from a decoy.
 	ruleset.add(nftEgressChain, digest, [][]byte{
 		exprCtState(),
 		exprBitwiseHostOrder(ctStateEstablished | ctStateRelated),
@@ -114,6 +125,12 @@ func buildEgressPolicy(ranges []netip.Prefix) nftRuleset {
 	})
 	ruleset.add(nftEgressChain, digest, [][]byte{exprVerdict(nfDrop, "")})
 
+	// What may be forwarded in from the zone: a decoy, and nothing else.
+	for _, prefix := range sorted {
+		ruleset.add(nftZoneChain, digest, addressMatch(ipv4DestinationOffset, prefix, exprVerdict(unix.NFT_RETURN, "")))
+	}
+	ruleset.add(nftZoneChain, digest, [][]byte{exprVerdict(nfDrop, "")})
+
 	// One rule per range per hook. A set would be tidier and is deliberately
 	// avoided: set element encoding is a large amount of additional protocol
 	// for a list that is normally one or two entries long.
@@ -121,6 +138,18 @@ func buildEgressPolicy(ranges []netip.Prefix) nftRuleset {
 		for _, prefix := range sorted {
 			ruleset.add(hook, digest, sourceMatch(prefix))
 		}
+	}
+	ruleset.add(nftForwardHook, digest, [][]byte{
+		exprMetaInputInterface(),
+		exprCmp(unix.NFT_CMP_EQ, []byte(netholder.HostPrefix)),
+		exprVerdict(unix.NFT_JUMP, nftEgressChain),
+	})
+	for _, zone := range zones {
+		ruleset.add(nftForwardHook, digest, [][]byte{
+			exprMetaInputInterface(),
+			exprCmp(unix.NFT_CMP_EQ, interfaceNameValue(zone)),
+			exprVerdict(unix.NFT_JUMP, nftZoneChain),
+		})
 	}
 	return ruleset
 }
@@ -141,17 +170,25 @@ func (r *nftRuleset) add(chain, digest string, expressions [][]byte) {
 
 // sourceMatch is `ip saddr <prefix> jump guardian_egress`.
 func sourceMatch(prefix netip.Prefix) [][]byte {
+	return addressMatch(ipv4SourceOffset, prefix, exprVerdict(unix.NFT_JUMP, nftEgressChain))
+}
+
+// addressMatch is `ip saddr|daddr <prefix> <verdict>`.
+func addressMatch(offset uint32, prefix netip.Prefix, verdict []byte) [][]byte {
 	network := prefix.Masked().Addr().As4()
-	expressions := [][]byte{exprPayloadIPv4Source()}
+	expressions := [][]byte{exprPayloadIPv4Address(offset)}
 	if prefix.Bits() < 32 {
 		mask := prefixMask(prefix.Bits())
 		expressions = append(expressions, exprBitwiseRaw(mask[:], make([]byte, ipv4AddressBytes)))
 	}
-	expressions = append(expressions,
-		exprCmp(unix.NFT_CMP_EQ, network[:]),
-		exprVerdict(unix.NFT_JUMP, nftEgressChain),
-	)
-	return expressions
+	return append(expressions, exprCmp(unix.NFT_CMP_EQ, network[:]), verdict)
+}
+
+// interfaceNameValue is an exact interface-name match: the name and its
+// terminator. Without the terminator the comparison is a prefix match, which is
+// what the veth rule wants and a zone rule must not be.
+func interfaceNameValue(name string) []byte {
+	return append([]byte(name), 0)
 }
 
 func prefixMask(bits int) [4]byte {
@@ -160,7 +197,7 @@ func prefixMask(bits int) [4]byte {
 	return mask
 }
 
-func policyDigest(ranges []netip.Prefix) string {
+func policyDigest(ranges []netip.Prefix, interfaces []string) string {
 	digest := sha256.New()
 	_, _ = digest.Write([]byte(nftPolicyVersion))
 	// The profile name is folded in so that a second profile, if one is ever
@@ -169,6 +206,13 @@ func policyDigest(ranges []netip.Prefix) string {
 	for _, prefix := range ranges {
 		_, _ = digest.Write([]byte{0})
 		_, _ = digest.Write([]byte(prefix.String()))
+	}
+	// A separator no range or interface name can contain, so moving an entry
+	// from one list to the other changes the digest.
+	_, _ = digest.Write([]byte{0xff})
+	for _, name := range interfaces {
+		_, _ = digest.Write([]byte{0})
+		_, _ = digest.Write([]byte(name))
 	}
 	return hex.EncodeToString(digest.Sum(nil)[:8])
 }
@@ -195,6 +239,7 @@ func applyEgressPolicy(connection *rtnetlink.Conn, ruleset nftRuleset) error {
 	appendMessage(unix.NFT_MSG_NEWTABLE, unix.NLM_F_CREATE, tablePayload())
 
 	appendMessage(unix.NFT_MSG_NEWCHAIN, unix.NLM_F_CREATE, chainPayload(nftEgressChain, nil))
+	appendMessage(unix.NFT_MSG_NEWCHAIN, unix.NLM_F_CREATE, chainPayload(nftZoneChain, nil))
 	appendMessage(unix.NFT_MSG_NEWCHAIN, unix.NLM_F_CREATE,
 		chainPayload(nftForwardHook, &nftHook{number: unix.NF_INET_FORWARD}))
 	appendMessage(unix.NFT_MSG_NEWCHAIN, unix.NLM_F_CREATE,
@@ -341,13 +386,22 @@ func nftExpression(name string, data []byte) []byte {
 	return appendNftNested(out, unix.NFTA_EXPR_DATA, data)
 }
 
-// exprPayloadIPv4Source loads the packet's source address into register 1.
-func exprPayloadIPv4Source() []byte {
+// exprPayloadIPv4Address loads the packet's source or destination address into
+// register 1.
+func exprPayloadIPv4Address(offset uint32) []byte {
 	inner := appendNftUint32(nil, unix.NFTA_PAYLOAD_DREG, unix.NFT_REG_1)
 	inner = appendNftUint32(inner, unix.NFTA_PAYLOAD_BASE, unix.NFT_PAYLOAD_NETWORK_HEADER)
-	inner = appendNftUint32(inner, unix.NFTA_PAYLOAD_OFFSET, ipv4SourceOffset)
+	inner = appendNftUint32(inner, unix.NFTA_PAYLOAD_OFFSET, offset)
 	inner = appendNftUint32(inner, unix.NFTA_PAYLOAD_LEN, ipv4AddressBytes)
 	return nftExpression("payload", inner)
+}
+
+// exprMetaInputInterface loads the name of the interface a packet arrived on
+// into register 1. A cmp shorter than the name's register compares a prefix.
+func exprMetaInputInterface() []byte {
+	inner := appendNftUint32(nil, unix.NFTA_META_DREG, unix.NFT_REG_1)
+	inner = appendNftUint32(inner, unix.NFTA_META_KEY, unix.NFT_META_IIFNAME)
+	return nftExpression("meta", inner)
 }
 
 // exprCtState loads the connection-tracking state into register 1.

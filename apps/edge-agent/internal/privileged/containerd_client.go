@@ -374,6 +374,16 @@ func (c *containerdClient) getContainer(ctx context.Context, id string) (*contai
 	return response.GetContainer(), nil
 }
 
+// containerRecord is what createContainer records. A holder has no image and an
+// empty root, so both Image and Parent are empty for one.
+type containerRecord struct {
+	ID     string
+	Image  string
+	Parent string
+	Spec   []byte
+	Labels map[string]string
+}
+
 /*
 createContainer prepares a snapshot of the image's root filesystem and records
 the container against it.
@@ -390,35 +400,31 @@ that first step impossible; the lab found this on the first run, with busybox.
 What the decoy's process sees is the read-only remount, and the lab's probe
 asserts that from inside.
 */
-func (c *containerdClient) createContainer(ctx context.Context, workload Workload, spec []byte, specDigest, chainID string) error {
+func (c *containerdClient) createContainer(ctx context.Context, record containerRecord) error {
 	leaseCtx, release, err := c.withLease(ctx)
 	if err != nil {
 		return err
 	}
 	defer release()
 
-	snapshotKey := rootfsSnapshotPrefix + workload.WorkloadID
+	snapshotKey := rootfsSnapshotPrefix + record.ID
 	// A snapshot left by a create that failed half-way would make this View
 	// collide. It belongs to this workload by name and nothing else uses it.
 	_, _ = c.snapshots.Remove(leaseCtx, &snapshotsapi.RemoveSnapshotRequest{
 		Snapshotter: containerdSnapshotter, Key: snapshotKey,
 	})
 	if _, err := c.snapshots.Prepare(leaseCtx, &snapshotsapi.PrepareSnapshotRequest{
-		Snapshotter: containerdSnapshotter, Key: snapshotKey, Parent: chainID,
+		Snapshotter: containerdSnapshotter, Key: snapshotKey, Parent: record.Parent,
 	}); err != nil {
 		return err
 	}
 	_, err = c.containers.Create(leaseCtx, &containersapi.CreateContainerRequest{
 		Container: &containersapi.Container{
-			ID:    workload.WorkloadID,
-			Image: workload.ImageReference(),
-			Labels: map[string]string{
-				labelWorkload:    workload.WorkloadID,
-				labelSpecDigest:  specDigest,
-				labelImageDigest: workload.Image.Digest,
-			},
+			ID:          record.ID,
+			Image:       record.Image,
+			Labels:      record.Labels,
 			Runtime:     &containersapi.Container_Runtime{Name: containerdRuntimeName},
-			Spec:        &anypb.Any{TypeUrl: specTypeURL, Value: spec},
+			Spec:        &anypb.Any{TypeUrl: specTypeURL, Value: record.Spec},
 			Snapshotter: containerdSnapshotter,
 			SnapshotKey: snapshotKey,
 		},
@@ -485,7 +491,11 @@ func (c *containerdClient) getTask(ctx context.Context, id string) (*tasktypes.P
 // startTask mounts the container's snapshot as the task's root and starts it.
 // There is no stdio: a decoy's output goes to the files its telemetry adapter
 // reads, not to a pipe held open by a root process.
-func (c *containerdClient) startTask(ctx context.Context, container *containersapi.Container) error {
+//
+// beforeStart runs between create and start, when the task's namespaces exist
+// and its program has not run. A decoy uses it to re-check the holder whose
+// namespace it just joined; an error deletes the task unstarted.
+func (c *containerdClient) startTask(ctx context.Context, container *containersapi.Container, beforeStart func() error) error {
 	mounts, err := c.snapshots.Mounts(scoped(ctx), &snapshotsapi.MountsRequest{
 		Snapshotter: containerdSnapshotter, Key: container.GetSnapshotKey(),
 	})
@@ -497,6 +507,12 @@ func (c *containerdClient) startTask(ctx context.Context, container *containersa
 		Rootfs:      mounts.GetMounts(),
 	}); err != nil {
 		return err
+	}
+	if beforeStart != nil {
+		if err := beforeStart(); err != nil {
+			_ = c.deleteTask(context.WithoutCancel(ctx), container.GetID())
+			return err
+		}
 	}
 	if _, err := c.tasks.Start(scoped(ctx), &tasksapi.StartRequest{ContainerID: container.GetID()}); err != nil {
 		_ = c.deleteTask(ctx, container.GetID())

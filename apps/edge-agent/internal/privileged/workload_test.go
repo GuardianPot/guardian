@@ -24,6 +24,7 @@ func workloadJSON(overrides map[string]string) string {
 		"privileges":   `{"capabilities": ["NET_BIND_SERVICE"]}`,
 		"resources":    `{"cpu_millicores": 500, "memory_mib": 256, "pids": 128}`,
 		"user":         `{"uid": 10001, "gid": 10001}`,
+		"network":      `{"interface": "eth1", "address": "10.20.0.40"}`,
 	}
 	for key, value := range overrides {
 		if value == "" {
@@ -115,6 +116,20 @@ func TestADefinitionThatWouldWeakenTheDecoyIsRefused(t *testing.T) {
 		"a field this build does not know": {"privileged": `true`},
 		"a mount, which has no field":      {"mounts": `[{"source": "/run/containerd/containerd.sock"}]`},
 		"a pack name that is a path":       {"pack": `"../ssh"`},
+		// ADR 0019: the address becomes interface names and a /32 route, so it
+		// has exactly one accepted spelling.
+		"no network":                    {"network": ""},
+		"an interface name that climbs": {"network": `{"interface": "../eth1", "address": "10.20.0.40"}`},
+		"an IPv6 decoy address":         {"network": `{"interface": "eth1", "address": "fd00::40"}`},
+		"a prefix instead of an address": {
+			"network": `{"interface": "eth1", "address": "10.20.0.40/32"}`,
+		},
+		"an address with leading zeros": {"network": `{"interface": "eth1", "address": "10.20.0.040"}`},
+		"a loopback address":            {"network": `{"interface": "eth1", "address": "127.0.0.1"}`},
+		"the unspecified address":       {"network": `{"interface": "eth1", "address": "0.0.0.0"}`},
+		"a network with an extra field": {
+			"network": `{"interface": "eth1", "address": "10.20.0.40", "gateway": "10.20.0.1"}`,
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := ParseWorkload([]byte(workloadJSON(overrides)), testWorkloadID)

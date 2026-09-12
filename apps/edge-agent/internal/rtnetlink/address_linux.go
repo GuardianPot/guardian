@@ -18,6 +18,25 @@ type Address struct {
 
 // Addresses returns every IPv4 address the kernel reports on one interface.
 func (c *Conn) Addresses(index int) ([]Address, error) {
+	return c.addresses(func(candidate int) bool { return candidate == index })
+}
+
+// HoldsAddress reports whether any interface in the socket's namespace has the
+// address as its own, with any prefix length.
+func (c *Conn) HoldsAddress(address netip.Addr) (bool, error) {
+	addresses, err := c.addresses(func(int) bool { return true })
+	if err != nil {
+		return false, err
+	}
+	for _, candidate := range addresses {
+		if candidate.Prefix.Addr() == address {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (c *Conn) addresses(wanted func(index int) bool) ([]Address, error) {
 	payload := make([]byte, unix.SizeofIfAddrmsg)
 	payload[0] = unix.AF_INET
 	messages, err := c.Execute(unix.RTM_GETADDR, unix.NLM_F_REQUEST|unix.NLM_F_DUMP, payload)
@@ -32,7 +51,7 @@ func (c *Conn) Addresses(index int) ([]Address, error) {
 		if message.Data[0] != unix.AF_INET {
 			continue
 		}
-		if int(binary.NativeEndian.Uint32(message.Data[4:8])) != index {
+		if !wanted(int(binary.NativeEndian.Uint32(message.Data[4:8]))) {
 			continue
 		}
 		prefixLength := int(message.Data[1])
