@@ -17,6 +17,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -227,6 +228,13 @@ func HashOffered(offered string) ([sha256.Size]byte, bool) {
 	// encoding, so a lenient decoder accepts several textual forms of the same
 	// credential. One credential must have exactly one spelling, or "the
 	// attacker typed the value we planted" stops being a precise claim.
+	//
+	// The length check is part of that, found by the Edge's fixture test: even
+	// a strict decoder skips CR and LF, so without it the secret followed by a
+	// newline, or with one inside, is a second spelling.
+	if len(rest) != base64.RawURLEncoding.EncodedLen(SecretBytes) {
+		return [sha256.Size]byte{}, false
+	}
 	raw, err := base64.RawURLEncoding.Strict().DecodeString(rest)
 	if err != nil || len(raw) != SecretBytes {
 		clear(raw)
@@ -294,6 +302,45 @@ func (c Credential) MarkTriggered(at time.Time) Credential {
 		c.State = StateTriggered
 	}
 	return c
+}
+
+/*
+WorkloadEntry is how a planted credential reaches the decoy (`P2-W9` section 5).
+
+The operator adds it to `synthetic_credentials` in the decoy's root-installed
+workload definition. It carries what the Edge needs to recognise the credential
+and nothing from which it could be reproduced: the hash, never the secret. The
+field names and forms are pinned by a fixture the Edge's `syntheticcred` package
+pins too.
+*/
+type WorkloadEntry struct {
+	CredentialID string `json:"credential_id"`
+	Kind         Kind   `json:"kind"`
+	Username     string `json:"username"`
+	// SecretSHA256 is SecretHash as lowercase hex.
+	SecretSHA256 string `json:"secret_sha256"`
+}
+
+// ErrNotDeliverable refuses an entry for a credential that should not be
+// recognised on a decoy.
+var ErrNotDeliverable = errors.New("synthetic credential is not placed")
+
+/*
+WorkloadEntry renders the definition entry for a placed credential.
+
+Only `placed`. A pending credential has not been planted, so recognising it
+would count bait nobody laid; a revoked one is withdrawn by removing its entry,
+and rendering it again would put it back. A triggered one was rendered when it
+was placed and is already installed.
+*/
+func (c Credential) WorkloadEntry() (WorkloadEntry, error) {
+	if c.State != StatePlaced {
+		return WorkloadEntry{}, fmt.Errorf("%w: state is %q", ErrNotDeliverable, c.State)
+	}
+	return WorkloadEntry{
+		CredentialID: c.CredentialID, Kind: c.Kind, Username: c.Username,
+		SecretSHA256: hex.EncodeToString(c.SecretHash[:]),
+	}, nil
 }
 
 // MarkRevoked stops the credential raising new evidence.

@@ -67,6 +67,10 @@ func TestAPlantedCredentialMatchesAndNothingElseDoes(t *testing.T) {
 		flipMiddle(minted.Secret),
 		// A non-canonical spelling of the same bytes: strict decoding refuses it.
 		minted.Secret[:len(minted.Secret)-1] + "_",
+		// A strict decoder still skips CR and LF; the length check refuses them.
+		minted.Secret + "\n",
+		minted.Secret + "\r\n",
+		minted.Secret[:20] + "\n" + minted.Secret[20:],
 	} {
 		offered, recognised := HashOffered(wrong)
 		if recognised && minted.Credential.Matches(offered) {
@@ -257,6 +261,107 @@ func TestACredentialMustNameItsDecoy(t *testing.T) {
 		EnvironmentID: environmentID, Kind: KindSSHPassword, Username: "svc",
 	}, at, newID); !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
+	}
+}
+
+/*
+The shared fixture. `apps/edge-agent/internal/syntheticcred` pins the same three
+values; if either module's rule or rendering changes, one of the two tests fails.
+
+The secret is the sixteen bytes 0x00..0x0f. It is a fixture, not bait: it is
+public in this repository and must never be planted.
+*/
+const (
+	fixtureSecret       = "gdn-decoy-AAECAwQFBgcICQoLDA0ODw"
+	fixtureSecretSHA256 = "be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991"
+	fixtureEntry        = `{"credential_id":"0198dc8c-c600-7000-8000-000000000003","kind":"ssh_password","username":"svc-backup","secret_sha256":"be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991"}`
+)
+
+func fixtureCredential(state State) Credential {
+	raw := make([]byte, SecretBytes)
+	for index := range raw {
+		raw[index] = byte(index)
+	}
+	return Credential{
+		CredentialID: credentialID, DecoyID: decoyID, EnvironmentID: environmentID,
+		Kind: KindSSHPassword, Username: "svc-backup", SecretHash: sha256.Sum256(raw), State: state,
+	}
+}
+
+func TestTheSharedFixtureIsTheEdgesRule(t *testing.T) {
+	credential := fixtureCredential(StatePlaced)
+	offered, recognised := HashOffered(fixtureSecret)
+	if !recognised || !credential.Matches(offered) {
+		t.Fatal("the fixture secret does not match the fixture credential")
+	}
+	entry, err := credential.WorkloadEntry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entry.SecretSHA256 != fixtureSecretSHA256 {
+		t.Fatalf("secret_sha256 = %s", entry.SecretSHA256)
+	}
+	rendered, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(rendered) != fixtureEntry {
+		t.Fatalf("entry = %s, want the fixture", rendered)
+	}
+}
+
+// The Edge carries the same closed set; a kind added here alone is one no
+// workload definition can hold.
+func TestKindsAreTheEdgesClosedSet(t *testing.T) {
+	want := []Kind{"ssh_password", "postgres_password", "smb_password", "http_basic"}
+	got := Kinds()
+	if len(got) != len(want) {
+		t.Fatalf("Kinds() = %v, want %v", got, want)
+	}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("Kinds() = %v, want %v", got, want)
+		}
+	}
+}
+
+/*
+ * Only a placed credential is delivered to a decoy.
+ *
+ * Pending is bait nobody laid; revoked is withdrawn by removing its entry, and
+ * rendering it again would put it back.
+ */
+func TestOnlyAPlacedCredentialIsRenderedForTheDecoy(t *testing.T) {
+	minted := mint(t)
+	if _, err := minted.Credential.WorkloadEntry(); !errors.Is(err, ErrNotDeliverable) {
+		t.Fatalf("pending = %v, want ErrNotDeliverable", err)
+	}
+	placed, err := minted.Credential.MarkPlaced(at, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, err := placed.WorkloadEntry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(rendered), strings.TrimPrefix(minted.Secret, SecretPrefix)) {
+		t.Fatal("the rendered entry carries the secret")
+	}
+	var shape map[string]any
+	if err := json.Unmarshal(rendered, &shape); err != nil {
+		t.Fatal(err)
+	}
+	if len(shape) != 4 {
+		t.Fatalf("entry carries %d fields, want exactly the four P2-W9 names: %s", len(shape), rendered)
+	}
+	for _, state := range []Credential{placed.MarkTriggered(at), placed.MarkRevoked(at)} {
+		if _, err := state.WorkloadEntry(); !errors.Is(err, ErrNotDeliverable) {
+			t.Fatalf("%s = %v, want ErrNotDeliverable", state.State, err)
+		}
 	}
 }
 

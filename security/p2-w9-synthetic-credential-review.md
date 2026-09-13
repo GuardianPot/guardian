@@ -84,7 +84,11 @@ decode to the same value and therefore to the same hash.
 
 That made "the attacker typed the value we planted" imprecise — a variant
 spelling would have triggered. `RawURLEncoding.Strict()` gives one credential
-exactly one spelling.
+exactly one spelling — almost. A second test, written for Edge delivery, found
+that even a strict decoder skips CR and LF, so the secret followed by a newline
+still matched. Both `HashOffered` implementations now require the body to be
+exactly 22 characters before decoding, and both modules test a trailing LF, a
+trailing CRLF, and an embedded LF.
 
 ## Honesty properties
 
@@ -115,15 +119,69 @@ not attacker-visible, and it should not be rendered anywhere a decoy's own
 content is rendered, because a note reading "left in /home/svc/.netrc on
 fs-prod-01" names a production host.
 
+## Delivery to the decoy (reviewed 2026-09-13)
+
+Scope added: `Credential.WorkloadEntry`, `apps/edge-agent/internal/syntheticcred`,
+and the `synthetic_credentials` field of `privileged.Workload`. No change to
+`proto/`, `openapi/`, or `schemas/`, and no new dependency.
+
+**What leaves the Control Plane.** An id, a kind, a username, and the lowercase
+hex SHA-256. A test asserts the rendered entry has exactly those four fields and
+does not contain the secret. Only a `placed` credential renders: a pending one is
+bait nobody laid, and a revoked one would be put back by rendering it again.
+
+**Where it lands.** `/etc/guardian-edge/workloads/<id>.json`, root-owned and
+world-readable. Acceptable because the hash is of 128 bits of random material
+that grants nothing: it cannot be reversed into the secret, and a reader who
+learns it learns only that a credential exists for this decoy — which an
+attacker on the host already knows from finding a decoy. The definition is still
+not readable by the decoy container: nothing mounts it.
+
+**The privileged helper parses it.** The array is attacker-unreachable input
+(root writes the file), but a privileged process decodes it, so it is held to
+the same rules as the rest of the definition: unknown fields refused at every
+level — so a `secret` field fails the whole file — at most 16 entries inside the
+existing 16 KiB bound, closed kinds, canonical UUIDv7, a trimmed bounded
+username, and exactly 64 lowercase hex characters. A malformed entry fails the
+definition rather than being skipped, because a skipped entry is a credential the
+decoy silently cannot recognise, which reads as "nobody used it". The helper
+does nothing else with the array.
+
+**Recognition is the Control Plane's rule, and a test proves it.** The two
+modules cannot share code, so each pins the same fixture — the bytes
+`0x00..0x0f`, its secret spelling, its hash, and its rendered entry — and the
+closed kind list. A change to either side's prefix, base64 strictness, byte
+length, hash, field names, or kinds fails that side's test against the fixture
+the other side also holds.
+
+**No early exit.** `Set.Recognize` compares hash and kind with
+`subtle.ConstantTimeCompare` against every entry and selects the index with
+`subtle.ConstantTimeSelect`. Time depends on the entry count and on whether the
+offered value carried the `gdn-decoy-` marker at all, which is the same
+early-return `credential.HashOffered` has; it does not depend on which entry, if
+any, matched. A duplicate hash is refused at validation so a match has one
+answer.
+
+**The typed value goes nowhere.** `Recognize` returns only the credential id,
+which a pack's adapter puts in `auth.synthetic_credential_id`. `Set` has no
+field that could hold an offered value; validation errors carry a constant
+reason and no value from the definition. Tests assert both, and that a rendered
+`normalize.Auth` carries the id and not the secret.
+
+**The package reaches nothing.** It is imported by the helper and will be by the
+unprivileged Edge Agent, so its non-test imports are a closed allowlist of nine
+standard-library packages, and identity, device PKI, the privileged-helper
+client, and the helper itself are named as forbidden.
+
+**Residual, for the packs.** The raw pack output is the risk this change cannot
+close. Cowrie logs the password it was offered; an adapter that quarantines a
+line it failed to parse would put a typed value into a quarantine record.
+`P2-W5` and `P2-W7` must extract, recognise, and drop the offered value before
+anything is spooled or quarantined, and their reviews must show it.
+
 ## Deliberately not covered
 
-- **Delivery to the decoy.** Decided 2026-09-13 and not yet implemented: the
-  hash travels in the root-installed workload definition, with no public
-  contract change (`P2-W9` section 5). The review that implementation needs is
-  of that path: the definition is world-readable on the Edge, which is
-  acceptable only because it carries a hash of 128-bit worthless material and
-  never the secret, and the Edge's recognition rule must be the Control
-  Plane's exactly.
+- **Which process reads the definition, and when.** `P2-W5` and `P2-W7`.
 - **Storage and API.** No table, no migration, no REST surface. All three follow
   the delivery decision, since it may change what is stored.
 - **Pack recognition.** `P2-W5` and `P2-W7` present and recognise the

@@ -31,7 +31,8 @@ Every other roadmap workstream is unwritten.
 1. `CP-0004`, 2. `WCX-11`, 3. `P2-W4`, 4. `P2-W1`, 5. `P2-W2`, 6. `P2-W3` — on
    `main`; `P2-W3` includes ADR 0019 network attachment (`09f3f3d`).
 7. `P2-W10` + `P2-W11` — on `main`.
-8. `P2-W9` — domain on `main`; decoy delivery is next.
+8. `P2-W9` — domain and decoy delivery (workload entry and Edge recognizer) on
+   `main`; pack integration is `P2-W5` and `P2-W7`.
 9. `P2-W5` .. `P2-W8` — SSH/Cowrie, HTTP/Admin, PostgreSQL, SMB packs.
 10. `P2-W12` + `P2-W13` — local spool and central ingest, blob and quarantine.
 11. `P2-W14` — functional decoy health and coverage.

@@ -9,6 +9,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/GuardianPot/guardian/apps/edge-agent/internal/syntheticcred"
 )
 
 /*
@@ -91,6 +93,12 @@ type Workload struct {
 	// everything else here: an Edge Agent that could name the address in a
 	// request could point any installed decoy at any allowlisted address.
 	Network WorkloadNetwork `json:"network"`
+	// SyntheticCredentials are the credentials planted for this decoy (`P2-W9`
+	// section 5): an id, a kind, a username, and a SHA-256 — never a secret.
+	// Optional. The helper validates them and does nothing else with them;
+	// recognising an offered value is the Edge Agent's, through the same
+	// package, once a pack presents credentials.
+	SyntheticCredentials []syntheticcred.Entry `json:"synthetic_credentials,omitempty"`
 }
 
 // WorkloadNetwork is the decoy's one address and the zone interface its
@@ -279,6 +287,11 @@ func (w Workload) validate() error {
 	address, err := netip.ParseAddr(w.Network.Address)
 	if err != nil || !address.Is4() || address.String() != w.Network.Address || !validRoutableAddress(address) {
 		return fmt.Errorf("%w: network address", ErrWorkloadInvalid)
+	}
+	// Strictly, like every other field: a malformed entry is a credential the
+	// decoy would silently fail to recognise, which reads as "nobody used it".
+	if err := syntheticcred.ValidateEntries(w.SyntheticCredentials); err != nil {
+		return fmt.Errorf("%w: synthetic_credentials", ErrWorkloadInvalid)
 	}
 	return nil
 }

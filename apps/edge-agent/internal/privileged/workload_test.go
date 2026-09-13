@@ -130,6 +130,20 @@ func TestADefinitionThatWouldWeakenTheDecoyIsRefused(t *testing.T) {
 		"a network with an extra field": {
 			"network": `{"interface": "eth1", "address": "10.20.0.40", "gateway": "10.20.0.1"}`,
 		},
+		// P2-W9 section 5: a hash, never a secret, in exactly one spelling.
+		"a credential carrying the secret": {
+			"synthetic_credentials": `[{"credential_id": "0198dc8c-c600-7000-8000-000000000003", "kind": "ssh_password", "username": "svc-backup", "secret_sha256": "` + testCredentialHash + `", "secret": "gdn-decoy-AAECAwQFBgcICQoLDA0ODw"}]`,
+		},
+		"a credential with an upper-case hash": {
+			"synthetic_credentials": `[{"credential_id": "0198dc8c-c600-7000-8000-000000000003", "kind": "ssh_password", "username": "svc-backup", "secret_sha256": "` + strings.ToUpper(testCredentialHash) + `"}]`,
+		},
+		"a credential of an invented kind": {
+			"synthetic_credentials": `[{"credential_id": "0198dc8c-c600-7000-8000-000000000003", "kind": "root_shell", "username": "svc-backup", "secret_sha256": "` + testCredentialHash + `"}]`,
+		},
+		"a credential planted twice": {
+			"synthetic_credentials": `[` + testCredentialEntry + `, ` + testCredentialEntry + `]`,
+		},
+		"credentials that are not a list": {"synthetic_credentials": testCredentialEntry},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := ParseWorkload([]byte(workloadJSON(overrides)), testWorkloadID)
@@ -140,6 +154,27 @@ func TestADefinitionThatWouldWeakenTheDecoyIsRefused(t *testing.T) {
 				t.Fatalf("err = %v, want ErrWorkloadInvalid", err)
 			}
 		})
+	}
+}
+
+const (
+	testCredentialHash  = "be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991"
+	testCredentialEntry = `{"credential_id":"0198dc8c-c600-7000-8000-000000000003","kind":"ssh_password","username":"svc-backup","secret_sha256":"` + testCredentialHash + `"}`
+)
+
+// A definition without credentials is still valid, and one carrying the entry
+// the Control Plane renders reads back as that entry.
+func TestADefinitionCarriesPlantedCredentialsAsHashes(t *testing.T) {
+	if workload := validWorkload(t); workload.SyntheticCredentials != nil {
+		t.Fatalf("credentials = %+v, want none", workload.SyntheticCredentials)
+	}
+	raw := workloadJSON(map[string]string{"synthetic_credentials": `[` + testCredentialEntry + `]`})
+	workload, err := ParseWorkload([]byte(raw), testWorkloadID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(workload.SyntheticCredentials) != 1 || workload.SyntheticCredentials[0].SecretSHA256 != testCredentialHash {
+		t.Fatalf("credentials = %+v", workload.SyntheticCredentials)
 	}
 }
 

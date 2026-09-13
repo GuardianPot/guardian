@@ -213,6 +213,37 @@ the helper refuses it with `workload-network-not-allowlisted` unless the
 interface is an `--allow-interface` and the address is inside an
 `--allow-address-range`.
 
+#### Planted credentials
+
+A decoy that presents credentials (SSH, PostgreSQL) recognises the ones planted
+for it from the optional `synthetic_credentials` array. After confirming
+placement in the Control Plane, add the entry it renders, unchanged:
+
+```json
+"synthetic_credentials": [
+  {
+    "credential_id": "0198dc8c-c600-7000-8000-000000000003",
+    "kind": "ssh_password",
+    "username": "svc-backup",
+    "secret_sha256": "<64 lowercase hex characters>"
+  }
+]
+```
+
+The entry is a hash, never the secret. Do not put a `gdn-decoy-` value anywhere
+in the file: the definition is world-readable, and an unknown field such as
+`secret` makes the whole definition invalid. `kind` is one of `ssh_password`,
+`postgres_password`, `smb_password`, `http_basic`; the username must be exactly
+as rendered, with no surrounding whitespace. At most 16 entries, and no
+`credential_id` or `secret_sha256` may appear twice. Any malformed entry fails
+the definition with `workload-definition-invalid`, so the decoy does not start
+rather than start unable to recognise a credential.
+
+To revoke, revoke it in the Control Plane and remove its entry here. The Control
+Plane keeps the record that it was used. Which process reads the array, and
+when, arrives with the SSH and PostgreSQL packs; until then the helper only
+validates it.
+
 ### Decoy containers
 
 The helper needs containerd 2.x with its Transfer service (the default in 2.x)
